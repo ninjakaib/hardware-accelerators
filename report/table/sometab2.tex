@@ -1,0 +1,15 @@
+\centering
+\begin{tabular}{l|lcccccc}
+\toprule
+Method & Modality & Edit distance & BLEU & METEOR & Precision & Recall & F1 \\ \midrule
+PDF                  & All      & 0.255 & 65.8 & 82.1 & 77.1 & 81.4 & 79.2 \\ \hline
+GROBID               & All      & 0.312 & 55.6 & 71.9 & 74.0 & 72.1 & 73.0 \\ \cline{2-8}
+                     &Tables    & 0.626 & 25.1 & 64.5 & 61.4 & 80.7 & 69.7 \\
++ LaTeX OCR %
+                     & Plain text &0.363 & 57.4 & 69.2 & 82.1 & 70.5 & 75.9 \\
+                     & Math     & 0.727 & 0.3 & 5.0 & 11.0 & 8.6 & 9.7 \\ \hline
+\multirow{4}{*}{Nougat base (350M$^\ast$)} & All & \bf 0.071 & \bf 89.1 & \bf 93.0 & 93.5 & \bf 92.8 & \bf 93.1 \\ \cline{2-8}
+                     & Tables     & 0.211 & 69.7 & 79.1 & 75.4 & 80.7 & 78.0 \\ 
+                     & Plain text & 0.058         & 91.2 & 94.6   & 96.2      & 95.3   & 95.7 \\
+                     & Math       & 0.128         & 56.9 & 75.4   & 76.5      & 76.6   & 76.5 \\ \bottomrule
+\end{tabular}

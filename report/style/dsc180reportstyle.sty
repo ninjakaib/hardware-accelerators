@@ -1,0 +1,452 @@
+% \widowpenalty=10000
+% \clubpenalty=10000
+% \flushbottom
+% \sloppy
+
+% % font sizes with reduced leading
+% \renewcommand{\normalsize}{%
+%   \@setfontsize\normalsize\@xpt\@xipt
+%   \abovedisplayskip      7\p@ \@plus 2\p@ \@minus 5\p@
+%   \abovedisplayshortskip \z@ \@plus 3\p@
+%   \belowdisplayskip      \abovedisplayskip
+%   \belowdisplayshortskip 4\p@ \@plus 3\p@ \@minus 3\p@
+% }
+% \normalsize
+% \renewcommand{\small}{%
+%   \@setfontsize\small\@ixpt\@xpt
+%   \abovedisplayskip      6\p@ \@plus 1.5\p@ \@minus 4\p@
+%   \abovedisplayshortskip \z@  \@plus 2\p@
+%   \belowdisplayskip      \abovedisplayskip
+%   \belowdisplayshortskip 3\p@ \@plus 2\p@   \@minus 2\p@
+% }
+% \renewcommand{\footnotesize}{\@setfontsize\footnotesize\@ixpt\@xpt}
+% \renewcommand{\scriptsize}{\@setfontsize\scriptsize\@viipt\@viiipt}
+% \renewcommand{\tiny}{\@setfontsize\tiny\@vipt\@viipt}
+% \renewcommand{\large}{\@setfontsize\large\@xiipt{14}}
+% \renewcommand{\Large}{\@setfontsize\Large\@xivpt{16}}
+% \renewcommand{\LARGE}{\@setfontsize\LARGE\@xviipt{20}}
+% \renewcommand{\huge}{\@setfontsize\huge\@xxpt{23}}
+% \renewcommand{\Huge}{\@setfontsize\Huge\@xxvpt{28}}
+
+% % sections with less space
+% \providecommand{\section}{}
+% \renewcommand{\section}{%
+%   \@startsection{section}{1}{\z@}%
+%                 {-2.0ex \@plus -0.5ex \@minus -0.2ex}%
+%                 { 1.5ex \@plus  0.3ex \@minus  0.2ex}%
+%                 {\large\bf\raggedright}%
+% }
+% \providecommand{\subsection}{}
+% \renewcommand{\subsection}{%
+%   \@startsection{subsection}{2}{\z@}%
+%                 {-1.8ex \@plus -0.5ex \@minus -0.2ex}%
+%                 { 0.8ex \@plus  0.2ex}%
+%                 {\normalsize\bf\raggedright}%
+% }
+% \providecommand{\subsubsection}{}
+% \renewcommand{\subsubsection}{%
+%   \@startsection{subsubsection}{3}{\z@}%
+%                 {-1.5ex \@plus -0.5ex \@minus -0.2ex}%
+%                 { 0.5ex \@plus  0.2ex}%
+%                 {\normalsize\bf\raggedright}%
+% }
+% \providecommand{\paragraph}{}
+% \renewcommand{\paragraph}{%
+%   \@startsection{paragraph}{4}{\z@}%
+%                 {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+%                 {-1em}%
+%                 {\normalsize\bf}%
+% }
+% \providecommand{\subparagraph}{}
+% \renewcommand{\subparagraph}{%
+%   \@startsection{subparagraph}{5}{\z@}%
+%                 {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+%                 {-1em}%
+%                 {\normalsize\bf}%
+% }
+% \providecommand{\subsubsubsection}{}
+% \renewcommand{\subsubsubsection}{%
+%   \vskip5pt{\noindent\normalsize\rm\raggedright}%
+% }
+
+% % float placement
+% \renewcommand{\topfraction      }{0.85}
+% \renewcommand{\bottomfraction   }{0.4}
+% \renewcommand{\textfraction     }{0.1}
+% \renewcommand{\floatpagefraction}{0.7}
+
+% \newlength{\@neuripsabovecaptionskip}\setlength{\@neuripsabovecaptionskip}{7\p@}
+% \newlength{\@neuripsbelowcaptionskip}\setlength{\@neuripsbelowcaptionskip}{\z@}
+
+% \setlength{\abovecaptionskip}{\@neuripsabovecaptionskip}
+% \setlength{\belowcaptionskip}{\@neuripsbelowcaptionskip}
+
+% % swap above/belowcaptionskip lengths for tables
+% \renewenvironment{table}
+%   {\setlength{\abovecaptionskip}{\@neuripsbelowcaptionskip}%
+%    \setlength{\belowcaptionskip}{\@neuripsabovecaptionskip}%
+%    \@float{table}}
+%   {\end@float}
+
+% footnote formatting
+\setlength{\footnotesep }{6.65\p@}
+\setlength{\skip\footins}{9\p@ \@plus 4\p@ \@minus 2\p@}
+\renewcommand{\footnoterule}{\kern-3\p@ \hrule width 12pc \kern 2.6\p@}
+\setcounter{footnote}{0}
+
+% paragraph formatting
+\setlength{\parindent}{\z@}
+\setlength{\parskip  }{5.5\p@}
+
+% list formatting
+\setlength{\topsep       }{4\p@ \@plus 1\p@   \@minus 2\p@}
+\setlength{\partopsep    }{1\p@ \@plus 0.5\p@ \@minus 0.5\p@}
+\setlength{\itemsep      }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\parsep       }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\leftmargin   }{3pc}
+\setlength{\leftmargini  }{\leftmargin}
+\setlength{\leftmarginii }{2em}
+\setlength{\leftmarginiii}{1.5em}
+\setlength{\leftmarginiv }{1.0em}
+\setlength{\leftmarginv  }{0.5em}
+\def\@listi  {\leftmargin\leftmargini}
+\def\@listii {\leftmargin\leftmarginii
+              \labelwidth\leftmarginii
+              \advance\labelwidth-\labelsep
+              \topsep  2\p@ \@plus 1\p@    \@minus 0.5\p@
+              \parsep  1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \itemsep \parsep}
+\def\@listiii{\leftmargin\leftmarginiii
+              \labelwidth\leftmarginiii
+              \advance\labelwidth-\labelsep
+              \topsep    1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \parsep    \z@
+              \partopsep 0.5\p@ \@plus 0\p@ \@minus 0.5\p@
+              \itemsep \topsep}
+\def\@listiv {\leftmargin\leftmarginiv
+              \labelwidth\leftmarginiv
+              \advance\labelwidth-\labelsep}
+\def\@listv  {\leftmargin\leftmarginv
+              \labelwidth\leftmarginv
+              \advance\labelwidth-\labelsep}
+\def\@listvi {\leftmargin\leftmarginvi
+              \labelwidth\leftmarginvi
+              \advance\labelwidth-\labelsep}
+
+% create title
+\providecommand{\maketitle}{}
+\renewcommand{\maketitle}{%
+  \par
+  \begingroup
+    \renewcommand{\thefootnote}{\fnsymbol{footnote}}
+    % for perfect author name centering
+    \renewcommand{\@makefnmark}{\hbox to \z@{$^{\@thefnmark}$\hss}}
+    % The footnote-mark was overlapping the footnote-text,
+    % added the following to fix this problem               (MK)
+    \long\def\@makefntext##1{%
+      \parindent 1em\noindent
+      \hbox to 1.8em{\hss $\m@th ^{\@thefnmark}$}##1
+    }
+    \thispagestyle{empty}
+    \@maketitle
+    \@thanks
+  \endgroup
+  \let\maketitle\relax
+  \let\thanks\relax
+}
+
+% create title (includes both anonymized and non-anonymized versions)
+\providecommand{\@maketitle}{}
+\renewcommand{\@maketitle}{%
+  \vbox{%
+    \hsize\textwidth
+    \linewidth\hsize
+    \vskip 0.1in
+    \centering
+    {\Large\bf \@title\par}
+      \def\And{%
+        \end{tabular}\hfil\linebreak[0]\hfil%
+        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+      }
+      \def\AND{%
+        \end{tabular}\hfil\linebreak[4]\hfil%
+        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+      }
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\@author\end{tabular}%
+    \vskip 0.3in \@minus 0.1in
+  }
+}
+
+% abstract styling
+\renewenvironment{abstract}%
+{%
+  \vskip 0.075in%
+  \centerline%
+  {\bf Abstract}%
+  \vspace{0.5ex}%
+  \begin{quote}%
+}
+{
+  \par%
+  \end{quote}%
+  \vskip 1ex%
+}
+
+\usepackage{setspace}
+\usepackage[letterpaper, margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[amsmath]{ntheorem}
+\usepackage{mathtools}
+\usepackage{verbatim}
+\usepackage{color}
+\definecolor{MyBrown}{rgb}{0.3,0,0}
+\definecolor{MyBlue}{rgb}{.2,.2,.8}
+\definecolor{MyRed}{rgb}{0.4,0,0.1}
+\definecolor{MyGreen}{rgb}{0,0.4,0}
+\definecolor{LightGrey}{rgb}{0.7,0.7,0.7}
+\usepackage[hyphens]{url}
+%\usepackage[hidelinks]{hyperref}
+\usepackage{hyperref}
+\hypersetup{breaklinks=true}
+\hypersetup{%bookmarks = true,
+  bookmarksnumbered = true,
+  bookmarksopen = true,
+  bookmarksopenlevel = 2,
+  pdfpagemode = UseOutlines,
+  colorlinks = true,
+  linkcolor = MyRed,
+  citecolor = MyBlue,
+  filecolor = MyBrown,
+  urlcolor = MyGreen}
+% \usepackage[colorinlistoftodos,
+%   prependcaption,
+%   textsize = small,
+%   linecolor = yellow!80,
+%   backgroundcolor = yellow!50,
+%   textwidth = 2.5cm]
+% {todonotes}
+\usepackage{lipsum}
+\usepackage[normalem]{ulem}
+\usepackage{enumitem}
+
+% math
+\DeclareMathOperator*{\argmax}{arg\,max}
+\usepackage{array}
+\renewcommand{\vec}[1]{%
+  \if#1\relax\bm{#1}\else\mathbf{#1}\fi
+}
+
+% tables
+\usepackage[para]{threeparttable}
+\usepackage{booktabs}
+%\usepackage{dcolumn}
+%\newcolumntype{.}[1]{D{.}{.}{#1}}
+%\newcolumntype{,}[1]{D{,}{,}{#1}}
+\usepackage{siunitx}
+\sisetup{%
+  mode = math,
+  detect-all,
+  output-decimal-marker = {.},
+  group-separator = {,},
+}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{xmpmulti, multicol}
+
+% figures
+\usepackage{floatrow}
+%\usepackage{float}
+%\usepackage{rotating}
+%\usepackage{pdflscape}
+
+% citation
+\usepackage{natbib}
+\setcitestyle{aysep={}}
+\setlength{\bibsep}{-.1pt} % Reduce space between bibliographies
+\DeclareTextCommandDefault{\nobreakspace}{\leavevmode\nobreak\ } % AER style nobreak
+\renewcommand\bibname{References}
+% create appendix
+\providecommand{\makereference}{}
+\renewcommand{\makereference}{%
+    \phantomsection % Needed for the bibliography bookmark to point to the correct page
+    \addcontentsline{toc}{section}{\bibname}
+    \setstretch{1.1}
+    \Urlmuskip=0mu plus 1mu\relax % make bibliography tighter
+}
+
+
+% font
+%\usepackage{fourier}
+% \usepackage[charter]{mathdesign}
+\usepackage[no-math]{fontspec}
+% \usepackage{xltxtra, xunicode}
+% \usepackage[utf8]{inputenc}
+%\usepackage{lmodern}
+%\usepackage{times}
+%\usepackage{mathptmx}
+%\usepackage[minionint, lf, mathtabular]{MinionPro}
+% \usepackage{xeCJK}
+%\usepackage{bm}
+
+% chapter & section titles
+% \usepackage{titlesec}
+% \titleformat{\chapter}[display]
+%   {\huge\rmdisplay}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+% \titleformat*{\section}{\Large\rmdisplay}
+% \titleformat*{\subsection}{\large\rmdisplay}
+
+% Table caption on top of table
+\usepackage{float}
+\floatstyle{plaintop}
+\restylefloat{table}
+
+% Wide table width adjustment
+\usepackage{chngpage}
+
+% Reference URL Symbol
+% \usepackage{fontawesome}
+
+% Date format
+% \usepackage[yyyymmdd]{datetime}
+% \renewcommand{\dateseparator}{-}
+
+
+\usepackage{lscape}
+%\usepackage[nolists, nomarkers]{endfloat}
+
+% Using the tex-text mapping for ligatures etc.
+\defaultfontfeatures{Ligatures=TeX, Mapping = tex-text}
+% Set the default fonts
+\usepackage[bitstream-charter]{mathdesign}
+% https://mirror.math.princeton.edu/pub/CTAN/fonts/xcharter/doc/xcharter-doc.pdf
+\setmainfont{XCharter}
+% \usepackage[sups]{XCharter}
+\setsansfont{Arial}
+\setmonofont[Scale=0.9]{Fira Code}
+
+
+\renewcommand{\P}{{\rm I\kern-.18em P}}
+\DeclareMathOperator{\E}{{\mathrm{I}\kern-.18em\mathrm{E}}}
+\DeclareMathOperator{\V}{{\mathrm{V}\kern-.755em\mathrm{V}}}
+\DeclareMathOperator{\Var}{\mathrm{Var}}
+\DeclareMathOperator{\Cov}{\mathrm{Cov}}
+\DeclareMathOperator{\indep}{\protect\mathpalette{\protect\independenT}{\perp}}
+\DeclareMathOperator{\nindep}{\not\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+\DeclareMathOperator{\N}{\mathcal{N}}
+\DeclareMathOperator{\tD}{\tilde{D}}
+\DeclareMathOperator{\Alpha}{\bm{\alpha}}
+\DeclareMathOperator{\Beta}{\bm{\beta}}
+\DeclareMathOperator{\ts}{\tilde{s}}
+
+\usepackage{bm}
+
+\usepackage{paralist}
+\renewenvironment{itemize}[1]{\begin{compactitem}#1}{\end{compactitem}}
+\renewenvironment{enumerate}[1]{\begin{compactenum}#1}{\end{compactenum}}
+\renewenvironment{description}[0]{\begin{compactdesc}}{\end{compactdesc}}
+
+
+% tikz
+% \usepackage{tikz}
+% \usetikzlibrary{shapes,decorations,arrows,calc,arrows.meta,fit,positioning}
+
+% author
+% P\usepackage{authblk}
+
+\newcommand{\footremember}[2]{%
+  \footnote{#2}
+  \newcounter{#1}
+  \setcounter{#1}{\value{footnote}}%
+}
+\newcommand{\footrecall}[1]{%
+  \footnotemark[\value{#1}]%
+}
+
+% algorithms
+% \usepackage{algorithm}
+% \usepackage{algpseudocode}
+\usepackage[ruled,vlined]{algorithm2e}
+% \usepackage{chngcntr}
+% \counterwithout{algorithm}{section}
+% \newcommand{\alglinelabel}{%
+%   \addtocounter{ALC@line}{-1}% Reduce line counter by 1
+%   \refstepcounter{ALC@line}% Increment line counter with reference capability
+%   \label% Regular \label
+% }
+
+% table of contents (toc)
+\newcommand{\nocontentsline}[3]{}
+\newcommand{\tocless}[2]{\bgroup\let\addcontentsline=\nocontentsline#1{#2}\egroup}
+\providecommand{\maketoc}{}
+\renewcommand{\maketoc}{%
+    \etocsettocdepth{1}
+    \etocsettocstyle{\medskip}{\bigskip}
+    \newlength{\npageW}
+    \settowidth{\npageW}{9} % width of the page number box
+    \newlength{\subnumberW}
+    \settowidth{\subnumberW}{99.9}
+    \newcommand*{\DotsAndPage}
+    {\nobreak\leaders\hbox{\normalsize\hbox to 1.75ex {\hss.\hss}}% make dots
+      \hfill\nobreak\rlap{\makebox[\npageW]{\etocpage}}\par}
+    \etocsetstyle{section}
+    {}
+    {\normalfont\noindent}
+    {\hspace{0.5in}\llap{\makebox[\subnumberW][l]{\etocnumber}}\etocname\DotsAndPage}
+    {}
+    \localtableofcontents
+}
+
+% appendix
+\usepackage[toc,page,header]{appendix}
+%toc for appendix only: 
+\usepackage{etoc}
+\newcommand{\fakesection}[1]{%
+  \par\refstepcounter{section}% Increase section counter
+  \sectionmark{#1}% Add section mark (header)
+  \addcontentsline{toc}{section}{\protect\numberline{\thesection}#1}% Add section to ToC
+  % Add more content here, if needed.
+}
+\newcommand{\fakesubsection}[1]{%
+  \par\refstepcounter{subsection}% Increase subsection counter
+  \subsectionmark{#1}% Add subsection mark (header)
+  \addcontentsline{toc}{subsection}{\protect\numberline{\thesubsection}#1}% Add subsection to ToC
+  % Add more content here, if needed.
+}
+% create appendix
+\providecommand{\makeappendix}{}
+\renewcommand{\makeappendix}{%
+    \renewcommand{\appendixpagename}{\centering \LARGE Appendices}
+    \pagenumbering{arabic}% resets `page` counter to 1
+    \renewcommand*{\thepage}{A\arabic{page}}
+    \appendix
+    \appendixpage
+    \renewcommand{\thefigure}{A~\arabic{figure}}
+    \setcounter{figure}{0}
+    \renewcommand{\thetable}{A~\arabic{table}}
+    \setcounter{table}{0}
+    \etocsettocdepth{2}
+    %\etocsettocstyle{}{\rule{\linewidth}{0.5pt}}
+    \etocsettocstyle{\medskip}{\bigskip}
+    % \newlength{\npageW}
+    % \settowidth{\npageW}{99} % width of the page number box
+    % \newlength{\subnumberW}
+    % \settowidth{\subnumberW}{999.999}
+    % \newcommand*{\DotsAndPage}
+    % {\nobreak\leaders\hbox{\normalsize\hbox to 1.75ex {\hss.\hss}}% make dots
+    %   \hfill\nobreak\rlap{\makebox[\npageW]{\etocpage}}\par}
+    \etocsetstyle{subsection}
+    {}
+    {\normalfont\noindent}
+    {\hspace{0.65in}\llap{\makebox[\subnumberW][l]{\etocnumber}}\etocname\DotsAndPage}
+    {}
+    \etocsetstyle{subsubsection}
+    {}
+    {\normalfont\footnotesize\addvspace{.5ex}\noindent\setlength{\leftskip}{1.5em}}
+    {\hspace{0.65in}\llap{\makebox[\subnumberW][l]{\etocnumber}}\etocname\DotsAndPage}
+    {}
+    \tocless\fakesection{}
+    \localtableofcontents
+    % \renewcommand{\thesubsection}{\arabic{subsection}}
+}
