@@ -10,17 +10,20 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: main.tex
+          root_file: report.tex
           working_directory: report
+          work_in_root_file_dir: true
           latexmk_use_xelatex: true
+          continue_on_error: true
+          post_compile: "latexmk -c"
           
       - name: Move PDF to root
-        run: mv report/main.pdf .
+        run: mv report/report.pdf .
             
       - name: Commit PDF
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add main.pdf
+          git add report.pdf
           git commit -m "Update PDF report" || exit 0
           git push
