@@ -10,12 +10,12 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: report/main.tex
+          root_file: main.tex
           working_directory: report
           latexmk_use_xelatex: true
           
       - name: Move PDF to root
-        run: mv report/main.pdf ./
+        run: mv report/main.pdf .
             
       - name: Commit PDF
         run: |
