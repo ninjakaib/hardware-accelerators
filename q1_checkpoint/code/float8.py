@@ -1,4 +1,9 @@
 class Float8:
+    MAX_NORMAL = 448.0
+    MIN_NORMAL = '0.0001.000'
+    MAX_SUBNORMAL = '0.0000.111'
+    MIN_SUBNORMAL = '0.0000.001'
+
     def __init__(self, value, decimal=None):
         # If value is already Float8, copy its attributes directly
         if isinstance(value, Float8):
@@ -8,6 +13,12 @@ class Float8:
             return
             
         if isinstance(value, (float, int)):
+            # Handle infinities
+            if value > self.MAX_NORMAL:
+                value = float('inf')
+            if value < -self.MAX_NORMAL:
+                value = float('-inf')
+
             self.decimal = float(value)
             self.binary = self._decimal_to_binary(self.decimal)
             # Remove dots before converting back to decimal
@@ -76,7 +87,7 @@ class Float8:
         
         # Handle special cases
         if exp == '1111' and mantissa == '111':
-            return float('nan')
+            return sign * float('inf')
         if exp == '0000' and mantissa == '000':
             return 0.0
             
@@ -105,6 +116,10 @@ class Float8:
         MAX_EXP = 8
         MIN_EXP = -6
         MANTISSA_BITS = 3
+        
+        # Handle inf and -inf
+        if num == float('inf'):
+            return sign + ".1111.111"
         
         # Handle NaN
         if num != num:  # Python's way to check for NaN

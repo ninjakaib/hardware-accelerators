@@ -45,4 +45,7 @@ def fp8_lmul_simple(a: Float8, b: Float8) -> Float8:
     result = min(max(result, 0), fp8_bitmask)
 
     # Combine sign and result
-    return (result_sign << total_bits) | result
+    result = (result_sign << total_bits) | result
+
+    # Create and return the Float8 object
+    return Float8.from_binint(result)
