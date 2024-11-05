@@ -1,0 +1,21 @@
+Pre Optimization:
+Critical path length: 1232.34
+Estimated Area of block 0.00030492 sq mm
+
+Post Optimization:
+Critical path length: 1085.34
+Estimated Area of block 0.000167706 sq mm
+
+
+Simulation Trace:
+      |0    |1    |2    |3    
+------------------------------
+  fp_a |0x40 |0x70 |0x01 |0xc0 
+  fp_b |0x40 |0x70 |0x01 |0x40 
+fp_out |0x49 |0x29 |0x4b |0xc9 
+
+Detailed Results:
+fp_a: 01000000 * fp_b: 01000000 = fp_out: 01001001
+fp_a: 01110000 * fp_b: 01110000 = fp_out: 00101001
+fp_a: 00000001 * fp_b: 00000001 = fp_out: 01001011
+fp_a: 11000000 * fp_b: 01000000 = fp_out: 11001001

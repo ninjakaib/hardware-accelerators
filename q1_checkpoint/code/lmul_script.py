@@ -108,7 +108,7 @@ def plot_multiplication_error_heatmap(df, filename):
     plt.tight_layout()
     plt.savefig(filename)
 
-plot_multiplication_error_heatmap(df_normals, 'output/normal_multiplication_error_heatmap.png')
+plot_multiplication_error_heatmap(df_normals, 'output/fp8_multiplication_error.png')
 
 from lmul import get_lmul_offset
 
@@ -259,7 +259,7 @@ def plot_normal_subnormal_error_heatmap(df, filename):
     plt.savefig(filename)
 
 df_subnormals_naiive = test_combinations(normal_subnormals, fp8_lmul_simple)
-plot_normal_subnormal_error_heatmap(df_subnormals_naiive, 'output/normal_subnormal_error_heatmap_naiive.png')
+plot_normal_subnormal_error_heatmap(df_subnormals_naiive, 'output/basic_lmul_normalxsubnormal.png')
 
 df_subnormals = test_combinations(normal_subnormals, lmul_normal_subnormal)
-plot_normal_subnormal_error_heatmap(df_subnormals, 'output/normal_subnormal_error_heatmap.png')
+plot_normal_subnormal_error_heatmap(df_subnormals, 'output/optimized_lmul_normalxsubnormal.png')
