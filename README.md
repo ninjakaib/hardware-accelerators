@@ -8,7 +8,7 @@ Our Q1 checkpoint code had two major components: a high-level implementation of 
 1. Pull the docker image using:
 `docker pull nakschou/hardware_accelerators:q1_checkpoint`
 2. Make an output directory using: `mkdir output`
-3. Run the docker image using `docker run -v ${PWD}/output:/app/output nakschou/hardware_accelerators:q1_checkpoint`
+3. Run the docker image using `docker run -v ${PWD}/output:/app/output nakschou/hardware_accelerators:q1_checkpoint` (assuming you are using Windows Powershell, otherwise use your proper current working directory.)
 
 We also have our code and write-up in the `checkpoint.ipynb` file within the `q1_checkpoint/code` directory if you would like to follow our thought process. This has the same outputs as our docker image, but you must first `pip install -r requirements.txt` within that directory.
 
