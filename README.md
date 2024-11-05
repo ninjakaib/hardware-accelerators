@@ -10,7 +10,7 @@ Our Q1 checkpoint code had two major components: a high-level implementation of 
 2. Make an output directory using: `mkdir output`
 3. Run the docker image using `docker run -v ${PWD}/output:/app/output nakschou/hardware_accelerators:q1_checkpoint`
 
-We also have our code and write-up in the 	`checkpoint.ipynb	` file within the `q1_checkpoint/code` directory if you would like to follow our thought process. This has the same outputs as our docker image, but  you must first `pip install -r requirements.txt` within that directory.
+We also have our code and write-up in the `checkpoint.ipynb` file within the `q1_checkpoint/code` directory if you would like to follow our thought process. This has the same outputs as our docker image, but you must first `pip install -r requirements.txt` within that directory.
 
 For the first portion, we had three output files (within the `q1_checkpoint/code/output` directory:
 - `fp8_multiplication_error.png` -- a heatmap of the errors of our basic $Lmul$ implementation, using all FP8 numbers.
