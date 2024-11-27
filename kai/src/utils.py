@@ -1,4 +1,114 @@
-from IPython.display import display, Latex
+import pyrtl
+from IPython.display import display, Latex, display_svg
+from typing import Annotated, Callable, Literal
+import subprocess
+import os
+import datetime
+    
+SaveTypes = Literal['svg', 'vcd', 'verilog']
+SaveAs = Annotated[SaveTypes | list[SaveTypes], "Save format(s) for the circuit"]
+
+def get_repo_root():
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], 
+                                        universal_newlines=True).strip()
+    except subprocess.CalledProcessError:
+        return None
+
+def analyze_circuit(
+        circuit_func: callable, 
+        svg: bool = False, 
+        split_state: bool = False,
+        display_pre_opt: bool = False,
+        sim: bool = False,
+        inputs: dict[str, list[int]] | None = None, 
+        outputs: list[str] | dict[str, list[int]] | None = None,
+        trace_list: list[str] = [],
+        repr_per_name: dict[str, callable[[int],str]] = {},
+        save: SaveTypes | list[SaveTypes] = [],
+        path_to_output_dir: str = './output',
+    ):    
+    # Create the hardware
+    pyrtl.reset_working_block()
+    rtl = circuit_func()
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    if isinstance(save, str):
+        save = [save]
+
+    if svg and display_pre_opt:
+        svg = pyrtl.block_to_svg(split_state=split_state)
+        display_svg(svg, raw=True)
+
+    pyrtl.synthesize()
+
+    # Generating timing analysis information
+    print("Pre Optimization:")
+    timing = pyrtl.TimingAnalysis()
+    timing.print_max_length()
+    logic_area, mem_area = pyrtl.area_estimation(tech_in_nm=65)
+    est_area = logic_area + mem_area
+    print("Estimated Area of block", est_area, "sq mm")
+    print()
+
+    pyrtl.optimize()
+
+    print("Post Optimization:")
+    timing = pyrtl.TimingAnalysis()
+    timing.print_max_length()
+    logic_area, mem_area = pyrtl.area_estimation(tech_in_nm=65)
+    est_area = logic_area + mem_area
+    print("Estimated Area of block", est_area, "sq mm")
+    print()
+
+    # Print the max clk frequency
+    max_freq = timing.max_freq()
+    print("Max frequency of block: ", max_freq, "MHz")
+    print()
+
+    if svg and not display_pre_opt:
+        svg = pyrtl.block_to_svg(split_state=split_state)
+        display_svg(svg, raw=True)
+    
+    # Set up simulation
+    if sim:
+        sim_trace = pyrtl.SimulationTrace()
+        sim = pyrtl.Simulation(tracer=sim_trace)
+
+        if inputs is not None:
+            # Set up wires to trace in the simulation
+            trace_list = list(inputs.keys()) + trace_list
+            if isinstance(outputs, list):
+                trace_list.extend(outputs)
+                outputs = {}
+            elif isinstance(outputs, dict):
+                trace_list.extend(list(outputs.keys()))
+            # Remove potential duplicates
+            trace_list = [t for i, t in enumerate(trace_list) if t not in trace_list[:i]]
+
+            sim.step_multiple(inputs, outputs)
+
+            sim_trace.render_trace(
+                trace_list=trace_list,
+                repr_per_name=repr_per_name
+            )
+
+            if 'vcd' in save:
+                trace_output_path = os.path.join(path_to_output_dir, 'simulations', f'{circuit_func.__name__}_{timestamp}.vcd')
+                with open(trace_output_path, 'w') as f:
+                    sim_trace.print_vcd(f, include_clock=True)
+                    print(f"Simulation trace saved to {trace_output_path}")
+
+    if svg and 'svg' in save:
+        svg_output_path = os.path.join(path_to_output_dir, 'assets', f'{circuit_func.__name__}_{timestamp}.svg')
+        with open(svg_output_path, 'w') as f:
+            f.write(svg)
+
+    if 'verilog' in save:
+        verilog_output_path = os.path.join(path_to_output_dir, 'verilog', f'{circuit_func.__name__}_{timestamp}.v')
+        with open(verilog_output_path, 'w') as f:
+            pyrtl.output_to_verilog(f)
+
+
 
 def display_sign_steps(bits):
     sign_bit = bits[0]
