@@ -1,5 +1,5 @@
 import pytest
-from float8 import decimal_to_e4m3
+from ..src.float8 import decimal_to_e4m3
 import math
 
 # Fixture for commonly used values
