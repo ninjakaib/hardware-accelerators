@@ -17,6 +17,7 @@ class BF16:
             self.original_value = value.original_value
         elif isinstance(value, str):
             # Binary string initialization
+            value = ''.join([c for c in value if c in '01'])
             if not all(c in '01' for c in value):
                 raise ValueError("Binary string must contain only 0s and 1s")
             
@@ -47,7 +48,33 @@ class BF16:
     
     def __repr__(self):
         """String representation of the BF16 number"""
-        return f"BF16({float(self.tensor)})"
+        return f"bf16({float(self.tensor)})"
+    
+    def __mul__(self, other):
+        """
+        Multiply two BF16 values
+        Supports multiplication with:
+        - Another BF16 instance
+        - int
+        - float
+        - torch.Tensor
+        """
+        # Handle different input types
+        if isinstance(other, (int, float)):
+            # Multiply with scalar
+            result_tensor = self.tensor * other
+            return BF16(result_tensor)
+        elif isinstance(other, torch.Tensor):
+            # Multiply with tensor
+            result_tensor = self.tensor * other.to(torch.bfloat16)
+            return BF16(result_tensor)
+        elif isinstance(other, type(self)):
+            # Multiply with another BF16 instance
+            result_tensor = self.tensor * other.tensor
+            return BF16(result_tensor)
+        # If multiplication is not supported, return NotImplemented
+        return NotImplemented
+
     
     def bit_representation(self):
         """
