@@ -48,7 +48,12 @@ class BF16:
     
     def __repr__(self):
         """String representation of the BF16 number"""
+        return f"{self.tensor}"
         return f"bf16({float(self.tensor)})"
+    
+    def __float__(self):
+        """Convert BF16 to float"""
+        return float(self.tensor)
     
     def __mul__(self, other):
         """
@@ -75,6 +80,22 @@ class BF16:
         # If multiplication is not supported, return NotImplemented
         return NotImplemented
 
+    def __sub__(self, other):
+        # Handle different input types
+        if isinstance(other, (int, float)):
+            # Multiply with scalar
+            result_tensor = self.tensor - other
+            return BF16(result_tensor)
+        elif isinstance(other, torch.Tensor):
+            # Multiply with tensor
+            result_tensor = self.tensor - other.to(torch.bfloat16)
+            return BF16(result_tensor)
+        elif isinstance(other, type(self)):
+            # Multiply with another BF16 instance
+            result_tensor = self.tensor - other.tensor
+            return BF16(result_tensor)
+        # If multiplication is not supported, return NotImplemented
+        return NotImplemented
     
     def bit_representation(self):
         """
@@ -140,6 +161,11 @@ class BF16:
     def nan(cls):
         """Create NaN BF16"""
         return cls(float('nan'))
+    
+    @classmethod
+    def from_binary(cls, binary_int):
+        """Create BF16 from binary integer"""
+        return cls(binary_int, binary_literal=True)
 
 # Demonstration function
 def demo_bf16_initialization():

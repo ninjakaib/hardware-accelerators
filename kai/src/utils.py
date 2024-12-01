@@ -1,9 +1,11 @@
 import pyrtl
 from IPython.display import display, Latex, display_svg
-from typing import Annotated, Callable, Literal
+from typing import Annotated, Callable, Dict, List, Literal
 import subprocess
 import os
+import sys
 import datetime
+from pyrtl.simulation import default_renderer
     
 SaveTypes = Literal['svg', 'vcd', 'verilog']
 SaveAs = Annotated[SaveTypes | list[SaveTypes], "Save format(s) for the circuit"]
@@ -14,6 +16,31 @@ def get_repo_root():
                                         universal_newlines=True).strip()
     except subprocess.CalledProcessError:
         return None
+    
+def custom_render_trace(
+    trace, 
+    trace_list: List[str] = None, 
+    file=sys.stdout,
+    renderer = default_renderer(),
+    symbol_len: int = None,
+    repr_func: Callable[[int], str] = hex,
+    repr_per_name = {},
+    segment_size: int = 1
+):
+    from IPython.display import display, HTML, Javascript  # pylint: disable=import-error
+    htmlstring = pyrtl.trace_to_html(trace, trace_list=trace_list, repr_func=repr_func, repr_per_name=repr_per_name)
+    html_elem = HTML(htmlstring)
+    display(html_elem)
+    js_stuff = """
+    $.when(
+    $.getScript("https://cdnjs.cloudflare.com/ajax/libs/wavedrom/1.6.2/skins/default.js"),
+    $.getScript("https://cdnjs.cloudflare.com/ajax/libs/wavedrom/1.6.2/wavedrom.min.js"),
+    $.Deferred(function( deferred ){
+        $( deferred.resolve );
+    })).done(function(){
+        WaveDrom.ProcessAll();
+    });"""
+    display(Javascript(js_stuff))
 
 def analyze_circuit(
         circuit_func: callable, 
@@ -24,7 +51,7 @@ def analyze_circuit(
         inputs: dict[str, list[int]] | None = None, 
         outputs: list[str] | dict[str, list[int]] | None = None,
         trace_list: list[str] = [],
-        repr_per_name: dict[str, callable[[int],str]] = {},
+        repr_per_name = {},
         save: SaveTypes | list[SaveTypes] = [],
         path_to_output_dir: str = './output',
     ):    
@@ -211,4 +238,4 @@ def display_float8_conversion(bits, format="E4M3", verbose=False):
     return value
 
 
-display_float8_conversion('00000011')
+# display_float8_conversion('00000011')
