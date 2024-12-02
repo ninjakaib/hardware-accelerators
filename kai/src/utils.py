@@ -6,7 +6,32 @@ import os
 import sys
 import datetime
 from pyrtl.simulation import default_renderer
-    
+
+def _circuit_analysis(block=None, tech_in_nm=130):
+    timing = pyrtl.TimingAnalysis(block=block)
+    timing.print_max_length()
+    max_freq = timing.max_freq(tech_in_nm=tech_in_nm)
+    print("Max frequency of block: ", max_freq, "MHz")
+    logic_area, mem_area = pyrtl.area_estimation(tech_in_nm=tech_in_nm, block=block)
+    est_area = logic_area + mem_area
+    print("Estimated Area of block", est_area, f"mm^2 using {tech_in_nm}nm process")
+    print()
+
+def basic_circuit_analysis(synthesize=True, optimize=True, tech_in_nm=130):
+    print("Pre-synthesis Results:")
+    _circuit_analysis(tech_in_nm=tech_in_nm)
+
+    if synthesize:
+        synth_block = pyrtl.synthesize()
+        # Generating timing analysis information
+        print("Synthesis Results:")
+        _circuit_analysis(synth_block, tech_in_nm)
+        
+    if optimize:
+        opt_block = pyrtl.optimize()
+        _circuit_analysis(opt_block, tech_in_nm)
+
+
 SaveTypes = Literal['svg', 'vcd', 'verilog']
 SaveAs = Annotated[SaveTypes | list[SaveTypes], "Save format(s) for the circuit"]
 
