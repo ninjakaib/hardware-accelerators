@@ -79,6 +79,76 @@ class BF16:
             return BF16(result_tensor)
         # If multiplication is not supported, return NotImplemented
         return NotImplemented
+    
+    def __add__(self, other):
+        """
+        Add two BF16 values
+        Supports addition with:
+        - Another BF16 instance
+        - int
+        - float
+        - torch.Tensor
+        """
+        if isinstance(other, (int, float)):
+            # Add with scalar
+            result_tensor = self.tensor + torch.tensor(other, dtype=torch.bfloat16)
+            return BF16(result_tensor)
+        elif isinstance(other, torch.Tensor):
+            # Add with tensor
+            result_tensor = self.tensor + other.to(torch.bfloat16)
+            return BF16(result_tensor)
+        elif isinstance(other, type(self)):
+            # Add with another BF16 instance
+            result_tensor = self.tensor + other.tensor
+            return BF16(result_tensor)
+        # If addition is not supported, return NotImplemented
+        return NotImplemented
+
+    def __radd__(self, other):
+        """
+        Reverse addition (when BF16 is the right operand)
+        """
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        """
+        Subtract two BF16 values
+        Supports subtraction with:
+        - Another BF16 instance
+        - int
+        - float
+        - torch.Tensor
+        """
+        if isinstance(other, (int, float)):
+            # Subtract scalar
+            result_tensor = self.tensor - torch.tensor(other, dtype=torch.bfloat16)
+            return BF16(result_tensor)
+        elif isinstance(other, torch.Tensor):
+            # Subtract tensor
+            result_tensor = self.tensor - other.to(torch.bfloat16)
+            return BF16(result_tensor)
+        elif isinstance(other, type(self)):
+            # Subtract another BF16 instance
+            result_tensor = self.tensor - other.tensor
+            return BF16(result_tensor)
+        # If subtraction is not supported, return NotImplemented
+        return NotImplemented
+
+    def __rsub__(self, other):
+        """
+        Reverse subtraction (when BF16 is the right operand)
+        """
+        if isinstance(other, (int, float)):
+            # other - self
+            result_tensor = torch.tensor(other, dtype=torch.bfloat16) - self.tensor
+            return BF16(result_tensor)
+        elif isinstance(other, torch.Tensor):
+            # tensor - self
+            result_tensor = other.to(torch.bfloat16) - self.tensor
+            return BF16(result_tensor)
+        # If reverse subtraction is not supported, return NotImplemented
+        return NotImplemented
+
 
     def __sub__(self, other):
         # Handle different input types
