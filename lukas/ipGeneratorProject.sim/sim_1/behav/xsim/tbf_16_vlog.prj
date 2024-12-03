@@ -10,7 +10,6 @@ verilog xil_defaultlib  \
 "../../../../ipGeneratorProject.srcs/sources_1/new/mux.v" \
 "../../../../ipGeneratorProject.srcs/sources_1/new/mux_8_bit.v" \
 "../../../../ipGeneratorProject.srcs/sources_1/new/not_8_bit.v" \
-"../../../../ipGeneratorProject.srcs/sources_1/new/shift_detector.v" \
 "../../../../ipGeneratorProject.srcs/sim_1/new/tbf_16.v" \
 
 # compile glbl module

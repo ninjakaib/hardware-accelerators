@@ -41,4 +41,4 @@ EAStep()
      fi
 }
 
-EAStep vivado -log stimuli.vds -m64 -product Vivado -mode batch -messageDb vivado.pb -notrace -source stimuli.tcl
+EAStep vivado -log bf16_adder.vds -m64 -product Vivado -mode batch -messageDb vivado.pb -notrace -source bf16_adder.tcl
