@@ -28,9 +28,7 @@ module PE(
     output reg [15:0] S
     );
     
-    wire[15:0] P;
-        
-    reg[15:0] S = 16'b0000000000000000;
+    wire[15:0] P, t;        
     reg[15:0] T = 16'b0000000000000000;
     
     lmul mul (
@@ -40,9 +38,9 @@ module PE(
     );
 
     bf16_adder add (
-        .S(S),
-        .P(P),
-        .T(T)
+        .A(S),
+        .B(P),
+        .S(t)
     );
     
     always@(posedge clock) 
@@ -50,6 +48,8 @@ module PE(
     if(reset)    
       S <= 16'b0000000000000000;
     else 
+        T <= t;
+        #1
         S <= T;
     end
     
