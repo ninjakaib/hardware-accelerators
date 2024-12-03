@@ -22,12 +22,14 @@ def basic_circuit_analysis(synthesize=True, optimize=True, tech_in_nm=130):
     _circuit_analysis(tech_in_nm=tech_in_nm)
 
     if synthesize:
+        print("Post-synthesis Results:")
         synth_block = pyrtl.synthesize()
         # Generating timing analysis information
         print("Synthesis Results:")
         _circuit_analysis(synth_block, tech_in_nm)
         
     if optimize:
+        print("Post-optimization Results:")
         opt_block = pyrtl.optimize()
         _circuit_analysis(opt_block, tech_in_nm)
 
