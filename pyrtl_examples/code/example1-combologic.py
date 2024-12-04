@@ -115,3 +115,11 @@ for cycle in range(15):
             or python_cout != sim_trace.trace['carry_out'][cycle]):
         print('This Example is Broken!!!')
         exit(1)
+
+from pyrtl.importexport import output_to_verilog, output_verilog_testbench
+
+with open('addertest.sv', 'w') as f:
+    output_verilog_testbench(dest_file=f, block=pyrtl.working_block(), simulation_trace=sim_trace)
+
+with open('adder.v', 'w') as f:
+    output_to_verilog(dest_file=f, block=pyrtl.working_block())

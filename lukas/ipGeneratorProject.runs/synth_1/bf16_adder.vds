@@ -1,0 +1,277 @@
+#-----------------------------------------------------------
+# Vivado v2024.2 (64-bit)
+# SW Build 5239630 on Fri Nov 08 22:35:27 MST 2024
+# IP Build 5239520 on Sun Nov 10 16:12:51 MST 2024
+# SharedData Build 5239561 on Fri Nov 08 14:39:27 MST 2024
+# Start of session at: Tue Dec  3 13:26:47 2024
+# Process ID         : 31340
+# Current directory  : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1
+# Command line       : vivado.exe -log bf16_adder.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source bf16_adder.tcl
+# Log file           : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1/bf16_adder.vds
+# Journal file       : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1\vivado.jou
+# Running On         : Weiss
+# Platform           : Windows Server 2016 or Windows 10
+# Operating System   : 19045
+# Processor Detail   : AMD Ryzen 7 3700X 8-Core Processor             
+# CPU Frequency      : 4050 MHz
+# CPU Physical cores : 8
+# CPU Logical cores  : 16
+# Host memory        : 17086 MB
+# Swap memory        : 21474 MB
+# Total Virtual      : 38560 MB
+# Available Virtual  : 15588 MB
+#-----------------------------------------------------------
+source bf16_adder.tcl -notrace
+create_project: Time (s): cpu = 00:00:06 ; elapsed = 00:00:07 . Memory (MB): peak = 619.141 ; gain = 187.523
+Command: read_checkpoint -auto_incremental -incremental C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/utils_1/imports/synth_1/stimuli.dcp
+INFO: [Vivado 12-5825] Read reference checkpoint from C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/utils_1/imports/synth_1/stimuli.dcp for incremental synthesis
+INFO: [Vivado 12-7989] Please ensure there are no constraint changes
+Command: synth_design -top bf16_adder -part xc7z020clg484-1
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xc7z020'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xc7z020'
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 2 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 29200
+---------------------------------------------------------------------------------
+Starting Synthesize : Time (s): cpu = 00:00:07 ; elapsed = 00:00:06 . Memory (MB): peak = 1097.488 ; gain = 466.301
+---------------------------------------------------------------------------------
+WARNING: [Synth 8-10515] begin/end is required for generate-for in this mode of Verilog [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/add_sub_8_bit.v:36]
+WARNING: [Synth 8-10714] extra semicolon is not allowed here in this dialect; use SystemVerilog mode instead [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/add_sub_8_bit.v:37]
+WARNING: [Synth 8-10515] begin/end is required for generate-for in this mode of Verilog [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/adder_8_bit.v:38]
+WARNING: [Synth 8-10714] extra semicolon is not allowed here in this dialect; use SystemVerilog mode instead [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/adder_8_bit.v:40]
+WARNING: [Synth 8-10714] extra semicolon is not allowed here in this dialect; use SystemVerilog mode instead [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bit_7_flip.v:32]
+WARNING: [Synth 8-10515] begin/end is required for generate-for in this mode of Verilog [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/not_8_bit.v:30]
+WARNING: [Synth 8-10714] extra semicolon is not allowed here in this dialect; use SystemVerilog mode instead [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/not_8_bit.v:31]
+WARNING: [Synth 8-10714] extra semicolon is not allowed here in this dialect; use SystemVerilog mode instead [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/shift_detector.v:37]
+INFO: [Synth 8-6157] synthesizing module 'bf16_adder' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:23]
+INFO: [Synth 8-6157] synthesizing module 'add_sub_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/add_sub_8_bit.v:23]
+INFO: [Synth 8-6157] synthesizing module 'adder_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/adder_8_bit.v:23]
+INFO: [Synth 8-6157] synthesizing module 'full_adder' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/full_adder.v:23]
+INFO: [Synth 8-6157] synthesizing module 'half_adder' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/half_adder.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'half_adder' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/half_adder.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'full_adder' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/full_adder.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'adder_8_bit' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/adder_8_bit.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'add_sub_8_bit' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/add_sub_8_bit.v:23]
+WARNING: [Synth 8-7071] port 'cout' of module 'add_sub_8_bit' is unconnected for instance 'exp_sub' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:33]
+WARNING: [Synth 8-7023] instance 'exp_sub' of module 'add_sub_8_bit' has 6 connections declared, but only 5 given [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:33]
+INFO: [Synth 8-6157] synthesizing module 'not_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/not_8_bit.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'not_8_bit' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/not_8_bit.v:23]
+WARNING: [Synth 8-7071] port 'cout' of module 'add_sub_8_bit' is unconnected for instance 'plus_1' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:45]
+WARNING: [Synth 8-7023] instance 'plus_1' of module 'add_sub_8_bit' has 6 connections declared, but only 5 given [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:45]
+INFO: [Synth 8-6157] synthesizing module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/mux_8_bit.v:23]
+INFO: [Synth 8-6157] synthesizing module 'mux' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/mux.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'mux' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/mux.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'mux_8_bit' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/mux_8_bit.v:23]
+WARNING: [Synth 8-689] width (7) of port connection 'a' does not match port width (8) of module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:55]
+WARNING: [Synth 8-689] width (7) of port connection 'b' does not match port width (8) of module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:55]
+WARNING: [Synth 8-689] width (7) of port connection 'o' does not match port width (8) of module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:55]
+WARNING: [Synth 8-689] width (7) of port connection 'a' does not match port width (8) of module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:56]
+WARNING: [Synth 8-689] width (7) of port connection 'b' does not match port width (8) of module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:56]
+WARNING: [Synth 8-689] width (7) of port connection 'o' does not match port width (8) of module 'mux_8_bit' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:56]
+WARNING: [Synth 8-324] index 7 out of range [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:58]
+INFO: [Synth 8-6157] synthesizing module 'barrel_shift' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/barrel_shift.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'barrel_shift' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/barrel_shift.v:23]
+WARNING: [Synth 8-689] width (8) of port connection 'amt' does not match port width (3) of module 'barrel_shift' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:61]
+WARNING: [Synth 8-7071] port 'cout' of module 'add_sub_8_bit' is unconnected for instance 'mantissa_adder' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:75]
+WARNING: [Synth 8-7023] instance 'mantissa_adder' of module 'add_sub_8_bit' has 6 connections declared, but only 5 given [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:75]
+WARNING: [Synth 8-7071] port 'cout' of module 'add_sub_8_bit' is unconnected for instance 'plus_1_2' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:89]
+WARNING: [Synth 8-7023] instance 'plus_1_2' of module 'add_sub_8_bit' has 6 connections declared, but only 5 given [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:89]
+INFO: [Synth 8-6157] synthesizing module 'shift_detector' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/shift_detector.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'shift_detector' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/shift_detector.v:23]
+WARNING: [Synth 8-689] width (8) of port connection 'A' does not match port width (7) of module 'shift_detector' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:99]
+INFO: [Synth 8-6157] synthesizing module 'bit_7_flip' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bit_7_flip.v:23]
+INFO: [Synth 8-6155] done synthesizing module 'bit_7_flip' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bit_7_flip.v:23]
+WARNING: [Synth 8-689] width (8) of port connection 'in' does not match port width (7) of module 'bit_7_flip' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:102]
+WARNING: [Synth 8-7071] port 'cout' of module 'add_sub_8_bit' is unconnected for instance 'exp_norm' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:121]
+WARNING: [Synth 8-7023] instance 'exp_norm' of module 'add_sub_8_bit' has 6 connections declared, but only 5 given [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:121]
+INFO: [Synth 8-6155] done synthesizing module 'bf16_adder' (0#1) [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:23]
+CRITICAL WARNING: [Synth 8-6859] multi-driven net on pin C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v-93.14 with 1st driver pin 'mantissa_adder/S[7]' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:93]
+CRITICAL WARNING: [Synth 8-6859] multi-driven net on pin C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v-93.14 with 2nd driver pin 'GND' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:93]
+CRITICAL WARNING: [Synth 8-6858] multi-driven net C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v-93.14 is connected to at least one constant driver which has been preserved, other driver is ignored [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:93]
+CRITICAL WARNING: [Synth 8-6859] multi-driven net on pin C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v-85.14 with 1st driver pin 'mantissa_adder/S[7]' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:85]
+CRITICAL WARNING: [Synth 8-6859] multi-driven net on pin C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v-85.14 with 2nd driver pin 'GND' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:85]
+CRITICAL WARNING: [Synth 8-6858] multi-driven net C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v-85.14 is connected to at least one constant driver which has been preserved, other driver is ignored [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/bf16_adder.v:85]
+---------------------------------------------------------------------------------
+Finished Synthesize : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 1204.301 ; gain = 573.113
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 1204.301 ; gain = 573.113
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xc7z020clg484-1
+INFO: [Device 21-403] Loading part xc7z020clg484-1
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 1204.301 ; gain = 573.113
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Preparing Guide Design
+---------------------------------------------------------------------------------
+CRITICAL WARNING: [Synth 8-6895] The reference checkpoint C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/utils_1/imports/synth_1/stimuli.dcp is not suitable for use with incremental synthesis for this design. Please regenerate the checkpoint for this design with -incremental_synth switch in the same Vivado session that synth_design has been run. Synthesis will continue with the default flow
+---------------------------------------------------------------------------------
+Finished Doing Graph Differ : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 1204.301 ; gain = 573.113
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Preparing Guide Design : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 1204.301 ; gain = 573.113
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 1204.301 ; gain = 573.113
+---------------------------------------------------------------------------------
+
+
+Incremental Synthesis Report Summary:
+
+1. Incremental synthesis run: no
+
+   Reason for not running incremental synthesis : 
+
+
+INFO: [Synth 8-7130] Flow is switching to default flow due to incremental criteria not met. If you would like to alter this behaviour and have the flow terminate instead, please set the following parameter config_implementation {autoIncr.Synth.RejectBehavior Terminate}
+No constraint files found.
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---XORs : 
+	   2 Input      1 Bit         XORs := 126   
++---Muxes : 
+	   2 Input    7 Bit        Muxes := 6     
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 220 (col length:60)
+BRAMs: 280 (col length: RAMB18 60 RAMB36 30)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+WARNING: [Synth 8-7080] Parallel synthesis criteria is not met
+CRITICAL WARNING: [Synth 8-6859] multi-driven net on pin S[7] with 1st driver pin 'mantissa_adder/adder/genblk1[7].A/HA2/s_inferred/s' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/half_adder.v:28]
+CRITICAL WARNING: [Synth 8-6859] multi-driven net on pin S[7] with 2nd driver pin 'GND' [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/half_adder.v:28]
+CRITICAL WARNING: [Synth 8-6858] multi-driven net S[7] is connected to at least one constant driver which has been preserved, other driver is ignored [C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.srcs/sources_1/new/half_adder.v:28]
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:00:16 ; elapsed = 00:00:17 . Memory (MB): peak = 1449.457 ; gain = 818.270
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start Timing Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Timing Optimization : Time (s): cpu = 00:00:16 ; elapsed = 00:00:17 . Memory (MB): peak = 1449.457 ; gain = 818.270
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:00:16 ; elapsed = 00:00:17 . Memory (MB): peak = 1449.457 ; gain = 818.270
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++-+--------------+----------+
+| |BlackBox name |Instances |
++-+--------------+----------+
++-+--------------+----------+
+
+Report Cell Usage: 
++------+-----+------+
+|      |Cell |Count |
++------+-----+------+
+|1     |LUT2 |     5|
+|2     |LUT3 |    22|
+|3     |LUT4 |     8|
+|4     |LUT5 |    15|
+|5     |LUT6 |    33|
+|6     |IBUF |    32|
+|7     |OBUF |    16|
++------+-----+------+
+
+Report Instance Areas: 
++------+---------+-------+------+
+|      |Instance |Module |Cells |
++------+---------+-------+------+
+|1     |top      |       |   131|
++------+---------+-------+------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 10 critical warnings and 29 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+Synthesis Optimization Complete : Time (s): cpu = 00:00:20 ; elapsed = 00:00:22 . Memory (MB): peak = 1625.168 ; gain = 993.980
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.002 . Memory (MB): peak = 1640.191 ; gain = 0.000
+INFO: [Project 1-570] Preparing netlist for logic optimization
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 1757.133 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+Synth Design complete | Checksum: 9757599
+INFO: [Common 17-83] Releasing license: Synthesis
+35 Infos, 29 Warnings, 10 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:00:22 ; elapsed = 00:00:25 . Memory (MB): peak = 1757.133 ; gain = 1131.184
+INFO: [runtcl-6] Synthesis results are not added to the cache due to CRITICAL_WARNING
+Write ShapeDB Complete: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.002 . Memory (MB): peak = 1757.133 ; gain = 0.000
+INFO: [Common 17-1381] The checkpoint 'C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1/bf16_adder.dcp' has been generated.
+INFO: [Vivado 12-24828] Executing command : report_utilization -file bf16_adder_utilization_synth.rpt -pb bf16_adder_utilization_synth.pb
+INFO: [Common 17-206] Exiting Vivado at Tue Dec  3 13:27:30 2024...
