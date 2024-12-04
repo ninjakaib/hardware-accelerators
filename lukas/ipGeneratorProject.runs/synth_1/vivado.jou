@@ -3,11 +3,11 @@
 # SW Build 5239630 on Fri Nov 08 22:35:27 MST 2024
 # IP Build 5239520 on Sun Nov 10 16:12:51 MST 2024
 # SharedData Build 5239561 on Fri Nov 08 14:39:27 MST 2024
-# Start of session at: Sun Dec  1 16:13:43 2024
-# Process ID         : 19476
+# Start of session at: Tue Dec  3 13:26:47 2024
+# Process ID         : 31340
 # Current directory  : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1
-# Command line       : vivado.exe -log stimuli.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source stimuli.tcl
-# Log file           : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1/stimuli.vds
+# Command line       : vivado.exe -log bf16_adder.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source bf16_adder.tcl
+# Log file           : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1/bf16_adder.vds
 # Journal file       : C:/Users/lukas/Documents/Vivado/ipGeneratorProject/ipGeneratorProject.runs/synth_1\vivado.jou
 # Running On         : Weiss
 # Platform           : Windows Server 2016 or Windows 10
@@ -17,8 +17,8 @@
 # CPU Physical cores : 8
 # CPU Logical cores  : 16
 # Host memory        : 17086 MB
-# Swap memory        : 20401 MB
-# Total Virtual      : 37487 MB
-# Available Virtual  : 6628 MB
+# Swap memory        : 21474 MB
+# Total Virtual      : 38560 MB
+# Available Virtual  : 15588 MB
 #-----------------------------------------------------------
-source stimuli.tcl -notrace
+source bf16_adder.tcl -notrace

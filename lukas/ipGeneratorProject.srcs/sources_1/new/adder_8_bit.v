@@ -34,9 +34,9 @@ module adder_8_bit(
     assign carry[0] = cin;
     
     
-    for(i=0; i<8; i = i + 1) 
+    for(i=0; i<8; i = i + 1) begin
         full_adder A(carry[i],A[i],B[i],S[i],carry[i + 1]);
-    
+    end
     endgenerate;    
     assign cout = carry[8];
 endmodule
