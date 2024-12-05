@@ -11,19 +11,18 @@ The PyRTL portion of our Quarter 1 project code had three major elements: an imp
 2. Make an output directory using: `mkdir output`
 3. Run the docker image using `docker run -v ${PWD}/output:/app/output nakschou/hardware_accelerators:q1_project` (assuming you are using Windows Powershell, otherwise use your proper current working directory.)
 
-For the first portion (IEEE Multiplier), we had two output files (within the `q1_checkpoint/src/output` directory):
+This should result in the following output files (within the `q1_checkpoint/src/output` directory):
 - `ieee_trace_output.html` -- a waveform trace of running several multiplication test cases through our algorithm.
 - `ieee_visualization.svg` -- a visualization of our PyRTL pipeline in SVG format.
-
-For the second portion (L-mul), we had four output files:
-- `bf16_lmul_naive.svg` - A visualization of the naive bfloat16 LMUL implementation's RTL design
-- `bf16_lmul_combinatorial.svg` - A visualization of the combinatorial bfloat16 LMUL RTL design
-- `fp8_lmul_combinatorial.svg` - A visualization of the combinatorial FP8 LMUL RTL design
-- `FastPipelinedLMULFP8.svg` - A visualization of the pipelined FP8 LMUL implementation's RTL structure
-
-For the third portion (adder), we had two output files:
-- `PipelinedBF16Adder.svg` - A visualization of the pipelined bfloat16 adder implementation's RTL design
-- `bf16_combinatorial_adder.svg` - A visualization of the combinatorial bfloat16 adder RTL structure
+- `basic_systolic_array.svg` - A visualization of the systolic array architecture implemented with a 3x3 matrix multiplication design
+- `bf16_combinatorial_adder.svg` - SVG visualization of the combinatorial (non-pipelined) bfloat16 adder design
+- `bf16_lmul_combinatorial.svg` - SVG visualization of the combinatorial LMUL implementation for bfloat16
+- `bf16_lmul_error_heatmap.png` - A heatmap visualization showing the error distribution in the bfloat16 LMUL operations, using a symmetric log scale color mapping
+- `bf16_lmul_naive.svg` - SVG visualization of the naive (basic) implementation of bfloat16 LMUL
+- `FastPipelinedLMULFP8.svg` - SVG visualization of the pipelined FP8 LMUL implementation
+- `fp8_lmul_combinatorial.svg` - SVG visualization of the combinatorial LMUL implementation for FP8
+- `PipelinedBF16Adder.svg` - SVG visualization of the pipelined bfloat16 adder implementation
+- `PipelinedBF16Multiplier.svg` - SVG visualization of the pipelined bfloat16 multiplier design
 
 See organized code and report under [q1_project](/q1_project)
 
