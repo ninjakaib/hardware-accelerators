@@ -1,0 +1,27 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/1.6.2/skins/default.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/1.6.2/wavedrom.min.js"></script>
+    </head>
+    <body>
+        <script type="WaveDrom">
+{
+  signal : [
+    { name: "float_a",  wave: "======.......", data: ["0.230469", "0.386719", "0.500000", "0.105469", "0.808594", "0.000000"] },
+    { name: "float_b",  wave: "======.......", data: ["0.675781", "0.031250", "0.363281", "0.851562", "0.296875", "0.000000"] },
+    { name: "result",  wave: "==.======....", data: ["0.000000", "0.000122", "0.155273", "0.012085", "0.181641", "0.089844", "0.240234", "4.000000"] },
+  ],
+  config: { hscale: 2 }
+}
+</script>
+
+        <script>
+            window.onload = function() {
+                WaveDrom.ProcessAll();
+            }
+        </script>
+    </body>
+    </html>
+    
