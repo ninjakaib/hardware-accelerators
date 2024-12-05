@@ -19,7 +19,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy ieee_mult.py and src/ folder
-COPY ieee_mult.py .
 COPY src/ ./src/
 
 # Create volume for output
@@ -30,7 +29,7 @@ RUN chmod 777 /app/output
 
 # Create a shell script to run both Python scripts
 RUN echo '#!/bin/bash\n\
-python ieee_mult.py\n\
+python src/ieee_mult.py\n\
 ' > run_scripts.sh
 
 RUN chmod +x run_scripts.sh

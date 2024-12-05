@@ -9,7 +9,6 @@ from typing import Callable, Any
 import pyrtl
 from pyrtl.rtllib.libutils import twos_comp_repr, rev_twos_comp_repr
 from pyrtl.rtllib import adders
-from pyrtl import conditional_assignment
 from pyrtl.rtllib import multipliers
 from pyrtl import (
     WireVector, 
@@ -21,67 +20,51 @@ from pyrtl import (
     SimulationTrace, 
     reset_working_block
 )
-from src.utils import custom_render_trace, basic_circuit_analysis, custom_render_trace_output
-from src.bfloat16 import BF16
-
-trace_output_file = "output/ieee_trace_output.html"
-visualization_output_file = "output/ieee_visualization.html"
+from utils import custom_render_trace, basic_circuit_analysis, custom_render_trace_output
+from bfloat16 import BF16
+from repr_funcs import *
 
 E_BITS  = 8
 M_BITS  = 7
 
-def repr_bf16(x):
-    binary = format(x, "016b")
-    bf16_value = BF16(x, True)
-    return f"{binary[:1]}.{binary[1:9]}.{binary[9:]} ({bf16_value.tensor:.3f})"
-
-def repr_bf16_tensor(x):
-    return f"{torch.tensor(x, dtype=torch.uint16).view(torch.bfloat16):.6f}"
-
-def repr_sign(x):
-    return "0 (+)" if x == 0 else "1 (-)"
-
-def repr_exp(x):
-    return f"{format(x, '08b')} (unbiased={x - 127})"
-
-def repr_mantissa(x):
-    binary = format(x, "08b")
-    decimal = int(binary[0], 2) + int(binary[1:], 2) / (2**7)
-    return f"{binary[:1]}.{binary[1:]} ({decimal:.3f})"
-
-def repr_mantissa_hidden(x):
-    binary = format(x, "07b")
-    decimal = 1 + int(binary, 2) / (2**7)
-    return f"1.{binary} ({decimal:.3f})"
-
-def repr_ext_mantissa(x):
-    binary = format(x, "016b")
-    decimal = int(binary[0], 2) + int(binary[1:], 2) / (2**15)
-    return f"{binary[:1]}.{binary[1:]} ({decimal:.3f})"
-
-def repr_mantissa_sum(x):
-    binary = format(x, "09b")
-    decimal = int(binary[:2], 2) + int(binary[2:], 2) / (2**7)
-    return f"{binary[:2]}.{binary[2:]} ({decimal:.3f})"
-
-def repr_num(x):
-    return format(x, '0b') + f" ({x})"
-
 def create_bf16_multiplier_tests(
-    n_values: int = 5,
+    n_random: int = 5,
     pipeline_stages: int = 0
 ) -> tuple[dict[str, list[int]]]:
-
-    inputs = torch.rand(2, n_values, dtype=torch.bfloat16)
+    
+    test_pairs = [
+        (2.0, 3.0),
+        (1.0, 2.0),
+        (4.0, 0.5),
+        (1.5, 2.5),
+        (10.0, 0.1)
+    ]
+    
+    # Convert specific test pairs to tensors
+    inputs_a = torch.tensor([pair[0] for pair in test_pairs], dtype=torch.bfloat16)
+    inputs_b = torch.tensor([pair[1] for pair in test_pairs], dtype=torch.bfloat16)
+    
+    # Generate random values
+    random_inputs = torch.rand(2, n_random, dtype=torch.bfloat16)
+    
+    # Combine specific and random inputs
+    inputs = torch.stack([
+        torch.cat([inputs_a, random_inputs[0]]),
+        torch.cat([inputs_b, random_inputs[1]])
+    ])
+    
+    # Calculate outputs
     outputs = inputs[0] * inputs[1]
-
+    
+    # Handle pipeline stages
     if pipeline_stages > 0:
         inputs = torch.concat((inputs, torch.zeros(2, pipeline_stages, dtype=torch.bfloat16)), dim=1)
         outputs = torch.concat((torch.zeros(pipeline_stages, dtype=torch.bfloat16), outputs))
-
+    
+    # Convert to raw binary representation
     raw_inputs = inputs.view(torch.uint16)
     raw_outputs = outputs.view(torch.uint16)
-
+    
     return raw_inputs.tolist(), raw_outputs.tolist()
 
 def extract_sign(input_a: WireVector, input_b: WireVector, msb: int) -> Tuple[WireVector, WireVector]:
@@ -131,45 +114,6 @@ def stage_2(exp_a: WireVector, exp_b: WireVector, sign_a, sign_b, mantissa_a, ma
     mantissa_product <<= multipliers.tree_multiplier(mantissa_a, mantissa_b)
     #return xor for signs and sum of exponents and product of mantissas
     return sign_out, exp_sum, mantissa_product
-
-def test_stage_2():
-    reset_working_block()
-    float_a, float_b = Input(16, 'float_a'), Input(16, 'float_b')
-
-    sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = stage_1(float_a, float_b, E_BITS, M_BITS)
-    sign_out, exp_sum, mant_product = stage_2(exp_a, exp_b, sign_a, sign_b, mantissa_a, mantissa_b)
-    sim_trace = pyrtl.SimulationTrace()
-    sim = pyrtl.Simulation(tracer=sim_trace)
-
-    inputs = {
-        'float_a': torch.rand(1, 5, dtype=torch.bfloat16).view(torch.uint16)[0],
-        'float_b': torch.rand(1, 5, dtype=torch.bfloat16).view(torch.uint16)[0],
-    }
-    sim.step_multiple(inputs)  # Example inputs
-
-    def repr_mantissa_product(x):
-        # represents a 16 bit result of multiplying two fixed point numbers 2 bits left of binary point 7 bits to the right
-        binary = format(x, f'0{(M_BITS+1)*2}b')
-        whole = int(binary[:2], 2)
-        frac = int(binary[2:], 2) / 2**(M_BITS*2)
-        return f"{binary} {whole+frac}"
-
-    input_repr_map = {
-        # 'float_a': repr_bf16,
-        # 'sign_a': repr_sign,
-        # 'exp_a': repr_exp,
-        'mantissa_a': repr_mantissa,
-        # 'float_b': repr_bf16,
-        # 'sign_b': repr_sign,
-        # 'exp_b': repr_exp,
-        'mantissa_b': repr_mantissa,
-        # 'sign_out': repr_sign,
-        # 'exp_sum': repr_exp,
-        'mantissa_product': repr_mantissa_product,
-    }
-    trace_list = list(input_repr_map.keys())
-
-    custom_render_trace(sim_trace, trace_list=trace_list, repr_per_name=input_repr_map)
 
 def enc2(d: WireVector) -> WireVector:
     """
@@ -263,40 +207,7 @@ def leading_zero_count_16bit(value: WireVector, m_bits: int) -> WireVector:
     final_result <<= clzi(second_merge[0], second_merge[1], 4)
     return final_result
 
-def test_leading_zero_count_16bit():
-    """Test the 8-bit leading zero counter implementation"""
-    pyrtl.reset_working_block()
-    
-    input_val = pyrtl.Input(16, 'input_val')
-    lzc_out = pyrtl.Output(8, 'lzc_out')
-    
-    lzc_out <<= leading_zero_count_16bit(input_val, M_BITS)
-    
-    sim_trace = pyrtl.SimulationTrace()
-    sim = pyrtl.Simulation(tracer=sim_trace)
-    
-    # Test vectors for 8-bit values
-    test_values = [
-        0b10000000,  # 0 leading zeros
-        0b01000000,  # 1 leading zero
-        0b00100000,  # 2 leading zeros
-        0b00000001,  # 7 leading zeros
-        0b00000000   # 8 leading zeros
-    ]
-    
-    sim.step_multiple({'input_val': test_values})
-    
-    # Custom representation for better readability
-    input_repr_map = {
-        'input_val': lambda x: format(x, '016b'),
-        'lzc_out': str,
-    }
-    
-    trace_list = list(input_repr_map.keys())
-    custom_render_trace(sim_trace, trace_list=trace_list, repr_per_name=input_repr_map)
-
 def stage_3(exp_sum, mantissa_product):
-
     #find leading zeros in mantissa product
     leading_zeros = WireVector(E_BITS, name='leading_zeros')
     leading_zeros <<= leading_zero_count_16bit(mantissa_product, M_BITS)
@@ -427,71 +338,6 @@ def stage_4(unbiased_exp, leading_zeros, mantissa_product):
     
     return final_exponent, final_mantissa
 
-def test_stage_4():
-    reset_working_block()
-    float_a, float_b = Input(16, 'float_a'), Input(16, 'float_b')
-    gt = Input(16, 'gt')
-
-    sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = stage_1(float_a, float_b, E_BITS, M_BITS)
-    sign_out, exp_sum, mant_product = stage_2(exp_a, exp_b, sign_a, sign_b, mantissa_a, mantissa_b)
-    leading_zeros, unbiased_exp = stage_3(exp_sum, mant_product)
-    final_exponent, final_mantissa = stage_4(unbiased_exp, leading_zeros, mant_product)
-    #create traces for expnent and mantissa
-    final_exp = Output(8, 'final_exponent')
-    final_exp <<= final_exponent
-
-    # final result
-    result = Output(16, 'result')
-    result <<= pyrtl.concat(sign_out, final_exponent, final_mantissa)
-    
-    sim_trace = pyrtl.SimulationTrace()
-    sim = pyrtl.Simulation(tracer=sim_trace)
-
-    ins, outs = create_bf16_multiplier_tests()
-
-    inputs = {
-        'float_a': ins[0],
-        'float_b': ins[1],
-        'gt': outs
-    }
-    sim.step_multiple(inputs)  # Example inputs
-
-    def repr_mantissa_product(x):
-        # represents a 16 bit result of multiplying two fixed point numbers 2 bits left of binary point 7 bits to the right
-        binary = format(x, f'0{(M_BITS+1)*2}b')
-        whole = int(binary[:2], 2)
-        frac = int(binary[2:], 2) / 2**(M_BITS*2)
-        return f"{binary} {whole+frac}"
-
-    input_repr_map = {
-        'float_a': repr_bf16,
-        'float_b': repr_bf16,
-        # 'sign_a': repr_sign,
-        # 'exp_a': repr_exp,
-        # 'leading_zeros': repr_num,
-        # 'mantissa_a': repr_mantissa,
-
-        # 'sign_b': repr_sign,
-        # 'exp_b': repr_exp,
-        # 'mantissa_b': repr_mantissa,
-        # 'sign_out': repr_sign,
-        # 'exp_sum': repr_exp,
-        # 'mantissa_product': repr_mantissa_product,
-        # 'norm_mantissa_msb': repr_mantissa,
-        # 'norm_mantissa_lsb': bin,
-        # 'final_exponent': repr_exp,
-        # 'final_mantissa': repr_mantissa,
-        # 'exp_lzc_adjusted': repr_num,
-        # 'round_up': repr_num,
-        # 'extra_increment': repr_num,
-        # 'rounded_mantissa': repr_mantissa,
-        'result': repr_bf16,
-        'gt': repr_bf16_tensor
-    }
-    trace_list = list(input_repr_map.keys())
-
-    custom_render_trace(sim_trace, trace_list=trace_list, repr_per_name=input_repr_map)
-
 class SimplePipeline(object):
     """ Pipeline builder with auto generation of pipeline registers. """
 
@@ -532,6 +378,7 @@ class PipelinedBF16Multiplier(SimplePipeline):
         self._float_b = pyrtl.Input(E_BITS + M_BITS + 1, 'float_b')
         self._result = pyrtl.Output(E_BITS + M_BITS + 1, 'result')
         super(PipelinedBF16Multiplier, self).__init__()
+
     def stage_1(self):
         (self.sign_a, 
          self.sign_b, 
@@ -539,66 +386,33 @@ class PipelinedBF16Multiplier(SimplePipeline):
          self.exp_b, 
          self.mantissa_a, 
          self.mantissa_b) = stage_1(self._float_a, self._float_b, E_BITS, M_BITS)
+
     def stage_2(self):
         (self.sign_out, 
          self.exp_sum, 
          self.mant_product) = stage_2(self.exp_a, self.exp_b, self.sign_a, self.sign_b, self.mantissa_a, self.mantissa_b)
+
     def stage_3(self):
         self.sign_out = self.sign_out
         self.mant_product = self.mant_product
         (self.leading_zeros, 
          self.unbiased_exp) = stage_3(self.exp_sum, self.mant_product)
+
     def stage_4(self):
         (final_exponent, 
          final_mantissa) = stage_4(self.unbiased_exp, self.leading_zeros, self.mant_product)
         self._result <<= pyrtl.concat(self.sign_out, final_exponent, final_mantissa)
 
-def test_full_pipeline():
-    reset_working_block()
-    
-    # Instantiate the pipeline
-    multiplier = PipelinedBF16Multiplier()
-    
-    # Create simulation
-    sim_trace = SimulationTrace()
-    sim = pyrtl.Simulation(tracer=sim_trace)
-
-    # Create input dictionary for multiple steps
-    ins, outs = create_bf16_multiplier_tests(pipeline_stages=3)
-
-    inputs = {
-        'float_a': ins[0] + [0]*5,
-        'float_b': ins[1] + [0]*5,
-    }
-    
-    # Run simulation
-    sim.step_multiple(inputs, {"result": outs + [0]*5})
-    
-    # Display results
-    input_repr_map = {
-        'float_a': repr_bf16_tensor,
-        'float_b': repr_bf16_tensor,
-        'result': repr_bf16_tensor
-    }
-    
-    trace_list = ['float_a', 'float_b', 'result']
-    custom_render_trace_output(sim_trace, trace_list=trace_list, repr_per_name=input_repr_map, output_file=trace_output_file)
-
-print("Testing pipelined BF16 multiplier:")
-test_full_pipeline()
-
-basic_circuit_analysis(tech_in_nm=32)
-
-def ieee_mult_visualization():
+def ieee_mult_visualization(output_file):
     reset_working_block()
     float_a, float_b = Input(16, 'float_a'), Input(16, 'float_b')
-    gt = Input(16, 'gt')
 
     sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = stage_1(float_a, float_b, E_BITS, M_BITS)
     sign_out, exp_sum, mant_product = stage_2(exp_a, exp_b, sign_a, sign_b, mantissa_a, mantissa_b)
     leading_zeros, unbiased_exp = stage_3(exp_sum, mant_product)
     final_exponent, final_mantissa = stage_4(unbiased_exp, leading_zeros, mant_product)
-    #create traces for expnent and mantissa
+    
+    #create traces for exponent and mantissa
     final_exp = Output(8, 'final_exponent')
     final_exp <<= final_exponent
 
@@ -606,7 +420,5 @@ def ieee_mult_visualization():
     result = Output(16, 'result')
     result <<= pyrtl.concat(sign_out, final_exponent, final_mantissa)
 
-    with open(visualization_output_file, 'w') as f:
+    with open(output_file, 'w') as f:
         pyrtl.visualization.output_to_svg(f)
-
-ieee_mult_visualization()
