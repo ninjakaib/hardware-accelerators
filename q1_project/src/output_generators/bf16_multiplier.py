@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from IPython.display import display_svg
-from typing import List, Tuple
+from typing import Union, Optional, Tuple, List
 import random
 import torch
 import numpy as np
@@ -39,20 +39,67 @@ E_BITS  = 8
 M_BITS  = 7
 
 def create_bf16_multiplier_tests(
-    n_values: int = 5,
-    pipeline_stages: int = 0
-) -> tuple[dict[str, list[int]]]:
+    n_random: int = 5,
+    pipeline_stages: int = 0,
+    random_seed: Optional[int] = None
+) -> tuple[list[list[int]], list[int]]:
+    """
+    Generate test vectors for bfloat16 multiplication with optional pipeline stages.
+    Combines fixed test cases with random values.
+    
+    Args:
+        n_random: Number of additional random test values to generate
+        pipeline_stages: Number of pipeline delay stages to add
+        random_seed: Optional seed for reproducible random generation
+    
+    Returns:
+        Tuple of (raw_inputs, raw_outputs) where each value is the uint16 representation
+    """
+    if random_seed is not None:
+        torch.manual_seed(random_seed)
 
-    inputs = torch.rand(2, n_values, dtype=torch.bfloat16)
+    # Fixed test cases
+    test_values = [
+        (0.00099945068359375, 0.00099945068359375),
+        (0.00099945068359375, 0.010009765625),
+        (0.00099945068359375, 0.10009765625),
+        (0.00099945068359375, 1.0),
+        (0.010009765625, 0.010009765625),
+        (0.010009765625, 0.10009765625),
+        (0.010009765625, 1.0),
+        (0.10009765625, 0.10009765625),
+        (0.10009765625, 1.0),
+        (1.0, 1.0)
+    ]
+    
+    # Convert fixed test cases to tensors
+    a_values = torch.tensor([x[0] for x in test_values], dtype=torch.bfloat16)
+    b_values = torch.tensor([x[1] for x in test_values], dtype=torch.bfloat16)
+    fixed_inputs = torch.stack([a_values, b_values])
+    
+    # Generate random values
+    random_inputs = torch.rand(2, n_random, dtype=torch.bfloat16)
+    
+    # Combine fixed and random inputs
+    inputs = torch.cat([fixed_inputs, random_inputs], dim=1)
+    
+    # Compute multiplication results
     outputs = inputs[0] * inputs[1]
-
+    
+    # Add pipeline stages if requested
     if pipeline_stages > 0:
-        inputs = torch.concat((inputs, torch.zeros(2, pipeline_stages, dtype=torch.bfloat16)), dim=1)
-        outputs = torch.concat((torch.zeros(pipeline_stages, dtype=torch.bfloat16), outputs))
-
+        inputs = torch.concat(
+            (inputs, torch.zeros(2, pipeline_stages, dtype=torch.bfloat16)), 
+            dim=1
+        )
+        outputs = torch.concat(
+            (torch.zeros(pipeline_stages, dtype=torch.bfloat16), outputs)
+        )
+    
+    # Convert to uint16 representation
     raw_inputs = inputs.view(torch.uint16)
     raw_outputs = outputs.view(torch.uint16)
-
+    
     return raw_inputs.tolist(), raw_outputs.tolist()
 
 def extract_sign(input_a: WireVector, input_b: WireVector, msb: int) -> Tuple[WireVector, WireVector]:
@@ -388,6 +435,23 @@ class PipelinedBF16Multiplier(SimplePipeline):
          final_mantissa) = stage_4(self.unbiased_exp, self.leading_zeros, self.mant_product)
         self._result <<= pyrtl.concat(self.sign_out, final_exponent, final_mantissa)
 
+def uint16_to_bf16_float(uint16_val):
+    """Convert uint16 representation to float value following bfloat16 format"""
+    sign = (uint16_val >> 15) & 1
+    exponent = (uint16_val >> 7) & 0xFF
+    mantissa = uint16_val & 0x7F
+    
+    # Handle zero case
+    if exponent == 0 and mantissa == 0:
+        return 0.0
+        
+    # Convert to float
+    sign_mult = -1 if sign else 1
+    mantissa_float = 1.0 + (mantissa / 128.0)  # 128 = 2^7 since we have 7 mantissa bits
+    exponent_actual = exponent - 127  # Remove bias
+    
+    return sign_mult * mantissa_float * (2.0 ** exponent_actual)
+
 def test_full_pipeline():
     reset_working_block()
     
@@ -408,7 +472,22 @@ def test_full_pipeline():
     
     # Run simulation
     sim.step_multiple(inputs, {"result": outs + [0]*5})
-    
+    # import csv
+
+    # # Write results to CSV
+    # with open('bf16_multiplier_results.csv', 'w', newline='') as csvfile:
+    #     writer = csv.writer(csvfile)
+        
+    #     # Write header
+    #     writer.writerow(['Step', 'Input A', 'Input B', 'Result'])
+        
+    #     # Write data rows
+    #     for step in range(len(ins[0])):
+    #         input_a = uint16_to_bf16_float(inputs['float_a'][step])
+    #         input_b = uint16_to_bf16_float(inputs['float_b'][step])
+    #         result = uint16_to_bf16_float(sim_trace.trace['result'][step + 3])  # +3 for pipeline delay
+    #         writer.writerow([step, input_a, input_b, result])
+        
     # Display results
     input_repr_map = {
         'float_a': repr_bf16_tensor,
@@ -444,45 +523,45 @@ def ieee_mult_visualization():
 
 ieee_mult_visualization()
 
-#synthesize, optimize, and nand_synth the circuit
+# #synthesize, optimize, and nand_synth the circuit
 
-def synthesize_and_optimize_circuit():
-    reset_working_block()
+# def synthesize_and_optimize_circuit():
+#     reset_working_block()
     
-    # Create the circuit
-    float_a, float_b = Input(16, 'float_a'), Input(16, 'float_b')
+#     # Create the circuit
+#     float_a, float_b = Input(16, 'float_a'), Input(16, 'float_b')
     
-    # Instantiate all stages
-    sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = stage_1(float_a, float_b, E_BITS, M_BITS)
-    sign_out, exp_sum, mant_product = stage_2(exp_a, exp_b, sign_a, sign_b, mantissa_a, mantissa_b)
-    leading_zeros, unbiased_exp = stage_3(exp_sum, mant_product)
-    final_exponent, final_mantissa = stage_4(unbiased_exp, leading_zeros, mant_product)
+#     # Instantiate all stages
+#     sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = stage_1(float_a, float_b, E_BITS, M_BITS)
+#     sign_out, exp_sum, mant_product = stage_2(exp_a, exp_b, sign_a, sign_b, mantissa_a, mantissa_b)
+#     leading_zeros, unbiased_exp = stage_3(exp_sum, mant_product)
+#     final_exponent, final_mantissa = stage_4(unbiased_exp, leading_zeros, mant_product)
     
-    # Create final result
-    result = Output(16, 'result')
-    result <<= pyrtl.concat(sign_out, final_exponent, final_mantissa)
+#     # Create final result
+#     result = Output(16, 'result')
+#     result <<= pyrtl.concat(sign_out, final_exponent, final_mantissa)
     
-    # Get the working block
-    block = pyrtl.working_block()
+#     # Get the working block
+#     block = pyrtl.working_block()
     
-    # Synthesize to basic gates
-    print("\nSynthesizing to basic gates...")
-    synth_block = pyrtl.synthesize()
+#     # Synthesize to basic gates
+#     print("\nSynthesizing to basic gates...")
+#     synth_block = pyrtl.synthesize()
     
-    # Optimize the circuit
-    print("\nOptimizing circuit...")
-    opt_block = pyrtl.optimize()
+#     # Optimize the circuit
+#     print("\nOptimizing circuit...")
+#     opt_block = pyrtl.optimize()
     
-    # Convert to NAND gates
-    print("\nConverting to NAND gates...")
-    nand_block = pyrtl.nand_synth()
+#     # Convert to NAND gates
+#     print("\nConverting to NAND gates...")
+#     nand_block = pyrtl.nand_synth()
     
-    return block, synth_block, opt_block, nand_block
+#     return block, synth_block, opt_block, nand_block
 
-# Run the synthesis and optimization
-original_block, synth_block, opt_block, nand_block = synthesize_and_optimize_circuit()
+# # Run the synthesis and optimization
+# original_block, synth_block, opt_block, nand_block = synthesize_and_optimize_circuit()
 
-# Optionally save the NAND implementation visualization
-with open("nand_implementation.svg", 'w') as f:
-    pyrtl.visualization.output_to_svg(f)
+# # Optionally save the NAND implementation visualization
+# with open("nand_implementation.svg", 'w') as f:
+#     pyrtl.visualization.output_to_svg(f)
     

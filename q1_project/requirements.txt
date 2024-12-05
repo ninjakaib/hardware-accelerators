@@ -5,3 +5,4 @@ pyrtl
 ipython
 graphviz
 torch
+seaborn

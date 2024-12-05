@@ -18,8 +18,7 @@ RUN mkdir output
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy ieee_mult.py and src/ folder
-COPY src/ ./src/
+COPY src/ ./
 
 # Create volume for output
 VOLUME ["/app/output"]
@@ -29,7 +28,11 @@ RUN chmod 777 /app/output
 
 # Create a shell script to run both Python scripts
 RUN echo '#!/bin/bash\n\
-python src/ieee_mult.py\n\
+cd output_generators\n\
+python bf16_multiplier.py\n\
+cd ..\n\
+python3 -m output_generators.lmul_heatmap\n\
+python -m output_generators.make_svgs\n\
 ' > run_scripts.sh
 
 RUN chmod +x run_scripts.sh
