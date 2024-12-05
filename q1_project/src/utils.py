@@ -7,6 +7,48 @@ import sys
 import datetime
 from pyrtl.simulation import default_renderer
 
+def create_verilog_files(
+    filename: str = None, 
+    rtl_func: Callable = None,
+    rtl_func_args: Dict = {},
+    output_path='./q1_project/src/verilog/', 
+    sim_trace=None, 
+    add_reset: bool | str = True,
+    initialize_registers: bool = False
+):
+    if filename is None and rtl_func is None:
+        raise ValueError('Either filename or rtl_func must be provided')
+    elif filename is None:
+        filename = rtl_func.__name__ + '.v'
+        pyrtl.reset_working_block()
+        rtl_func(**rtl_func_args)
+    verilog_file = os.path.join(output_path, filename)
+    with open(verilog_file, 'w+') as f:
+        pyrtl.output_to_verilog(f, add_reset=add_reset, initialize_registers=initialize_registers)
+        print(f'Verilog file created at {verilog_file}')
+    
+    if sim_trace is not None:
+        tb_filename = filename.split('.')[0] + '_tb.v'
+        tb_file = os.path.join(output_path, tb_filename)
+        with open(os.path.join(output_path, tb_filename), 'w+') as f:
+            pyrtl.output_verilog_testbench(
+                f,
+                sim_trace, 
+                toplevel_include=filename,
+                vcd=filename.split('.')[0] + '_waveform.vcd',
+                cmd='$display("%d", float_out);'
+            )
+            print(f'Testbench file created at {tb_file}')
+
+
+def create_svg(rtl_func: Callable, rtl_func_args: Dict = {}, output_path='./q1_project/src/output/', split_state=False):
+    pyrtl.reset_working_block()
+    rtl_func()
+    svg_path = os.path.join(output_path, rtl_func.__name__ + '.svg')
+    with open(svg_path, 'w') as f:
+        pyrtl.output_to_svg(f, split_state=split_state)
+
+
 def _circuit_analysis(block=None, tech_in_nm=130):
     timing = pyrtl.TimingAnalysis(block=block)
     timing.print_max_length()
