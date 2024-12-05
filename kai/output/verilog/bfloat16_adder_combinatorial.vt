@@ -19,506 +19,606 @@ module tb();
 
         clk = 0;
         rst = 0;
-        float_a = 16'd16213;
-        float_b = 16'd15768;
-        gt = 16'd16232;
+        float_a = 16'd16185;
+        float_b = 16'd16192;
+        gt = 16'd16316;
 
         #10
-        float_a = 16'd16078;
-        float_b = 16'd16200;
-        gt = 16'd16280;
-
-        #10
-        float_a = 16'd16237;
-        float_b = 16'd16218;
-        gt = 16'd16356;
-
-        #10
-        float_a = 16'd16203;
-        float_b = 16'd15744;
-        gt = 16'd16219;
-
-        #10
-        float_a = 16'd16205;
-        float_b = 16'd16032;
-        gt = 16'd16270;
-
-        #10
-        float_a = 16'd16166;
-        float_b = 16'd15972;
-        gt = 16'd16223;
-
-        #10
-        float_a = 16'd16207;
-        float_b = 16'd16110;
-        gt = 16'd16291;
-
-        #10
-        float_a = 16'd16195;
-        float_b = 16'd16157;
-        gt = 16'd16304;
-
-        #10
-        float_a = 16'd16028;
-        float_b = 16'd15912;
-        gt = 16'd16112;
-
-        #10
-        float_a = 16'd16062;
-        float_b = 16'd16132;
-        gt = 16'd16227;
-
-        #10
-        float_a = 16'd16204;
-        float_b = 16'd16187;
-        gt = 16'd16324;
-
-        #10
-        float_a = 16'd15424;
-        float_b = 16'd16203;
+        $display("%d", float_out);
+        float_a = 16'd15744;
+        float_b = 16'd16190;
         gt = 16'd16206;
 
         #10
-        float_a = 16'd16225;
-        float_b = 16'd16131;
-        gt = 16'd16306;
+        $display("%d", float_out);
+        float_a = 16'd15912;
+        float_b = 16'd15928;
+        gt = 16'd16048;
 
         #10
-        float_a = 16'd16165;
-        float_b = 16'd16249;
-        gt = 16'd16335;
+        $display("%d", float_out);
+        float_a = 16'd16174;
+        float_b = 16'd16172;
+        gt = 16'd16301;
 
         #10
-        float_a = 16'd16218;
-        float_b = 16'd16022;
-        gt = 16'd16274;
+        $display("%d", float_out);
+        float_a = 16'd15632;
+        float_b = 16'd16146;
+        gt = 16'd16155;
 
         #10
-        float_a = 16'd15936;
-        float_b = 16'd16139;
-        gt = 16'd16187;
-
-        #10
-        float_a = 16'd16080;
+        $display("%d", float_out);
+        float_a = 16'd15696;
         float_b = 16'd16194;
-        gt = 16'd16277;
+        gt = 16'd16207;
 
         #10
-        float_a = 16'd16207;
-        float_b = 16'd16176;
-        gt = 16'd16320;
-
-        #10
-        float_a = 16'd16050;
-        float_b = 16'd16168;
-        gt = 16'd16256;
-
-        #10
-        float_a = 16'd15584;
-        float_b = 16'd15728;
-        gt = 16'd15792;
-
-        #10
-        float_a = 16'd16126;
-        float_b = 16'd15900;
-        gt = 16'd16166;
-
-        #10
-        float_a = 16'd16148;
-        float_b = 16'd15940;
-        gt = 16'd16197;
-
-        #10
-        float_a = 16'd16226;
-        float_b = 16'd15876;
-        gt = 16'd16258;
-
-        #10
-        float_a = 16'd15824;
-        float_b = 16'd16144;
-        gt = 16'd16170;
-
-        #10
-        float_a = 16'd16217;
-        float_b = 16'd16084;
-        gt = 16'd16290;
-
-        #10
-        float_a = 16'd16094;
-        float_b = 16'd15904;
-        gt = 16'd16151;
-
-        #10
-        float_a = 16'd15840;
-        float_b = 16'd16034;
-        gt = 16'd16090;
-
-        #10
-        float_a = 16'd16070;
-        float_b = 16'd16200;
-        gt = 16'd16278;
-
-        #10
-        float_a = 16'd16131;
-        float_b = 16'd16058;
-        gt = 16'd16224;
-
-        #10
-        float_a = 16'd15744;
-        float_b = 16'd15896;
-        gt = 16'd15960;
-
-        #10
-        float_a = 16'd15968;
-        float_b = 16'd16038;
-        gt = 16'd16139;
-
-        #10
-        float_a = 16'd16042;
-        float_b = 16'd16137;
-        gt = 16'd16222;
-
-        #10
-        float_a = 16'd16187;
-        float_b = 16'd16040;
-        gt = 16'd16264;
-
-        #10
-        float_a = 16'd16229;
-        float_b = 16'd16151;
-        gt = 16'd16318;
-
-        #10
-        float_a = 16'd16162;
-        float_b = 16'd16225;
-        gt = 16'd16322;
-
-        #10
-        float_a = 16'd16234;
-        float_b = 16'd16204;
-        gt = 16'd16347;
-
-        #10
-        float_a = 16'd16157;
-        float_b = 16'd15968;
-        gt = 16'd16213;
-
-        #10
-        float_a = 16'd16141;
-        float_b = 16'd15632;
-        gt = 16'd16150;
-
-        #10
-        float_a = 16'd16006;
-        float_b = 16'd15952;
-        gt = 16'd16110;
-
-        #10
-        float_a = 16'd16217;
-        float_b = 16'd16020;
-        gt = 16'd16274;
-
-        #10
-        float_a = 16'd15784;
-        float_b = 16'd16120;
-        gt = 16'd16145;
-
-        #10
-        float_a = 16'd16106;
-        float_b = 16'd16164;
-        gt = 16'd16268;
-
-        #10
-        float_a = 16'd16088;
-        float_b = 16'd16042;
-        gt = 16'd16193;
-
-        #10
-        float_a = 16'd15784;
-        float_b = 16'd16122;
-        gt = 16'd16146;
-
-        #10
-        float_a = 16'd16044;
-        float_b = 16'd16118;
-        gt = 16'd16209;
-
-        #10
-        float_a = 16'd15976;
-        float_b = 16'd16132;
-        gt = 16'd16190;
-
-        #10
-        float_a = 16'd16060;
-        float_b = 16'd16072;
-        gt = 16'd16194;
-
-        #10
-        float_a = 16'd15996;
-        float_b = 16'd16243;
-        gt = 16'd16281;
-
-        #10
-        float_a = 16'd16227;
-        float_b = 16'd16197;
-        gt = 16'd16340;
-
-        #10
-        float_a = 16'd15984;
-        float_b = 16'd16196;
-        gt = 16'd16256;
-
-        #10
+        $display("%d", float_out);
         float_a = 16'd16204;
-        float_b = 16'd16102;
-        gt = 16'd16288;
-
-        #10
-        float_a = 16'd16167;
-        float_b = 16'd16234;
-        gt = 16'd16328;
-
-        #10
-        float_a = 16'd15888;
-        float_b = 16'd16227;
-        gt = 16'd16260;
-
-        #10
-        float_a = 16'd16171;
-        float_b = 16'd16110;
-        gt = 16'd16273;
-
-        #10
-        float_a = 16'd16148;
-        float_b = 16'd16006;
-        gt = 16'd16215;
-
-        #10
-        float_a = 16'd15948;
-        float_b = 16'd16229;
-        gt = 16'd16268;
-
-        #10
-        float_a = 16'd16178;
-        float_b = 16'd15916;
-        gt = 16'd16221;
-
-        #10
-        float_a = 16'd16205;
         float_b = 16'd15584;
-        gt = 16'd16212;
+        gt = 16'd16211;
 
         #10
-        float_a = 16'd16191;
-        float_b = 16'd16140;
-        gt = 16'd16294;
-
-        #10
-        float_a = 16'd16104;
-        float_b = 16'd16134;
-        gt = 16'd16250;
-
-        #10
-        float_a = 16'd15992;
-        float_b = 16'd16201;
-        gt = 16'd16260;
-
-        #10
-        float_a = 16'd16114;
-        float_b = 16'd16040;
-        gt = 16'd16205;
-
-        #10
-        float_a = 16'd16142;
-        float_b = 16'd16229;
-        gt = 16'd16314;
-
-        #10
-        float_a = 16'd16247;
-        float_b = 16'd16124;
-        gt = 16'd16314;
-
-        #10
-        float_a = 16'd16211;
-        float_b = 16'd16040;
-        gt = 16'd16276;
-
-        #10
-        float_a = 16'd16232;
-        float_b = 16'd15800;
-        gt = 16'd16255;
-
-        #10
-        float_a = 16'd16078;
-        float_b = 16'd16180;
-        gt = 16'd16270;
-
-        #10
-        float_a = 16'd16006;
-        float_b = 16'd16241;
-        gt = 16'd16282;
-
-        #10
-        float_a = 16'd16038;
-        float_b = 16'd16162;
-        gt = 16'd16245;
-
-        #10
-        float_a = 16'd16203;
-        float_b = 16'd16080;
-        gt = 16'd16282;
-
-        #10
-        float_a = 16'd15808;
-        float_b = 16'd16022;
-        gt = 16'd16070;
-
-        #10
-        float_a = 16'd15880;
-        float_b = 16'd16181;
-        gt = 16'd16215;
-
-        #10
-        float_a = 16'd15972;
+        $display("%d", float_out);
+        float_a = 16'd16176;
         float_b = 16'd16014;
-        gt = 16'd16128;
+        gt = 16'd16247;
 
         #10
-        float_a = 16'd16235;
-        float_b = 16'd16002;
-        gt = 16'd16278;
-
-        #10
-        float_a = 16'd16080;
-        float_b = 16'd16160;
-        gt = 16'd16260;
-
-        #10
-        float_a = 16'd16253;
-        float_b = 16'd15808;
-        gt = 16'd16266;
-
-        #10
-        float_a = 16'd15948;
-        float_b = 16'd16253;
-        gt = 16'd16280;
-
-        #10
-        float_a = 16'd16163;
-        float_b = 16'd16169;
-        gt = 16'd16294;
-
-        #10
-        float_a = 16'd16222;
-        float_b = 16'd15972;
-        gt = 16'd16268;
-
-        #10
-        float_a = 16'd16130;
-        float_b = 16'd16129;
-        gt = 16'd16258;
-
-        #10
-        float_a = 16'd16211;
-        float_b = 16'd16024;
-        gt = 16'd16272;
-
-        #10
-        float_a = 16'd16042;
-        float_b = 16'd15924;
-        gt = 16'd16130;
-
-        #10
-        float_a = 16'd16198;
-        float_b = 16'd16189;
-        gt = 16'd16322;
-
-        #10
-        float_a = 16'd16090;
-        float_b = 16'd15880;
-        gt = 16'd16143;
-
-        #10
-        float_a = 16'd16014;
-        float_b = 16'd16159;
-        gt = 16'd16230;
-
-        #10
-        float_a = 16'd15824;
-        float_b = 16'd16203;
-        gt = 16'd16229;
-
-        #10
-        float_a = 16'd16143;
-        float_b = 16'd15784;
-        gt = 16'd16164;
-
-        #10
-        float_a = 16'd16096;
-        float_b = 16'd15900;
-        gt = 16'd16151;
-
-        #10
-        float_a = 16'd15896;
-        float_b = 16'd15584;
-        gt = 16'd15924;
-
-        #10
-        float_a = 16'd16138;
-        float_b = 16'd16181;
-        gt = 16'd16288;
-
-        #10
-        float_a = 16'd16094;
-        float_b = 16'd16177;
-        gt = 16'd16272;
-
-        #10
-        float_a = 16'd16237;
-        float_b = 16'd16165;
-        gt = 16'd16329;
-
-        #10
-        float_a = 16'd16014;
-        float_b = 16'd15792;
-        gt = 16'd16058;
-
-        #10
-        float_a = 16'd16052;
-        float_b = 16'd16010;
-        gt = 16'd16159;
-
-        #10
-        float_a = 16'd16034;
-        float_b = 16'd15664;
-        gt = 16'd16056;
-
-        #10
-        float_a = 16'd16104;
-        float_b = 16'd16032;
-        gt = 16'd16196;
-
-        #10
-        float_a = 16'd15760;
-        float_b = 16'd16149;
-        gt = 16'd16167;
-
-        #10
-        float_a = 16'd16070;
-        float_b = 16'd16153;
-        gt = 16'd16252;
-
-        #10
-        float_a = 16'd16232;
-        float_b = 16'd15752;
+        $display("%d", float_out);
+        float_a = 16'd16179;
+        float_b = 16'd16012;
         gt = 16'd16249;
 
         #10
-        float_a = 16'd16008;
-        float_b = 16'd16008;
+        $display("%d", float_out);
+        float_a = 16'd15848;
+        float_b = 16'd15712;
+        gt = 16'd15916;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16130;
+        float_b = 16'd16060;
+        gt = 16'd16224;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16134;
+        float_b = 16'd15816;
+        gt = 16'd16159;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16233;
+        float_b = 16'd16167;
+        gt = 16'd16328;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16102;
+        float_b = 16'd16244;
+        gt = 16'd16308;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15712;
+        float_b = 16'd16152;
+        gt = 16'd16166;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16189;
+        float_b = 16'd15884;
+        gt = 16'd16224;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15916;
+        float_b = 16'd15632;
+        gt = 16'd15952;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16231;
+        float_b = 16'd16238;
+        gt = 16'd16362;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16162;
+        float_b = 16'd16146;
+        gt = 16'd16282;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15976;
+        float_b = 16'd16024;
+        gt = 16'd16134;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15832;
+        float_b = 16'd16247;
+        gt = 16'd16265;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16002;
+        float_b = 16'd15960;
+        gt = 16'd16110;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16084;
+        float_b = 16'd16220;
+        gt = 16'd16291;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16180;
+        float_b = 16'd16046;
+        gt = 16'd16262;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16128;
+        float_b = 16'd16030;
+        gt = 16'd16207;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16178;
+        float_b = 16'd16218;
+        gt = 16'd16326;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16144;
+        float_b = 16'd15808;
+        gt = 16'd16168;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16189;
+        float_b = 16'd16092;
+        gt = 16'd16278;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16244;
+        float_b = 16'd16000;
+        gt = 16'd16282;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16167;
+        float_b = 16'd15984;
+        gt = 16'd16227;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15884;
+        float_b = 16'd16165;
+        gt = 16'd16200;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16010;
+        float_b = 16'd16160;
+        gt = 16'd16229;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16004;
+        float_b = 16'd16250;
+        gt = 16'd16286;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15824;
+        float_b = 16'd16252;
+        gt = 16'd16267;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15940;
+        float_b = 16'd16198;
+        gt = 16'd16247;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16022;
+        float_b = 16'd15992;
+        gt = 16'd16137;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16169;
+        float_b = 16'd15904;
+        gt = 16'd16209;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16165;
+        float_b = 16'd16058;
+        gt = 16'd16257;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16199;
+        float_b = 16'd16163;
+        gt = 16'd16309;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16056;
+        float_b = 16'd16224;
+        gt = 16'd16286;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16217;
+        float_b = 16'd16202;
+        gt = 16'd16338;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16162;
+        float_b = 16'd16022;
+        gt = 16'd16237;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16036;
+        float_b = 16'd16185;
+        gt = 16'd16262;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16254;
+        float_b = 16'd16118;
+        gt = 16'd16316;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16112;
+        float_b = 16'd16090;
+        gt = 16'd16229;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15952;
+        float_b = 16'd15980;
+        gt = 16'd16094;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15848;
+        float_b = 16'd16190;
+        gt = 16'd16219;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16231;
+        float_b = 16'd15808;
+        gt = 16'd16255;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15940;
+        float_b = 16'd16186;
+        gt = 16'd16235;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16194;
+        float_b = 16'd15488;
+        gt = 16'd16198;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15664;
+        float_b = 16'd16165;
+        gt = 16'd16176;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16236;
+        float_b = 16'd16140;
+        gt = 16'd16316;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16166;
+        float_b = 16'd16162;
+        gt = 16'd16292;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16054;
+        float_b = 16'd16237;
+        gt = 16'd16292;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15980;
+        float_b = 16'd16140;
+        gt = 16'd16199;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15744;
+        float_b = 16'd16126;
+        gt = 16'd16143;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16181;
+        float_b = 16'd16178;
+        gt = 16'd16308;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15784;
+        float_b = 16'd15964;
+        gt = 16'd16024;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15888;
+        float_b = 16'd15800;
+        gt = 16'd15980;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16020;
+        float_b = 16'd15424;
+        gt = 16'd16026;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16036;
+        float_b = 16'd16116;
+        gt = 16'd16204;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15520;
+        float_b = 16'd16206;
+        gt = 16'd16211;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16110;
+        float_b = 16'd16190;
+        gt = 16'd16282;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16134;
+        float_b = 16'd16159;
+        gt = 16'd16274;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16163;
+        float_b = 16'd15932;
+        gt = 16'd16210;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16016;
+        float_b = 16'd15916;
+        gt = 16'd16102;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15996;
+        float_b = 16'd16179;
+        gt = 16'd16242;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16078;
+        float_b = 16'd15996;
+        gt = 16'd16166;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16220;
+        float_b = 16'd15932;
+        gt = 16'd16262;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15976;
+        float_b = 16'd16154;
+        gt = 16'd16212;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15840;
+        float_b = 16'd16191;
+        gt = 16'd16219;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16100;
+        float_b = 16'd16066;
+        gt = 16'd16211;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16154;
+        float_b = 16'd16248;
+        gt = 16'd16329;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16066;
+        float_b = 16'd16215;
+        gt = 16'd16284;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16186;
+        float_b = 16'd15928;
+        gt = 16'd16232;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16148;
+        float_b = 16'd16179;
+        gt = 16'd16292;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16006;
+        float_b = 16'd16174;
+        gt = 16'd16241;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16144;
+        float_b = 16'd16016;
+        gt = 16'd16216;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16171;
+        float_b = 16'd15696;
+        gt = 16'd16184;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15360;
+        float_b = 16'd15904;
+        gt = 16'd15912;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16050;
+        float_b = 16'd16102;
+        gt = 16'd16204;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16182;
+        float_b = 16'd15584;
+        gt = 16'd16189;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16184;
+        float_b = 16'd15940;
+        gt = 16'd16233;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16142;
+        float_b = 16'd16096;
+        gt = 16'd16254;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16124;
+        float_b = 16'd16133;
+        gt = 16'd16258;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd15964;
+        float_b = 16'd16034;
         gt = 16'd16136;
 
         #10
+        $display("%d", float_out);
+        float_a = 16'd16174;
+        float_b = 16'd15360;
+        gt = 16'd16176;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16255;
+        float_b = 16'd16200;
+        gt = 16'd16356;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16129;
+        float_b = 16'd16241;
+        gt = 16'd16313;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16088;
+        float_b = 16'd16191;
+        gt = 16'd16278;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16177;
+        float_b = 16'd16193;
+        gt = 16'd16313;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16250;
+        float_b = 16'd16226;
+        gt = 16'd16366;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16012;
+        float_b = 16'd16249;
+        gt = 16'd16288;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16253;
+        float_b = 16'd15792;
+        gt = 16'd16266;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16212;
+        float_b = 16'd15916;
+        gt = 16'd16255;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16120;
+        float_b = 16'd16187;
+        gt = 16'd16284;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16242;
+        float_b = 16'd16153;
+        gt = 16'd16326;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16205;
+        float_b = 16'd16112;
+        gt = 16'd16290;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16250;
+        float_b = 16'd16168;
+        gt = 16'd16337;
+
+        #10
+        $display("%d", float_out);
+        float_a = 16'd16178;
+        float_b = 16'd16040;
+        gt = 16'd16259;
+
+        #10
+        $display("%d", float_out);
         $finish;
     end
 endmodule
