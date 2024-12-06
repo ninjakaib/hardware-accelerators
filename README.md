@@ -2,6 +2,18 @@
 # hardware-accelerators
 UCSD DSC180 capstone project course work.
 
+## Q2 Roadmap
+
+1. The hardware itself ([PyRTL](), [](), []())
+
+2. A set of opcodes/instructions that can interface with simulated memory
+
+3. A fast, easy to use, and interactive simulation of the hardware that allows us to easily test sending inputs and getting outputs
+
+3. An assembly language and assembler that compiles to the custom bytecode (Nvidia PTX, )
+4. A custom programming language/library/SDK that compiles to our assembly lang (think CUDA, AWS Neuron sdk, ROCm, Apple CoreML)
+5. Integrating the library with a machine learning framework (I think we should do [ONNX](https://onnx.ai/onnx/intro/concepts.html), read more about [onnxruntime](https://onnxruntime.ai/docs/reference/high-level-design.html), and [how integration works](https://onnxruntime.ai/docs/execution-providers/add-execution-provider.html)
+
 ## Q1 Project 
 
 The PyRTL portion of our Quarter 1 project code had three major elements: an implementation of an IEEE-754 multiplication pipeline, an implementation of a pipeline for the $Lmul$ algorithm introduced in the Addition is All You Need paper, and an implementation of an adder pipeline. All of the above aspects were created for the BF16 datatype. To reproduce our code, you need Docker installed on your PC. Then follow these steps: 
