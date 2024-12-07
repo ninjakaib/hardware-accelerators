@@ -52,4 +52,5 @@
 2. Include an interactive 3D model of the GDS files in the project
 
 - [Tiny Tapeout](https://tinytapeout.com/) provides a [guide](https://tinytapeout.com/guides/workshop/create-your-gds/) for generating a github pages site with an interactive 3D model of the GDS files in the project
+- [GDS2WebGL](https://github.com/s-holst/GDS2WebGL): This tool provides a performant, portable, and approachable way to visualize and browse chip layout data. It does so by translating the geometric shapes found in GDSII stream format into a self-contained HTML file that can be viewed in any modern WebGL-capable web browser.
 - [Example](https://mattvenn.github.io/wokwi-verilog-gds-test/viewer/tinytapeout.html) GitHub pages project

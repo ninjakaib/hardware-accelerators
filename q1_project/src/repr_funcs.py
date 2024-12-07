@@ -1,5 +1,5 @@
 import torch
-from bfloat16 import BF16
+from .bfloat16 import BF16
 
 M_BITS = 7
 

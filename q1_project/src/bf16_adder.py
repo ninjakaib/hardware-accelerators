@@ -4,7 +4,7 @@ from pyrtl import (
     WireVector, 
     Const
 )
-from pipeline import SimplePipeline
+from .pipeline import SimplePipeline
 
 E_BITS  = 8
 M_BITS  = 7
@@ -109,6 +109,10 @@ class PipelinedBF16Adder(SimplePipeline):
         # self._result = pyrtl.Register(E_BITS + M_BITS + 1, 'result')
         self._result_out = pyrtl.WireVector(E_BITS + M_BITS + 1, '_result')
         super(PipelinedBF16Adder, self).__init__()
+
+    @property
+    def result(self):
+        return self._result_out
 
     def stage0(self):
         """Stage 1: Input Parsing and Extraction"""
