@@ -1,0 +1,34 @@
+{
+    "python.defaultInterpreterPath": "/opt/homebrew/Caskroom/miniconda/base/envs/dsc180/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "terminal.explorerKind": "integrated",
+    "terminal.integrated.profiles.osx": {
+      "bash": {
+        "path": "bash",
+        "args": ["-l"],
+        "icon": "terminal-bash"
+      },
+      "zsh": {
+        "path": "zsh",
+        "args": ["-l"]
+      },
+      "fish": {
+        "path": "fish",
+        "args": ["-l"]
+      },
+      "tmux": {
+        "path": "tmux",
+        "icon": "terminal-tmux"
+      },
+      "pwsh": {
+        "path": "pwsh",
+        "icon": "terminal-powershell"
+      }
+    },
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    // "terminal.integrated.automationProfile.osx": {
+  
+    // },
+    "jupyter.notebookFileRoot": "${workspaceFolder}"
+  }
