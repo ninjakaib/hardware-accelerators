@@ -108,3 +108,4 @@ git push --force-with-lease
 
 Remember to commit code frequently and keep your branches focused on specific tasks. This helps maintain a clean version history and makes code review easier for everyone.
 
+After a pull request is merged into `main`, your branch will automatically be deleted. You can update up your local repository to reflect these changes with `git fetch --prune`.
