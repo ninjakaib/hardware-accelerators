@@ -1,5 +1,4 @@
-
-## Project Resources
+# Project Resources
 
 1. Architectural level planning, requirements analysis, specification design, and division of work
 
@@ -37,3 +36,19 @@
 
 7. Integrating the library with a machine learning framework or simulate using pure python.
    > We could integrate [ONNX](https://onnx.ai/onnx/intro/concepts.html), the open neural network exchange format which supports most modern models and hardware by extending the [onnxruntime](https://onnxruntime.ai/docs/reference/high-level-design.html) with a new [ExecutionProvider](https://onnxruntime.ai/docs/execution-providers/add-execution-provider.html) that uses our hardware accelerator. This would allow us to run almost any model in simulation. ONNX generates a computational graph of a model and the execution providers route subgraphs to accelerators based on the implemented kernels/operators.
+
+---
+
+## Bonus
+
+1. Create a physical design after verifying simulations
+
+- [OpenLane](https://openlane.readthedocs.io/en/latest/) is an automated RTL to GDSII flow based on several components including OpenROAD and Yosys
+- [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) is the leading open-source, foundational application for semiconductor digital design. The OpenROAD flow delivers an Autonomous, No-Human-In-Loop (NHIL) flow, 24 hour turnaround from RTL-GDSII for rapid design exploration and physical design implementation.
+- [IIC-OSIC-TOOLS](https://github.com/iic-jku/IIC-OSIC-TOOLS) is an all-in-one Docker image for SKY130/GF180/IHP130-based analog and digital chip design.
+
+2. Include an interactive 3D model of the GDS files in the project
+
+- [Tiny Tapeout](https://tinytapeout.com/) provides a [guide](https://tinytapeout.com/guides/workshop/create-your-gds/) for generating a github pages site with an interactive 3D model of the GDS files in the project
+- [GDS2WebGL](https://github.com/s-holst/GDS2WebGL): This tool provides a performant, portable, and approachable way to visualize and browse chip layout data. It does so by translating the geometric shapes found in GDSII stream format into a self-contained HTML file that can be viewed in any modern WebGL-capable web browser.
+- [Example](https://mattvenn.github.io/wokwi-verilog-gds-test/viewer/tinytapeout.html) GitHub pages project
