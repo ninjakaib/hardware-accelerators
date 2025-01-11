@@ -1,72 +1,112 @@
-# UCSD DSC180B Capstone - Hardware Accelerators
-Winter Quarter 2025
+<div align="center">
 
-contributers: Kai Breese, Justin Chou, Katelyn Abille, Lukas Fullner
+# Hardware Accelerators
+### UCSD DSC180B Capstone Project | Winter 2025
 
-mentor: Rajesh Gupta
+<!-- [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md) -->
+
+</div>
+
+## Team
+
+**Mentor**: Professor Rajesh Gupta
+
+**Contributors**:
+- Kai Breese
+- Justin Chou
+- Katelyn Abille
+- Lukas Fullner
+
+---
+
+## Project Overview
+
+This project explores the implementation of the Linear-complexity Multiplication (L-Mul) algorithm for efficient floating-point multiplication on ASICs. As modern AI systems grow in scale and complexity, their computational processes require increasingly large amounts of energy. For example, ChatGPT required an estimated 564 MWh per day as of February 2023, with inference costs significantly outweighing training costs in the long term.
+
+### The L-Mul Algorithm
+The core idea of L-Mul is to eliminate the costly mantissa multiplication step in floating-point multiplication by approximating it with a simpler term L(M), where M is the number of mantissa bits. This approximation achieves high precision while significantly reducing computational overhead compared to traditional floating-point multiplication methods.
+
+### Quarter 1 Accomplishments
+In Q1, we:
+- Implemented the L-Mul algorithm in PyRTL and Verilog
+- Developed a 2x2 systolic array for matrix multiplication using L-Mul
+- Validated the algorithm's accuracy against standard floating-point multiplication
+- Created basic components for handling BFloat16 numbers
+- Successfully demonstrated that theoretical simplifications translate to practical hardware designs
+
+### Quarter 2 Goals
+Building on our Q1 work, we aim to:
+- Focus exclusively on PyRTL implementation for faster development
+- Expand and optimize our systolic array implementation
+- Build hardware activation units for activation functions commonly used in machine learning
+- Benchmark performance against traditional floating-point multiplication
+- Run models on simulated hardware
+
+### Why This Matters
+By optimizing the fundamental operation of floating-point multiplication, we can significantly reduce the energy consumption and processing time of neural network operations. This has important implications for making AI systems more environmentally sustainable and cost-effective, particularly in the inference phase where computational costs are highest.
+
+For more details about our Q1 work, see our [technical report](reports/main.pdf).
+
+---
 
 ## Contributing
 
-I am going to lock the `main` branch to prevent anyone from pushing to it directly. All changes to main will be made exclusively by merging pull requests from the `dev` branch. Pull requests should generally contain code/notebooks that you feel are READY TO BE GRADED! 
+This project follows the [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow) branching strategy. The `main` branch is locked to prevent direct pushes - all changes must be made through pull requests.
 
-To contribute new code, create a branch from `dev` starting with name "feature/" or "fix/" followed by a descriptive name of what you are working on. Lets try to keep branches concise, commit code frequently, review each others PRs frequently, and avoid making "super-branches" where you work on a bunch of stuff in one branch and let it get messy. Keep branches to ideally a single fix or feature, then merge. It will help keep the code organized and easier to work with. 
+### Branch Guidelines
 
->**Tip**: Keep your feature branches up to date with changes in `dev` by rebasing on it often. This will keep the commit history cleaner if your branch is ever behind and as the project grows
+- Create feature branches for specific tasks/features
+- Branch names should be descriptive and follow the pattern: `feature/` or `fix/` followed by what you're working on
+- Keep branches focused on single features/fixes to maintain clean version control
+- Commit code frequently with clear commit messages
 
-Good branch names are things like: "feature/systolic-memory-controller" or "fix/latex-workflow"  
-Bad branch names are: "kais-dev-branch" or "feature/pyrtl"
+Good branch names: `feature/systolic-memory-controller` or `fix/latex-workflow`  
+Bad branch names: `kais-dev-branch` or `feature/misc-changes`
 
-Your branches can be merged into `dev` after 1 review from someone who isn't yourself.  
+### Working with Branches
 
-We should aim to have changes in `dev` ready to merge into `main` before 11:59PM every Sunday so we have concrete progress to report to Rajesh and for the participation. Pull requests to `main` will only be allowed to merge after 3 reviews, let's stay on top of things guys!
+Create and switch to a new feature branch:
+```bash
+# Create and checkout new branch
+git checkout -b feature/your-feature-name main
+
+# Set upstream to track remote branch
+git push -u origin feature/your-feature-name
+```
+
+Keep your feature branch up to date with main:
+```bash
+# Fetch latest changes
+git fetch origin main
+
+# Rebase your branch on main
+git rebase origin/main
+
+# Force push if you've rebased (be careful!)
+git push --force-with-lease
+```
+
+### Pull Request Process
+
+1. Ensure your code is well-tested and documented
+2. Create a pull request against the `main` branch
+3. PRs require 2 approvals from other contributors before merging
+4. Use the PR description to explain your changes and any important considerations
+5. Reviewers should provide constructive feedback and test the changes locally if needed
+
+> **Tip**: Rebase your feature branches on `main` frequently to keep the commit history clean and avoid complex merge conflicts later.
+
+Remember to commit code frequently and keep your branches focused on specific tasks. This helps maintain a clean version history and makes code review easier for everyone.
+
+---
 
 ## Project structure
 
 - `./hardware_accelerators` will contain all source code (PyRTL, Verilog, etc.)
 - `./tests` will contain `pytest` tests that are automatically run as part of a CI pipeline
 - `./reports` contains the source LaTeX files for the report and the pdf generated by the github action
-- `./notebooks` should hold all jupyter notebook files. The main branch should only have high quality, readable, reproduceable notebooks.
-
-## Q2 Roadmap
-
-### Outline
-
-1. Architectural level planning, requirements analysis, specification design, and division of work
-
-   > - Google TPU ([paper](https://arxiv.org/abs/1704.04760), [blog](https://cloud.google.com/blog/products/ai-machine-learning/an-in-depth-look-at-googles-first-tensor-processing-unit-tpu))
-   > - AWS Inf2 [architecture](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/general/arch/neuron-hardware/inferentia2.html)
-   > - NVIDIA H100 [tensor core architecture](https://resources.nvidia.com/en-us-tensor-core)
-   > - [Etched Transformer ASIC](https://www.etched.com/announcing-etched)
-
-2. The hardware itself containing the logic for specialized modules/operations
-
-- [PyRTL](https://sites.cs.ucsb.edu/~sherwood/pubs/FPL-17-pyrtl.pdf) is an easy to use hardware description language that allows us to generate and simulate hardware in Python and automatically generate Verilog code as output
-- [Amaranth](https://amaranth-lang.org/docs/amaranth/) (previously nMigen) is similar to PyRTL but more mature, maintained, and provides better integration with tooling. I think it is worth considering switching to avoid potential limitations with PyRTL
-  > - [example ALU in PyRTL](https://github.com/pllab/pipelined-alu/blob/master/README.md)
-  > - [example RISCV CPU in PyRTL](https://github.com/pllab/BD-PyRTL-RV)
-
-3. A set of opcodes/instructions that can interface with simulated memory
-
-- [OWL](https://zsisco.net/papers/control-logic-synthesis.pdf) is a tool from the same lab that made PyRTL that automatically generates control logic for a given datapath ([github](https://github.com/UCSBarchlab/owl))
-- [Instruction level abstraction](https://arxiv.org/pdf/1801.01114) allows us to generate PyRTL code with OWL by describing the behavior of the instruction set ([github]())
-  > - [Example opcodes](https://github.com/pllab/embedded-class-riscv/blob/master/src/control.py) for a RISCV CPU in PyRTL (different project)
-
-4. A fast, easy to use, and interactive simulation of the hardware that allows us to easily test sending inputs and getting outputs
-
-- [Yosys](https://yosyshq.readthedocs.io/projects/yosys/en/latest/) is a framework for Verilog RTL synthesis.
-- [Surfer VSCode extension](https://marketplace.visualstudio.com/items?itemName=surfer-project.surfer) lets you easily view the waveform outputs of simulation tests
-- [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build) is a binary software distribution for a number of open source software used in digital logic design. You will find tools for RTL synthesis, formal hardware verification, place & route, FPGA programming, and testing with support for HDLs like Verilog, Migen, and Amaranth.
-
-5. An assembly language and assembler that compiles to the custom bytecode (Nvidia PTX)
-
-   > - Ben Eater's [assembler](https://github.com/TheTask/8Bit-Assembler) for his [8-bit computer](https://eater.net/8bit) from scratch project
-
-6. A custom programming language/library/SDK that compiles to our assembly lang (think CUDA, ROCm, Apple CoreML)
-
-- [LLVM](https://llvm.org/docs/GettingStarted.html) is a compiler infrastructure that can be used to create a custom language, but this is probably overkill
-
-7. Integrating the library with a machine learning framework or simulate using pure python.
-   > We could integrate [ONNX](https://onnx.ai/onnx/intro/concepts.html), the open neural network exchange format which supports most modern models and hardware by extending the [onnxruntime](https://onnxruntime.ai/docs/reference/high-level-design.html) with a new [ExecutionProvider](https://onnxruntime.ai/docs/execution-providers/add-execution-provider.html) that uses our hardware accelerator. This would allow us to run almost any model in simulation. ONNX generates a computational graph of a model and the execution providers route subgraphs to accelerators based on the implemented kernels/operators.
+- `./notebooks` should hold all jupyter notebook files. The main branch should only have high quality, readable, reproduceable notebooks that can be used to help write the final report.
 
 ---
 
