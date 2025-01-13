@@ -84,6 +84,12 @@ git checkout -b feature/your-feature-name main
 git push -u origin feature/your-feature-name
 ```
 
+You can also configure git to automatically create and track a new remote branch with:
+```bash
+git config --global --type bool push.autoSetupRemote true
+```
+Then simply `git push` to create or update the new branch on GitHub.
+
 Keep your feature branch up to date with main:
 ```bash
 # Fetch latest changes
