@@ -1,7 +1,7 @@
 import pyrtl
 from pyrtl.rtllib.libutils import twos_comp_repr
 from pyrtl.rtllib.adders import carrysave_adder, kogge_stone
-from hardware_accelerators.rtllib.lmul_utils import get_combined_offset
+from hardware_accelerators.rtllib.utils.lmul_utils import get_combined_offset
 
 # BF16 Naive Combinatorial
 def bf16_lmul_naive():
