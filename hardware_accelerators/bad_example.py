@@ -4,3 +4,9 @@ def foo(a, b, c):
 
 def bar():
     return 1 + 2 + 3 + 4 == 9
+
+j = [1,
+     2,
+     3
+]
+
