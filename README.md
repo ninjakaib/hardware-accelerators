@@ -105,23 +105,19 @@ git checkout -b feature/your-feature-name main
 git push -u origin feature/your-feature-name
 ```
 
-You can also configure git to automatically create and track a new remote branch with:
-```bash
-git config --global --type bool push.autoSetupRemote true
-```
-Then simply `git push` to create or update the new branch on GitHub.
-
 Keep your feature branch up to date with main:
 ```bash
 # Fetch latest changes
 git fetch origin main
 
-# Rebase your branch on main
-git rebase origin/main
+# Merge main into your feature branch
+git merge origin/main
 
-# Force push if you've rebased (be careful!)
-git push --force-with-lease
+# Push updates to your feature branch
+git push
 ```
+
+> **Tip**: Update your feature branch from main frequently (daily or every few days) to catch conflicts early and keep them manageable.
 
 ### Pull Request Process
 
@@ -130,9 +126,8 @@ git push --force-with-lease
 3. PRs require 2 approvals from other contributors before merging
 4. Use the PR description to explain your changes and any important considerations
 5. Reviewers should provide constructive feedback and test the changes locally if needed
+6. Before merging, ensure your branch is up to date with main
 
-> **Tip**: Rebase your feature branches on `main` frequently to keep the commit history clean and avoid complex merge conflicts later.
+Remember to commit code frequently and keep your branches focused on specific tasks. This helps maintain a clear version history and makes code review easier for everyone.
 
-Remember to commit code frequently and keep your branches focused on specific tasks. This helps maintain a clean version history and makes code review easier for everyone.
-
-After a pull request is merged into `main`, your branch will automatically be deleted. You can update up your local repository to reflect these changes with `git fetch --prune`.
+After a pull request is merged into `main`, your branch will automatically be deleted. You can update your local repository to reflect these changes with `git fetch --prune`.
