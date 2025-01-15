@@ -1,11 +1,12 @@
 name: Format Pull Request Python Code
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "**.py"
-      - "**.ipynb"
+  workflow_dispatch:
+  # pull_request:
+  #   branches: [main]
+  #   paths:
+  #     - "**.py"
+  #     - "**.ipynb"
 
 jobs:
   format-python:
