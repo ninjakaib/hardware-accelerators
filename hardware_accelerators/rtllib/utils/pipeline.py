@@ -23,7 +23,7 @@ class SimplePipeline(object):
             )
 
     def __setattr__(self, name, value):
-        if name.startswith("_"):
+        if name.startswith("_") or name.lower() in ["e_bits", "m_bits"]:
             # do not do anything tricky with variables starting with '_'
             object.__setattr__(self, name, value)
         else:

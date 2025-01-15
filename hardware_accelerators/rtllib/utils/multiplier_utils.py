@@ -1,24 +1,10 @@
-from IPython.display import display_svg
-from typing import List, Tuple
-import random
-import torch
-import numpy as np
-import pandas as pd
-from itertools import combinations_with_replacement
-from typing import Callable, Any
+from typing import Tuple
 import pyrtl
-from pyrtl.rtllib.libutils import twos_comp_repr, rev_twos_comp_repr
 from pyrtl.rtllib import adders
 from pyrtl.rtllib import multipliers
 from pyrtl import (
     WireVector,
     Const,
-    Input,
-    Output,
-    Register,
-    Simulation,
-    SimulationTrace,
-    reset_working_block,
 )
 
 
@@ -68,7 +54,13 @@ def stage_1(input_a: WireVector, input_b: WireVector, e_bits: int, m_bits: int):
 
 
 def stage_2(
-    exp_a: WireVector, exp_b: WireVector, sign_a, sign_b, mantissa_a, mantissa_b
+    exp_a: WireVector,
+    exp_b: WireVector,
+    sign_a,
+    sign_b,
+    mantissa_a,
+    mantissa_b,
+    m_bits: int,
 ):
     # calculate sign using xor
     sign_out = WireVector(1, name="sign_out")
@@ -77,7 +69,7 @@ def stage_2(
     exp_sum = WireVector(len(exp_a) + 1, name="exp_sum")
     exp_sum <<= adders.cla_adder(exp_a, exp_b)
     # csa tree multiplier
-    mantissa_product = WireVector(2 * M_BITS + 2, name="mantissa_product")
+    mantissa_product = WireVector(2 * m_bits + 2, name="mantissa_product")
     mantissa_product <<= multipliers.tree_multiplier(mantissa_a, mantissa_b)
     # return xor for signs and sum of exponents and product of mantissas
     return sign_out, exp_sum, mantissa_product
@@ -180,34 +172,34 @@ def leading_zero_count_16bit(value: WireVector, m_bits: int) -> WireVector:
     return final_result
 
 
-def stage_3(exp_sum, mantissa_product):
+def stage_3(exp_sum, mantissa_product, e_bits, m_bits: int):
     # find leading zeros in mantissa product
-    leading_zeros = WireVector(E_BITS, name="leading_zeros")
-    leading_zeros <<= leading_zero_count_16bit(mantissa_product, M_BITS)
+    leading_zeros = WireVector(e_bits, name="leading_zeros")
+    leading_zeros <<= leading_zero_count_16bit(mantissa_product, m_bits)
 
     # adjust exponent
-    unbiased_exp = WireVector(E_BITS, name="unbiased_exp")
-    unbiased_exp <<= exp_sum - pyrtl.Const(127, E_BITS + 1)
+    unbiased_exp = WireVector(e_bits, name="unbiased_exp")
+    unbiased_exp <<= exp_sum - pyrtl.Const(127, e_bits + 1)
 
     return leading_zeros, unbiased_exp
 
 
-def normalize_mantissa_product(mantissa_product, leading_zeros):
-    assert mantissa_product.bitwidth == 2 * M_BITS + 2
+def normalize_mantissa_product(mantissa_product, leading_zeros, m_bits: int):
+    assert mantissa_product.bitwidth == 2 * m_bits + 2
     assert leading_zeros.bitwidth == 8
     # shift mantissa product to the left by leading zeros
     normalized_mantissa_product = WireVector(
-        2 * M_BITS + 2, name="normalized_mantissa_product"
+        2 * m_bits + 2, name="normalized_mantissa_product"
     )
     normalized_mantissa_product <<= pyrtl.shift_left_logical(
         mantissa_product, leading_zeros
     )
 
-    norm_mantissa_msb = WireVector(M_BITS + 1, name="norm_mantissa_msb")
-    norm_mantissa_lsb = WireVector(M_BITS + 1, name="norm_mantissa_lsb")
+    norm_mantissa_msb = WireVector(m_bits + 1, name="norm_mantissa_msb")
+    norm_mantissa_lsb = WireVector(m_bits + 1, name="norm_mantissa_lsb")
 
-    norm_mantissa_msb <<= normalized_mantissa_product[M_BITS + 1 :]
-    norm_mantissa_lsb <<= normalized_mantissa_product[: M_BITS + 1]
+    norm_mantissa_msb <<= normalized_mantissa_product[m_bits + 1 :]
+    norm_mantissa_lsb <<= normalized_mantissa_product[: m_bits + 1]
 
     return norm_mantissa_msb, norm_mantissa_lsb
 
@@ -239,7 +231,7 @@ def generate_sgr(
     return sticky_bit, guard_bit, round_bit
 
 
-def rounding_mantissa(norm_mantissa_msb, sticky_bit, guard_bit, round_bit):
+def rounding_mantissa(norm_mantissa_msb, sticky_bit, guard_bit, round_bit, m_bits: int):
 
     # Round-to-nearest-even logic
     # Round up if:
@@ -253,28 +245,28 @@ def rounding_mantissa(norm_mantissa_msb, sticky_bit, guard_bit, round_bit):
     )
 
     # Add rounding increment
-    rounded_mantissa = WireVector(M_BITS + 2, "rounded_mantissa")
+    rounded_mantissa = WireVector(m_bits + 2, "rounded_mantissa")
     rounded_mantissa <<= norm_mantissa_msb + round_up
 
     # Check if rounding caused overflow
     extra_increment = WireVector(1, "extra_increment")
-    extra_increment <<= rounded_mantissa[M_BITS + 1]  # New carry after rounding
+    extra_increment <<= rounded_mantissa[m_bits + 1]  # New carry after rounding
 
     # Final mantissa (excluding hidden bit)
-    final_mantissa = WireVector(M_BITS, "final_mantissa")
+    final_mantissa = WireVector(m_bits, "final_mantissa")
     final_mantissa <<= pyrtl.select(
         extra_increment,
         rounded_mantissa[
             1:-1
         ],  # Overflow case: lsb+1 -> msb-1 of rounded mantissa TODO: NEEDS ROUNDING!
-        rounded_mantissa[:M_BITS],  # Normal case: take m_bits of rounded mantissa LSBs
+        rounded_mantissa[:m_bits],  # Normal case: take m_bits of rounded mantissa LSBs
     )
 
     return final_mantissa, extra_increment
 
 
 def adjust_final_exponent(
-    unbiased_exp: WireVector, lzc: WireVector, round_increment: WireVector
+    unbiased_exp: WireVector, lzc: WireVector, round_increment: WireVector, e_bits: int
 ) -> WireVector:
     """
     Compute final exponent by subtracting LZC and handling round increment
@@ -288,29 +280,29 @@ def adjust_final_exponent(
     Returns:
         final_exp: adjusted exponent value (e_bits wide)
     """
-    assert len(unbiased_exp) == E_BITS
+    assert len(unbiased_exp) == e_bits
     assert len(lzc) == 8
     assert len(round_increment) == 1
 
     # First subtract LZC from larger exponent
-    exp_lzc_adjusted = WireVector(E_BITS, "exp_lzc_adjusted")
-    exp_lzc_adjusted <<= unbiased_exp - lzc.zero_extended(E_BITS) + 1
+    exp_lzc_adjusted = WireVector(e_bits, "exp_lzc_adjusted")
+    exp_lzc_adjusted <<= unbiased_exp - lzc.zero_extended(e_bits) + 1
 
     # Then add 1 if rounding caused overflow
-    final_exp = WireVector(E_BITS, "final_exp")
+    final_exp = WireVector(e_bits, "final_exp")
     final_exp <<= exp_lzc_adjusted + round_increment
 
     return final_exp
 
 
-def stage_4(unbiased_exp, leading_zeros, mantissa_product):
+def stage_4(unbiased_exp, leading_zeros, mantissa_product, m_bits: int):
     # normalize mantissa product
     norm_mantissa_msb, norm_mantissa_lsb = normalize_mantissa_product(
         mantissa_product, leading_zeros
     )
 
     # generate sticky, guard and round bits
-    sticky_bit, guard_bit, round_bit = generate_sgr(norm_mantissa_lsb, M_BITS)
+    sticky_bit, guard_bit, round_bit = generate_sgr(norm_mantissa_lsb, m_bits)
 
     # rounding mantissa
     final_mantissa, extra_increment = rounding_mantissa(

@@ -61,7 +61,7 @@ def float_adder(
 
 ### ===================================================================
 ### Simple Pipeline Design
-class PipelinedBF16Adder(SimplePipeline):
+class FloatAdderPipelined(SimplePipeline):
     def __init__(
         self,
         float_a: WireVector,
@@ -134,26 +134,18 @@ class PipelinedBF16Adder(SimplePipeline):
             len(float_a) == len(float_b) == 16
         ), f"float inputs must be {e_bits + m_bits + 1} bits"
         assert len(w_en) == 1, "write enable signal must be 1 bit"
-        self._E_BITS = e_bits
-        self._M_BITS = m_bits
+        self.e_bits = e_bits
+        self.e_bits = m_bits
         # Define inputs and outputs
         self._float_a, self._float_b = float_a, float_b
         self._write_enable = w_en
         # self._result = pyrtl.Register(self.e_bits + self.m_bits + 1, 'result')
         self._result_out = pyrtl.WireVector(e_bits + m_bits + 1, "_result")
-        super(PipelinedBF16Adder, self).__init__()
+        super(FloatAdderPipelined, self).__init__()
 
     @property
     def result(self):
         return self._result_out
-
-    @property
-    def e_bits(self):
-        return self._E_BITS
-
-    @property
-    def m_bits(self):
-        return self._M_BITS
 
     def stage0(self):
         """Stage 1: Input Parsing and Extraction"""
