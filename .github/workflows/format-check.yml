@@ -4,9 +4,9 @@ name: Format Check
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "**.py"
-      - "**.ipynb"
+    # paths:
+    #   - "**.py"
+    #   - "**.ipynb"
 
 jobs:
   black:
