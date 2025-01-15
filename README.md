@@ -63,6 +63,27 @@ For more details about our Q1 work, see our [technical report](reports/main.pdf)
 
 This project follows the [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow) branching strategy. The `main` branch is locked to prevent direct pushes - all changes must be made through pull requests.
 
+### Development Environment Setup
+
+#### VSCode Configuration
+We use the Black formatter to maintain consistent code style. To configure VSCode to automatically format Python code on save:
+
+1. Install the Black Formatter extension from the VSCode marketplace
+2. Open VSCode Settings (Command Palette → "Preferences: Open Settings (JSON)")
+3. Add the following configuration:
+```json
+{
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    }
+}
+```
+
+This will automatically format Python files when you save them, ensuring consistent code style across the project.
+
+> **Note**: Make sure you have Black installed in your development environment: `pip install black`
+
 ### Branch Guidelines
 
 - Create feature branches for specific tasks/features
