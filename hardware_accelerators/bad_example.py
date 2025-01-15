@@ -3,7 +3,7 @@ def foo(a, b, c):
 
 
 def bar():
-    return 1 + 2 + 3 + 4 == 9
+    return 1 + 2 + 3 + 4 == 10
 
 
 j = [1, 2, 3]
