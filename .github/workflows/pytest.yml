@@ -3,10 +3,10 @@ name: Pytest
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "**.py"
-      - "pyproject.toml"
-      - "requirements.txt"
+    # paths:
+    #   - "**.py"
+    #   - "pyproject.toml"
+    #   - "requirements.txt"
 
 jobs:
   test:
