@@ -57,7 +57,6 @@ def lmul_fast(
     # carry=0, msb=0: underflow -> 0x00
     # carry=0, msb=1: normal -> result_bits
 
-    MIN_VALUE = pyrtl.Const(0, bitwidth=em_bits, name="min_value")
     MAX_VALUE = pyrtl.Const(2**em_bits - 1, bitwidth=em_bits, name="max_value")
 
     if e_bits == 4 and m_bits == 3:
@@ -74,6 +73,99 @@ def lmul_fast(
     fp_out <<= pyrtl.concat(result_sign, mantissa_result)
 
     return fp_out
+
+
+# Float8 fast pipelined lmul
+class LmulPipelined:
+    def __init__(
+        self,
+        float_a: WireVector,
+        float_b: WireVector,
+        e_bits: int,
+        m_bits: int,
+    ):
+        self.e_bits = e_bits
+        self.m_bits = m_bits
+        self.em_bits = e_bits + m_bits
+
+        # Inputs and Outputs
+        self.fp_a = float_a
+        self.fp_b = float_b
+        self.fp_out = WireVector(e_bits + m_bits + 1)
+
+        # Constants
+        self.OFFSET_MINUS_BIAS = pyrtl.Const(
+            get_combined_offset(e_bits, m_bits, twos_comp=True), bitwidth=self.em_bits
+        )
+
+        self.MAX_VALUE = pyrtl.Const(
+            2**self.em_bits - 1, bitwidth=self.em_bits, name="max_value"
+        )
+
+        if e_bits == 4 and m_bits == 3:
+            self.MAX_VALUE = pyrtl.Const(0x7F, 7)
+
+        # Pipeline Registers
+        # Stage 0 -> 1
+        self.reg_fp_a = pyrtl.Register(8, "reg_fp_a")
+        self.reg_fp_b = pyrtl.Register(8, "reg_fp_b")
+
+        # Stage 1 -> 2
+        self.reg_sign = pyrtl.Register(1, "reg_sign")
+        self.reg_final_sum = pyrtl.Register(9, "reg_final_sum")
+
+        # Stage 2 -> output
+        self.reg_output = pyrtl.Register(8, "reg_output")
+
+        # Build pipeline
+        self._build_pipeline()
+
+    def stage0_input(self):
+        """Input registration stage"""
+        self.reg_fp_a.next <<= self.fp_a
+        self.reg_fp_b.next <<= self.fp_b
+
+    def stage1_split_and_add(self):
+        """Split inputs and perform additions"""
+        # Split registered inputs
+        sign_a = self.reg_fp_a[7]
+        sign_b = self.reg_fp_b[7]
+        exp_mantissa_a = self.reg_fp_a[0:7]
+        exp_mantissa_b = self.reg_fp_b[0:7]
+
+        # Calculate and register sign
+        self.reg_sign.next <<= sign_a ^ sign_b
+
+        # First addition and register result
+        final_sum = carrysave_adder(
+            exp_mantissa_a,
+            exp_mantissa_b,
+            self.OFFSET_MINUS_BIAS,
+            final_adder=kogge_stone,
+        )
+
+        self.reg_final_sum.next <<= final_sum
+
+    def stage2_output_format(self):
+        """Format final output"""
+        # Mux selection based on overflow/underflow
+        mantissa_result = pyrtl.mux(
+            self.reg_final_sum[7:],  # Select bits for mux control
+            pyrtl.Const(0, bitwidth=7),  # Underflow case
+            self.reg_final_sum[0:7],  # Normal case
+            default=self.MAX_VALUE,  # Overflow case
+        )
+
+        # Combine sign and mantissa
+        self.reg_output.next <<= pyrtl.concat(self.reg_sign, mantissa_result)
+
+    def _build_pipeline(self):
+        """Connect all pipeline stages"""
+        self.stage0_input()
+        self.stage1_split_and_add()
+        self.stage2_output_format()
+        # Connect final register to output
+        self.fp_out <<= self.reg_output
 
 
 ###########################
