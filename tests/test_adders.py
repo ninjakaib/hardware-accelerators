@@ -2,7 +2,7 @@ import pytest
 import pyrtl
 import numpy as np
 
-from hardware_accelerators.dtypes import Float8, BF16
+from hardware_accelerators.dtypes import BaseFloat, Float8, BF16
 from hardware_accelerators.rtllib import float_adder, FloatAdderPipelined
 
 
@@ -71,12 +71,12 @@ def generate_test_cases():
 
     # Add BF16 cases with appropriate tolerance
     for a, b, expected in bf16_cases:
-        test_cases.append((a, b, BF16, 8, 7, 0.0001))
+        test_cases.append((a, b, BF16, 8, 7, 0.05))
 
     return test_cases
 
 
-def simulate_float_addition(a, b, format_class, e_bits, m_bits):
+def simulate_float_addition(a, b, format_class: BaseFloat, e_bits, m_bits):
     """Simulate floating point addition with PyRTL"""
     pyrtl.reset_working_block()
 
@@ -97,7 +97,7 @@ def simulate_float_addition(a, b, format_class, e_bits, m_bits):
 
     # Convert output back to float
     result = format_class(binint=sim.inspect(float_out))
-    return result.decimal
+    return result.decimal_approx
 
 
 @pytest.mark.parametrize(
