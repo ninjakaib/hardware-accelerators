@@ -66,7 +66,7 @@ This project follows the [GitHub Flow](https://docs.github.com/en/get-started/qu
 
 ### Development Environment Setup
 
-##### Dev Containers
+#### Dev Containers
 To use the development environment, open VSCode and install the Dev Containers extension. From there, the Dev Container options will be available in the bottom left of VSCode. Go ahead and build the container and open the folder within the Dev Container.
 
 #### Python Formatting
