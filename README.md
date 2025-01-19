@@ -1,6 +1,7 @@
 <div align="center">
 
 # Hardware Accelerators
+
 ### UCSD DSC180B Capstone Project | Winter 2025
 
 <!-- [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -13,6 +14,7 @@
 **Mentor**: Professor Rajesh Gupta
 
 **Contributors**:
+
 - Kai Breese
 - Justin Chou
 - Katelyn Abille
@@ -25,10 +27,13 @@
 This project explores the implementation of the Linear-complexity Multiplication (L-Mul) algorithm for efficient floating-point multiplication on ASICs. As modern AI systems grow in scale and complexity, their computational processes require increasingly large amounts of energy. For example, ChatGPT required an estimated 564 MWh per day as of February 2023, with inference costs significantly outweighing training costs in the long term.
 
 ### The L-Mul Algorithm
+
 The core idea of L-Mul is to eliminate the costly mantissa multiplication step in floating-point multiplication by approximating it with a simpler term L(M), where M is the number of mantissa bits. This approximation achieves high precision while significantly reducing computational overhead compared to traditional floating-point multiplication methods.
 
 ### Quarter 1 Accomplishments
+
 In Q1, we:
+
 - Implemented the L-Mul algorithm in PyRTL and Verilog
 - Developed a 2x2 systolic array for matrix multiplication using L-Mul
 - Validated the algorithm's accuracy against standard floating-point multiplication
@@ -36,7 +41,9 @@ In Q1, we:
 - Successfully demonstrated that theoretical simplifications translate to practical hardware designs
 
 ### Quarter 2 Goals
+
 Building on our Q1 work, we aim to:
+
 - Focus exclusively on PyRTL implementation for faster development
 - Expand and optimize our systolic array implementation
 - Build hardware activation units for activation functions commonly used in machine learning
@@ -44,6 +51,7 @@ Building on our Q1 work, we aim to:
 - Run models on simulated hardware
 
 ### Why This Matters
+
 By optimizing the fundamental operation of floating-point multiplication, we can significantly reduce the energy consumption and processing time of neural network operations. This has important implications for making AI systems more environmentally sustainable and cost-effective, particularly in the inference phase where computational costs are highest.
 
 For more details about our Q1 work, see our [technical report](reports/main.pdf).
@@ -59,7 +67,6 @@ For more details about our Q1 work, see our [technical report](reports/main.pdf)
 
 ---
 
-
 ## Contributing
 
 This project follows the [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow) branching strategy. The `main` branch is locked to prevent direct pushes - all changes must be made through pull requests.
@@ -67,20 +74,23 @@ This project follows the [GitHub Flow](https://docs.github.com/en/get-started/qu
 ### Development Environment Setup
 
 #### Dev Containers
-To use the development environment, open VSCode and install the Dev Containers extension. From there, the Dev Container options will be available in the bottom left of VSCode. Go ahead and build the container and open the folder within the Dev Container.
+
+To use the development environment, open VSCode and install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers). From there, the Dev Container options will be available in the bottom left of VSCode. Click on the icon in the status bar (it will say "Open a Remote Window"), or open the command palette with `Cmd/Ctrl+Shift+P`. Select "Reopen in container" to build and run the container. You should be all set to begin working on the project now!
 
 #### Python Formatting
-We use the Black formatter to maintain consistent code style. To configure VSCode to automatically format Python code on save:
+
+We use the Black formatter to maintain consistent code style. It is configured by default in the devcontainer. If you are working outside the container, you can configure VSCode to automatically format Python code on save by following these steps:
 
 1. Install the Black Formatter extension from the VSCode marketplace
 2. Open VSCode Settings (Command Palette → "Preferences: Open Settings (JSON)")
 3. Add the following configuration:
+
 ```json
 {
-    "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter",
-        "editor.formatOnSave": true
-    }
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  }
 }
 ```
 
@@ -101,6 +111,7 @@ Bad branch names: `kais-dev-branch` or `feature/misc-changes`
 ### Working with Branches
 
 Create and switch to a new feature branch:
+
 ```bash
 # Create and checkout new branch
 git checkout -b feature/your-feature-name main
@@ -110,6 +121,7 @@ git push -u origin feature/your-feature-name
 ```
 
 Keep your feature branch up to date with main:
+
 ```bash
 # Fetch latest changes
 git fetch origin main
