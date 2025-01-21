@@ -1,6 +1,9 @@
 {
     "notebook.defaultFormatter": "ms-python.black-formatter",
+    "notebook.formatOnSave.enabled": true,
+    "notebook.formatOnCellExecution": false,
     "notebook.variablesView": true,
+    "python.analysis.importFormat": "relative",
     "terminal.integrated.shellIntegration.enabled": true,
     "terminal.integrated.suggest.enabled": true,
     "terminal.integrated.suggest.quickSuggestions": true,
@@ -61,5 +64,5 @@
             "icon": "terminal-powershell"
         }
     },
-    "jupyter.notebookFileRoot": "${workspaceFolder}"
+    "jupyter.notebookFileRoot": "${workspaceFolder}",
 }
