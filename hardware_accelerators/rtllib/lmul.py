@@ -10,6 +10,7 @@ def lmul_simple(
     e_bits: int,
     m_bits: int,
 ):
+    """Linear time complexity float multiply unit in the simplest configuration."""
     em_bits = e_bits + m_bits
     sign_out = float_a[em_bits] ^ float_b[em_bits]
 
@@ -56,7 +57,7 @@ def lmul_fast(
     # carry=0, msb=0: underflow -> 0x00
     # carry=0, msb=1: normal -> result_bits
 
-    MAX_VALUE = pyrtl.Const(2**em_bits - 1, bitwidth=em_bits, name="max_value")
+    MAX_VALUE = pyrtl.Const(2**em_bits - 1, bitwidth=em_bits)  # , name="max_value")
 
     if e_bits == 4 and m_bits == 3:
         MAX_VALUE = pyrtl.Const(0x7F, 7)
@@ -100,23 +101,23 @@ class LmulPipelined:
         )
 
         self.MAX_VALUE = pyrtl.Const(
-            2**self.em_bits - 1, bitwidth=self.em_bits, name="max_value"
-        )
+            2**self.em_bits - 1, bitwidth=self.em_bits
+        )  # , name="max_value")
 
         if e_bits == 4 and m_bits == 3:
             self.MAX_VALUE = pyrtl.Const(0x7F, 7)
 
         # Pipeline Registers
         # Stage 0 -> 1
-        self.reg_fp_a = pyrtl.Register(self.em_bits + 1, "reg_fp_a")
-        self.reg_fp_b = pyrtl.Register(self.em_bits + 1, "reg_fp_b")
+        self.reg_fp_a = pyrtl.Register(self.em_bits + 1)  # , "reg_fp_a")
+        self.reg_fp_b = pyrtl.Register(self.em_bits + 1)  # , "reg_fp_b")
 
         # Stage 1 -> 2
-        self.reg_sign = pyrtl.Register(1, "reg_sign")
-        self.reg_final_sum = pyrtl.Register(self.em_bits + 2, "reg_final_sum")
+        self.reg_sign = pyrtl.Register(1)  # , "reg_sign")
+        self.reg_final_sum = pyrtl.Register(self.em_bits + 2)  # , "reg_final_sum")
 
         # Stage 2 -> output
-        self.output_reg = pyrtl.Register(self.em_bits + 1, "reg_output")
+        self.output_reg = pyrtl.Register(self.em_bits + 1)  # , "reg_output")
 
         # Build pipeline
         self._build_pipeline()
@@ -175,9 +176,9 @@ class LmulPipelined:
 # BF16 Naive Combinatorial
 def bf16_lmul_naive():
     # inputs and outputs
-    fp_a = pyrtl.Input(bitwidth=16, name="fp_a")
-    fp_b = pyrtl.Input(bitwidth=16, name="fp_b")
-    fp_out = pyrtl.Output(bitwidth=16, name="fp_out")
+    fp_a = pyrtl.Input(bitwidth=16)  # , name="fp_a")
+    fp_b = pyrtl.Input(bitwidth=16)  # , name="fp_b")
+    fp_out = pyrtl.Output(bitwidth=16)  # , name="fp_out")
 
     sign_out = fp_a[15] ^ fp_b[15]
 

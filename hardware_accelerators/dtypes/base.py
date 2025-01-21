@@ -71,6 +71,10 @@ class BaseFloat(ABC):
 
     def _init_from_value(self, value: Union[int, float, str, "BaseFloat"]):
         """Initialize from a value"""
+        try:
+            value = float(value)
+        except:
+            raise TypeError(f"Could not cast {type(value)} to float")
         if isinstance(value, (int, float)):
             self._original_value = float(value)
             self._binary = self._decimal_to_binary(value)

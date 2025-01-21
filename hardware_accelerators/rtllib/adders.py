@@ -25,7 +25,7 @@ def float_adder(
         sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b, e_bits, m_bits
     )
 
-    abs_shift = WireVector(e_bits, "abs_shift")
+    abs_shift = WireVector(e_bits)  # , "abs_shift")
     abs_shift <<= signed_shift[:e_bits]
 
     aligned_mant_msb, sticky_bit, guard_bit, round_bit = adder_stage_3(
@@ -51,7 +51,7 @@ def float_adder(
         m_bits,
     )
 
-    float_result = WireVector(e_bits + m_bits + 1, "float_result")
+    float_result = WireVector(e_bits + m_bits + 1)  # , "float_result")
     float_result <<= pyrtl.concat(final_sign, final_exp, norm_mantissa)
     return float_result
 
@@ -140,7 +140,7 @@ class FloatAdderPipelined(SimplePipeline):
         self._float_a, self._float_b = float_a, float_b
         self._write_enable = w_en
         # self._result = pyrtl.Register(self.e_bits + self.m_bits + 1, 'result')
-        self._result_out = pyrtl.WireVector(e_bits + m_bits + 1, "_result")
+        self._result_out = pyrtl.WireVector(e_bits + m_bits + 1)  # , "_result")
         super(FloatAdderPipelined, self).__init__()
 
     @property
@@ -194,7 +194,7 @@ class FloatAdderPipelined(SimplePipeline):
         self.mant_larger = self.mant_larger
 
         # Calculate absolute shift amount
-        abs_shift = WireVector(self.e_bits, "abs_shift")
+        abs_shift = WireVector(self.e_bits)  # , "abs_shift")
         abs_shift <<= self.signed_shift[: self.e_bits]
 
         # Perform alignment and generate SGR bits
