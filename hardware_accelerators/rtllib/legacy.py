@@ -1,6 +1,6 @@
 import pyrtl
 from pyrtl.rtllib.adders import carrysave_adder, kogge_stone
-from hardware_accelerators.rtllib.utils.lmul_utils import get_combined_offset
+from .utils.lmul_utils import get_combined_offset
 
 
 ###########################

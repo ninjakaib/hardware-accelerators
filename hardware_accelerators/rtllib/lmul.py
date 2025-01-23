@@ -19,6 +19,7 @@ def lmul_simple(
 
     fp_out = WireVector(bitwidth=em_bits + 1)
     fp_out <<= pyrtl.concat(sign_out, pyrtl.truncate(result_sum, em_bits))
+    return fp_out
 
 
 def lmul_fast(
