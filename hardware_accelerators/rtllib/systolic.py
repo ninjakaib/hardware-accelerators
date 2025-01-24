@@ -49,8 +49,8 @@ class MatrixMultiplier:
         self.size = size
         self.data_type = data_type
         self.accum_type = accum_type
-        self.data_width = data_type.FORMAT_SPEC.total_bits
-        self.accum_width = accum_type.FORMAT_SPEC.total_bits
+        self.data_width = data_type.bitwidth()
+        self.accum_width = accum_type.bitwidth()
 
         # Create hardware components
         self.systolic_array = SystolicArray(
@@ -207,8 +207,8 @@ class SystolicArray:
         self.accum_type = accum_type
 
         # Create interface wires
-        data_width = data_type.FORMAT_SPEC.total_bits
-        accum_width = accum_type.FORMAT_SPEC.total_bits
+        data_width = data_type.bitwidth()
+        accum_width = accum_type.bitwidth()
 
         self.data_in = [WireVector(bitwidth=data_width) for _ in range(size)]
         self.weights_in = [WireVector(bitwidth=data_width) for _ in range(size)]

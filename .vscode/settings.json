@@ -1,68 +1,63 @@
 {
-    "notebook.defaultFormatter": "ms-python.black-formatter",
-    "notebook.formatOnSave.enabled": true,
-    "notebook.formatOnCellExecution": false,
-    "notebook.variablesView": true,
-    "python.analysis.importFormat": "relative",
-    "terminal.integrated.shellIntegration.enabled": true,
-    "terminal.integrated.suggest.enabled": true,
-    "terminal.integrated.suggest.quickSuggestions": true,
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.autoFormatStrings": true,
-    "[python]": {
-        "editor.formatOnType": true,
-        "editor.formatOnSave": true,
-        "editor.defaultFormatter": "ms-python.black-formatter"
+  "notebook.defaultFormatter": "ms-python.black-formatter",
+  "notebook.formatOnSave.enabled": true,
+  "notebook.formatOnCellExecution": false,
+  "notebook.variablesView": true,
+  "python.analysis.importFormat": "relative",
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.suggest.enabled": true,
+  "terminal.integrated.suggest.quickSuggestions": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.autoFormatStrings": true,
+  "[python]": {
+    "editor.formatOnType": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "[json][jsonc][jsonl]": {
+    "editor.quickSuggestions": {
+      "strings": true
     },
-    "[json][jsonc][jsonl]": {
-        "editor.quickSuggestions": {
-            "strings": true
-        },
-        "editor.tabSize": 4,
-        "editor.formatOnSave": true,
-        "editor.detectIndentation": false,
-        "editor.indentSize": "tabSize",
-        "editor.suggest.insertMode": "replace",
-        "editor.defaultFormatter": "vscode.json-language-features"
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "editor.detectIndentation": false,
+    "editor.indentSize": "tabSize",
+    "editor.suggest.insertMode": "replace",
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "advanced",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.defaultColorDecorators": "auto"
+  },
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "terminal.explorerKind": "integrated",
+  "terminal.integrated.profiles.osx": {
+    "bash": {
+      "path": "bash",
+      "args": ["-l"],
+      "icon": "terminal-bash"
     },
-    "[yaml]": {
-        "editor.insertSpaces": true,
-        "editor.tabSize": 2,
-        "editor.autoIndent": "advanced",
-        "diffEditor.ignoreTrimWhitespace": false,
-        "editor.defaultColorDecorators": "auto"
+    "zsh": {
+      "path": "zsh",
+      "args": ["-l"]
     },
-    "python.terminal.activateEnvironment": true,
-    "python.terminal.activateEnvInCurrentTerminal": true,
-    "terminal.explorerKind": "integrated",
-    "terminal.integrated.profiles.osx": {
-        "bash": {
-            "path": "bash",
-            "args": [
-                "-l"
-            ],
-            "icon": "terminal-bash"
-        },
-        "zsh": {
-            "path": "zsh",
-            "args": [
-                "-l"
-            ]
-        },
-        "fish": {
-            "path": "fish",
-            "args": [
-                "-l"
-            ]
-        },
-        "tmux": {
-            "path": "tmux",
-            "icon": "terminal-tmux"
-        },
-        "pwsh": {
-            "path": "pwsh",
-            "icon": "terminal-powershell"
-        }
+    "fish": {
+      "path": "fish",
+      "args": ["-l"]
     },
-    "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "tmux": {
+      "path": "tmux",
+      "icon": "terminal-tmux"
+    },
+    "pwsh": {
+      "path": "pwsh",
+      "icon": "terminal-powershell"
+    }
+  },
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "python.analysis.typeCheckingMode": "basic"
 }

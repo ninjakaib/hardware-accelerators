@@ -37,8 +37,8 @@ class ProcessingElement:
         - Accumulator reset/clear
         """
         # Get bit widths from format specs
-        data_width = data_type.FORMAT_SPEC.total_bits
-        accum_width = accum_type.FORMAT_SPEC.total_bits
+        data_width = data_type.bitwidth()
+        accum_width = accum_type.bitwidth()
 
         # Input/output registers
         self.data_reg = Register(bitwidth=data_width)
@@ -53,8 +53,8 @@ class ProcessingElement:
         product = multiplier_type(
             self.data_reg,
             self.weight_reg,
-            data_type.FORMAT_SPEC.exponent_bits,
-            data_type.FORMAT_SPEC.mantissa_bits,
+            data_type.exponent_bits(),
+            data_type.mantissa_bits(),
         )
 
         # TODO: Add float type conversion logic to pass different bitwidths to the accumulator
@@ -65,15 +65,15 @@ class ProcessingElement:
             sum_result = adder_type(
                 product_reg,
                 self.accum_in,
-                accum_type.FORMAT_SPEC.exponent_bits,
-                accum_type.FORMAT_SPEC.mantissa_bits,
+                accum_type.exponent_bits(),
+                accum_type.mantissa_bits(),
             )
         else:
             sum_result = adder_type(
                 product,
                 self.accum_in,
-                accum_type.FORMAT_SPEC.exponent_bits,
-                accum_type.FORMAT_SPEC.mantissa_bits,
+                accum_type.exponent_bits(),
+                accum_type.mantissa_bits(),
             )
 
         self.accum_reg.next <<= sum_result
