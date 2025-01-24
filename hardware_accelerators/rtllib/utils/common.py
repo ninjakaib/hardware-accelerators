@@ -157,7 +157,7 @@ def leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
     pairs = pyrtl.chop(value, *[2 for _ in range((m_bits + 1) // 2)])
     encoded_pairs = [enc2(pair) for pair in pairs]
 
-    if m_bits == 7:
+    if m_bits == 7:  # bfloat16
         first_merge = [
             clzi(encoded_pairs[0], encoded_pairs[1], 2),  # First group
             clzi(
@@ -168,7 +168,7 @@ def leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
         final_result <<= clzi(first_merge[0], first_merge[1], 3)
         return final_result
 
-    elif m_bits == 3:
+    elif m_bits == 3:  # float8
         final_result = WireVector(4)  # , "lzc_result")
         final_result <<= clzi(encoded_pairs[0], encoded_pairs[1], 2)
         return final_result
@@ -186,33 +186,6 @@ def generate_sgr(
 
     Returns:
         Tuple of (sticky_bit, guard_bit, round_bit)
-    """
-    assert len(aligned_mant_lsb) == m_bits + 1
-
-    guard_bit = WireVector(1)  # , name="guard_bit")
-    round_bit = WireVector(1)  # , name="round_bit")
-    sticky_bit = WireVector(1)  # , name="sticky_bit")
-
-    guard_bit <<= aligned_mant_lsb[m_bits]
-    round_bit <<= aligned_mant_lsb[m_bits - 1]
-    sticky_bit <<= pyrtl.or_all_bits(aligned_mant_lsb[: m_bits - 1])
-
-    return sticky_bit, guard_bit, round_bit
-
-
-def generate_sgr(
-    aligned_mant_lsb: WireVector, m_bits: int
-) -> tuple[WireVector, WireVector, WireVector]:
-    """
-    Generate sticky, guard, and round bits
-
-    Args:
-        mant_smaller: original mantissa before shifting (m_bits + 1 wide)
-        shift_amount: number of positions shifted right (e_bits wide)
-        m_bits: number of mantissa bits (7 for bfloat16)
-
-    Returns:
-        sticky_bit, guard_bit, round_bit
     """
     assert len(aligned_mant_lsb) == m_bits + 1
 

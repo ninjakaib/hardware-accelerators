@@ -25,14 +25,14 @@ def bf16_lmul_naive():
 # bfloat16 Fast Combinatorial
 @pyrtl.wire_struct
 class BF16Wire:
-    sign: 1
-    exp_mant: 15
+    sign: 1  # type: ignore
+    exp_mant: 15  # type: ignore
 
 
 @pyrtl.wire_struct
 class BF16_LMUL_SUM:
-    carry_mux: 2
-    sum_bits: 15
+    carry_mux: 2  # type: ignore
+    sum_bits: 15  # type: ignore
 
 
 def bf16_lmul_combinatorial():

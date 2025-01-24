@@ -199,7 +199,7 @@ class FloatAdderPipelined(SimplePipeline):
 
         # Perform alignment and generate SGR bits
         self.aligned_mant_msb, self.sticky, self.guard, self.round = adder_stage_3(
-            self.mant_smaller, abs_shift, self.m_bits
+            self.mant_smaller, abs_shift, self.m_bits, self.e_bits
         )
 
     def stage3(self):
