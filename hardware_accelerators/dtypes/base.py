@@ -1,15 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 from dataclasses import dataclass
-from enum import Enum
-
-
-class FloatFormat(Enum):
-    """Enum for different floating-point formats"""
-
-    FLOAT8 = "float8"
-    BFLOAT16 = "bfloat16"
-    # Can be extended with other formats
 
 
 @dataclass
@@ -27,7 +18,14 @@ class FormatSpec:
 
 
 class BaseFloat(ABC):
-    """Base class for custom floating-point number representations"""
+    """Base class for custom floating-point number representations.
+    Classes inheriting from BaseFloat must implement the `format_spec` class method like so:
+    ```python
+    @classmethod
+    def format_spec(cls) -> FormatSpec:
+       return FormatSpec(...)
+    ```
+    """
 
     def __init__(
         self,
@@ -43,7 +41,6 @@ class BaseFloat(ABC):
             binary: Binary string representation
             binint: Integer representing the binary value
         """
-        self._format_spec = self._get_format_spec()
         self._original_value = None
         self._binary = None
         self._binint = None
@@ -59,15 +56,43 @@ class BaseFloat(ABC):
         else:
             raise ValueError("Must provide one of: value, binary, or binint")
 
+    @classmethod
     @abstractmethod
-    def _get_format_spec(self) -> FormatSpec:
+    def format_spec(cls) -> FormatSpec:
         """Return format specification for the specific float type"""
         pass
 
-    @property
-    def format_spec(self) -> FormatSpec:
-        """Get format specification"""
-        return self._format_spec
+    @classmethod
+    def bitwidth(cls) -> int:
+        return cls.format_spec().total_bits
+
+    @classmethod
+    def exponent_bits(cls) -> int:
+        return cls.format_spec().exponent_bits
+
+    @classmethod
+    def mantissa_bits(cls) -> int:
+        return cls.format_spec().mantissa_bits
+
+    @classmethod
+    def bias(cls) -> int:
+        return cls.format_spec().bias
+
+    @classmethod
+    def max_normal(cls) -> float:
+        return cls.format_spec().max_normal
+
+    @classmethod
+    def min_normal(cls) -> float:
+        return cls.format_spec().min_normal
+
+    @classmethod
+    def max_subnormal(cls) -> float:
+        return cls.format_spec().max_subnormal
+
+    @classmethod
+    def min_subnormal(cls) -> float:
+        return cls.format_spec().min_subnormal
 
     def _init_from_value(self, value: Union[int, float, str, "BaseFloat"]):
         """Initialize from a value"""
@@ -95,21 +120,17 @@ class BaseFloat(ABC):
         """Initialize from binary string"""
         # Clean binary string and format it
         clean_binary = "".join(c for c in binary if c in "01")
-        if len(clean_binary) != self._format_spec.total_bits:
-            raise ValueError(
-                f"Binary string must be {self._format_spec.total_bits} bits"
-            )
+        if len(clean_binary) != self.bitwidth():
+            raise ValueError(f"Binary string must be {self.bitwidth()} bits")
         self._binary = self._format_binary_string(clean_binary)
         self._update_all_representations()
 
     def _init_from_binint(self, binint: int):
         """Initialize from binary integer"""
-        if binint < 0 or binint >= (1 << self._format_spec.total_bits):
-            raise ValueError(
-                f"Binary integer must fit in {self._format_spec.total_bits} bits"
-            )
+        if binint < 0 or binint >= (1 << self.bitwidth()):
+            raise ValueError(f"Binary integer must fit in {self.bitwidth()} bits")
         self._binint = binint
-        self._binary = format(binint, f"0{self._format_spec.total_bits}b")
+        self._binary = format(binint, f"0{self.bitwidth()}b")
         self._update_all_representations()
 
     def _update_all_representations(self):
@@ -138,14 +159,12 @@ class BaseFloat(ABC):
         """Format binary string with dots for readability"""
         # Clean the input string first
         clean_binary = "".join(c for c in binary if c in "01")
-        if len(clean_binary) != self._format_spec.total_bits:
-            raise ValueError(
-                f"Binary string must be {self._format_spec.total_bits} bits"
-            )
+        if len(clean_binary) != self.bitwidth():
+            raise ValueError(f"Binary string must be {self.bitwidth()} bits")
 
-        if self._format_spec.total_bits == 8:  # Float8
+        if self.bitwidth() == 8:  # Float8
             return f"{clean_binary[0]}.{clean_binary[1:5]}.{clean_binary[5:]}"
-        elif self._format_spec.total_bits == 16:  # BF16
+        elif self.bitwidth() == 16:  # BF16
             return clean_binary  # BF16 doesn't use dot formatting
         else:
             return clean_binary

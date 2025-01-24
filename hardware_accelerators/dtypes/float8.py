@@ -9,21 +9,19 @@ class Float8(BaseFloat):
     - 3 mantissa bits
     """
 
-    # Define format spec as class constant
-    FORMAT_SPEC = FormatSpec(
-        total_bits=8,
-        exponent_bits=4,
-        mantissa_bits=3,
-        bias=7,
-        # These values are pre-calculated from their binary representations
-        max_normal=2**8 * 1.75,  # from 0.1111.110
-        min_normal=2**-6,  # from 0.0001.000
-        max_subnormal=2**-6 * (7 / 8),  # from 0.0000.111
-        min_subnormal=2**-6 * (1 / 8),  # from 0.0000.001
-    )
-
-    def _get_format_spec(self) -> FormatSpec:
-        return self.FORMAT_SPEC
+    @classmethod
+    def format_spec(cls) -> FormatSpec:
+        return FormatSpec(
+            total_bits=8,
+            exponent_bits=4,
+            mantissa_bits=3,
+            bias=7,
+            # These values are pre-calculated from their binary representations
+            max_normal=2**8 * 1.75,  # from 0.1111.110
+            min_normal=2**-6,  # from 0.0001.000
+            max_subnormal=2**-6 * (7 / 8),  # from 0.0000.111
+            min_subnormal=2**-6 * (1 / 8),  # from 0.0000.001
+        )
 
     def _decimal_to_binary(self, num: float) -> str:
         """Convert decimal number to binary string in E4M3 format"""
