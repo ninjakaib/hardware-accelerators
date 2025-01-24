@@ -80,7 +80,7 @@ def simulate_float_addition(a, b, format_class: BaseFloat, e_bits, m_bits):
     """Simulate floating point addition with PyRTL"""
     pyrtl.reset_working_block()
 
-    width = format_class.FORMAT_SPEC.total_bits
+    width = format_class.bitwidth()
     float_a = pyrtl.Input(width, "float_a")
     float_b = pyrtl.Input(width, "float_b")
     float_out = pyrtl.WireVector(width, "float_out")
@@ -133,7 +133,7 @@ def test_float_adder_random():
         try:
             result = simulate_float_addition(a, b, Float8, 4, 3)
             expected = a + b
-            if abs(expected) > Float8.FORMAT_SPEC.max_normal:
+            if abs(expected) > Float8.max_normal():
                 continue  # Skip if result would overflow
             rel_error = (
                 abs((result - expected) / expected) if expected != 0 else abs(result)
@@ -151,7 +151,7 @@ def test_float_adder_random():
         try:
             result = simulate_float_addition(a, b, BF16, 8, 7)
             expected = a + b
-            if abs(expected) > BF16.FORMAT_SPEC.max_normal:
+            if abs(expected) > BF16.max_normal():
                 continue  # Skip if result would overflow
             rel_error = (
                 abs((result - expected) / expected) if expected != 0 else abs(result)

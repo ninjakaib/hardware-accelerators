@@ -12,7 +12,7 @@ class BF16(BaseFloat):
     """
 
     @classmethod
-    def get_format_spec(cls) -> FormatSpec:
+    def format_spec(cls) -> FormatSpec:
         return FormatSpec(
             total_bits=16,
             exponent_bits=8,
@@ -128,9 +128,7 @@ class BF16(BaseFloat):
             "binary": binary,
             "sign": sign_bit,
             "exponent_bits": exp_bits,
-            "exponent_value": (
-                exp_val - self._format_spec.bias if exp_val != 0 else "subnormal"
-            ),
+            "exponent_value": (exp_val - self.bias() if exp_val != 0 else "subnormal"),
             "mantissa_bits": mantissa_bits,
             "mantissa_value": mantissa_val,
             "decimal_approx": self.decimal_approx,

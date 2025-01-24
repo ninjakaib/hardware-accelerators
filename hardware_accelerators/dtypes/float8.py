@@ -37,7 +37,7 @@ class Float8(BaseFloat):
             return sign + ".1111.111"
 
         # Clamp to max value if overflow
-        if num > self.FORMAT_SPEC.max_normal:
+        if num > self.max_normal():
             return "0.1111.110" if sign == "0" else "1.1111.110"
 
         # Find exponent and normalized mantissa
@@ -63,15 +63,15 @@ class Float8(BaseFloat):
         if temp < 1:  # Subnormal
             biased_exp = "0000"
         else:  # Normal
-            biased_exp = format(exp + self.format_spec.bias, "04b")
+            biased_exp = format(exp + self.bias(), "04b")
 
         # Calculate mantissa bits
         if temp < 1:  # Subnormal
-            mantissa_value = int(temp * (2**self.format_spec.mantissa_bits))
+            mantissa_value = int(temp * (2 ** self.mantissa_bits()))
         else:  # Normal
-            mantissa_value = int((temp - 1) * (2**self.format_spec.mantissa_bits))
+            mantissa_value = int((temp - 1) * (2 ** self.mantissa_bits()))
 
-        mantissa = format(mantissa_value, f"0{self.format_spec.mantissa_bits}b")
+        mantissa = format(mantissa_value, f"0{self.mantissa_bits()}b")
 
         return f"{sign}.{biased_exp}.{mantissa}"
 
@@ -98,11 +98,11 @@ class Float8(BaseFloat):
 
         if biased_exp == 0:  # Subnormal number
             actual_exp = -6  # emin
-            mantissa_value = int(mantissa, 2) / (2**self.format_spec.mantissa_bits)
+            mantissa_value = int(mantissa, 2) / (2 ** self.mantissa_bits())
             return sign * (2**actual_exp) * mantissa_value
         else:  # Normal number
-            actual_exp = biased_exp - self.format_spec.bias
-            mantissa_value = 1 + int(mantissa, 2) / (2**self.format_spec.mantissa_bits)
+            actual_exp = biased_exp - self.bias()
+            mantissa_value = 1 + int(mantissa, 2) / (2 ** self.mantissa_bits())
             return sign * (2**actual_exp) * mantissa_value
 
     @classmethod
@@ -151,9 +151,7 @@ class Float8(BaseFloat):
             "binary": self.binary,
             "sign": sign_bit,
             "exponent_bits": exp_bits,
-            "exponent_value": (
-                exp_val - self.format_spec.bias if exp_val != 0 else "subnormal"
-            ),
+            "exponent_value": (exp_val - self.bias() if exp_val != 0 else "subnormal"),
             "mantissa_bits": mantissa_bits,
             "mantissa_value": mantissa_val,
             "decimal_approx": self.decimal_approx,

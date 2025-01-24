@@ -96,15 +96,7 @@ class BaseFloat(ABC):
 
     def _init_from_value(self, value: Union[int, float, str, "BaseFloat"]):
         """Initialize from a value"""
-        try:
-            value = float(value)
-        except:
-            raise TypeError(f"Could not cast {type(value)} to float")
-        if isinstance(value, (int, float)):
-            self._original_value = float(value)
-            self._binary = self._decimal_to_binary(value)
-            self._update_all_representations()
-        elif isinstance(value, str):
+        if isinstance(value, str):
             if value.startswith("0b"):
                 self._init_from_binint(int(value, 2))
             else:
@@ -114,7 +106,12 @@ class BaseFloat(ABC):
             self._binary = value.binary
             self._update_all_representations()
         else:
-            raise TypeError(f"Unsupported type: {type(value)}")
+            try:
+                self._original_value = float(value)
+                self._binary = self._decimal_to_binary(value)
+                self._update_all_representations()
+            except:
+                raise TypeError(f"Unsupported type: {type(value)}")
 
     def _init_from_binary_string(self, binary: str):
         """Initialize from binary string"""
