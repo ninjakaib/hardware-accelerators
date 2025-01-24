@@ -1,17 +1,19 @@
+from typing import Type
 import pyrtl
 from pyrtl import WireVector
 
 from .utils.common import extract_float_components
 from .utils.pipeline import SimplePipeline
 from .utils.multiplier_utils import *
+from ..dtypes import BaseFloat
 
 
 def float_multiplier(
     float_a: WireVector,
     float_b: WireVector,
-    e_bits: int,
-    m_bits: int,
+    dtype: Type[BaseFloat],
 ) -> WireVector:
+    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
 
     sign_out, exp_sum, mant_product = multiplier_stage_2(
         *extract_float_components(float_a, float_b, e_bits, m_bits), m_bits
@@ -25,7 +27,9 @@ def float_multiplier(
         unbiased_exp, leading_zeros, mant_product, m_bits, e_bits
     )
 
-    return pyrtl.concat(sign_out, final_exponent, final_mantissa)
+    result = WireVector(dtype.bitwidth())
+    result <<= pyrtl.concat(sign_out, final_exponent, final_mantissa)
+    return result
 
 
 class FloatMultiplierPipelined(SimplePipeline):
@@ -33,14 +37,13 @@ class FloatMultiplierPipelined(SimplePipeline):
         self,
         float_a: WireVector,
         float_b: WireVector,
-        e_bits: int,
-        m_bits: int,
+        dtype: Type[BaseFloat],
     ):
-        self.e_bits = e_bits
-        self.m_bits = m_bits
+        self.e_bits = dtype.exponent_bits()
+        self.m_bits = dtype.mantissa_bits()
         self._float_a = float_a
         self._float_b = float_b
-        self._result = pyrtl.WireVector(e_bits + m_bits + 1)  # , "result")
+        self._result = pyrtl.WireVector(dtype.bitwidth())  # , "result")
         super(FloatMultiplierPipelined, self).__init__()
 
     def stage_1(self):

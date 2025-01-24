@@ -1,5 +1,8 @@
+from typing import Type
 import pyrtl
 from pyrtl import WireVector
+
+from ..dtypes import BaseFloat
 
 from .utils.common import extract_float_components
 from .utils.adder_utils import *
@@ -14,9 +17,11 @@ from .utils.pipeline import SimplePipeline
 def float_adder(
     float_a: WireVector,
     float_b: WireVector,
-    e_bits: int,
-    m_bits: int,
+    dtype: Type[BaseFloat],
 ) -> WireVector:
+
+    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
+
     sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = extract_float_components(
         float_a, float_b, e_bits, m_bits
     )
@@ -51,7 +56,7 @@ def float_adder(
         m_bits,
     )
 
-    float_result = WireVector(e_bits + m_bits + 1)  # , "float_result")
+    float_result = WireVector(dtype.bitwidth())  # , "float_result")
     float_result <<= pyrtl.concat(final_sign, final_exp, norm_mantissa)
     return float_result
 
@@ -67,8 +72,7 @@ class FloatAdderPipelined(SimplePipeline):
         float_a: WireVector,
         float_b: WireVector,
         w_en: WireVector,
-        e_bits: int,
-        m_bits: int,
+        dtype: Type[BaseFloat],
     ):
         """
         Initialize a pipelined BFloat16 adder with write enable control.
@@ -132,15 +136,15 @@ class FloatAdderPipelined(SimplePipeline):
         """
         assert (
             len(float_a) == len(float_b) == 16
-        ), f"float inputs must be {e_bits + m_bits + 1} bits"
+        ), f"float inputs must be {dtype.bitwidth()} bits"
         assert len(w_en) == 1, "write enable signal must be 1 bit"
-        self.e_bits = e_bits
-        self.m_bits = m_bits
+
+        self.e_bits, self.m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
         # Define inputs and outputs
         self._float_a, self._float_b = float_a, float_b
         self._write_enable = w_en
         # self._result = pyrtl.Register(self.e_bits + self.m_bits + 1, 'result')
-        self._result_out = pyrtl.WireVector(e_bits + m_bits + 1)  # , "_result")
+        self._result_out = pyrtl.WireVector(dtype.bitwidth())  # , "_result")
         super(FloatAdderPipelined, self).__init__()
 
     @property
