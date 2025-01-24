@@ -65,4 +65,5 @@
         }
     },
     "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "python.analysis.typeCheckingMode": "basic",
 }
