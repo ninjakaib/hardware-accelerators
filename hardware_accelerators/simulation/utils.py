@@ -10,7 +10,7 @@ from pyrtl.simulation import default_renderer
 
 
 def render_waveform(
-    trace,
+    sim: pyrtl.Simulation,
     trace_list: List[str] = None,
     output_file: str = None,
     renderer=default_renderer(),
@@ -21,7 +21,10 @@ def render_waveform(
 ):
     # Generate the HTML string
     htmlstring = pyrtl.trace_to_html(
-        trace, trace_list=trace_list, repr_func=repr_func, repr_per_name=repr_per_name
+        sim.tracer,
+        trace_list=trace_list,
+        repr_func=repr_func,
+        repr_per_name=repr_per_name,
     )
 
     # Create complete HTML document with required WaveDrom scripts

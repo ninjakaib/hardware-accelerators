@@ -1,155 +1,241 @@
+from abc import ABC, abstractmethod
 from typing import List, Type
-from dataclasses import dataclass
-from pyrtl import WireVector, Register, Const, chop
+from pyrtl import WireVector, Register, Const, chop, Simulation
 from .processing_element import ProcessingElement
 from ..dtypes.base import BaseFloat
 
 
-class MatrixMultiplier:
-    """Hardware implementation of a systolic array matrix multiplier.
+from hardware_accelerators import *
+from hardware_accelerators.simulation import *
+import numpy as np
+from typing import Callable, Type, List, Type
 
-    This class creates and connects the hardware components needed for systolic array
-    matrix multiplication, including the processing element array, input delay network
-    for data skewing, and output synchronization buffer.
 
-    The hardware supports both individual wire connections and wide vectorized interfaces
-    for data, weights and results. All floating point operations use parameterized
-    number formats and arithmetic implementations.
-
-    Attributes:
-        size: Dimension N of the NxN systolic array
-        data_type: Number format class for input data and weights
-        accum_type: Number format class for accumulation
-        data_width: Bit width of data/weight values
-        accum_width: Bit width of accumulator values
-    """
-
+class BaseSystolicArray(ABC):
     def __init__(
         self,
         size: int,
         data_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
-        multiplier_type,
-        adder_type,
-        pipeline_mult: bool = False,
+        multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
+        adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
     ):
-        """Initialize systolic array hardware structure.
+        """Base class for implementing systolic array hardware structures
 
         Args:
-            size: N for NxN array dimension
-            data_type: Number format class for inputs (e.g. Float8, BF16)
-            accum_type: Number format class for accumulation
-            multiplier_type: Floating point multiplier implementation to use
-            adder_type: Floating point adder implementation to use
-            pipeline_mult: If True, adds pipeline register after multiplication
-
-        The hardware is constructed but IO ports are not connected - use the connect_*
-        methods to attach external signals after initialization.
+            size: N for NxN array
+            data_type: Number format for inputs (Float8, BF16)
+            accum_type: Number format for accumulation
+            multiplier: Multiplier implementation to use
+            adder: Adder implementation to use
         """
+        # Set configuration attributes
         self.size = size
         self.data_type = data_type
         self.accum_type = accum_type
-        self.data_width = data_type.bitwidth()
-        self.accum_width = accum_type.bitwidth()
+        data_width = data_type.bitwidth()
+        accum_width = accum_type.bitwidth()
+        self.multiplier = multiplier
+        self.adder = adder
 
-        # Create hardware components
-        self.systolic_array = SystolicArray(
-            size, data_type, accum_type, multiplier_type, adder_type, pipeline_mult
-        )
-        self.systolic_setup = SystolicSetup(size, self.data_width)
-        self.result_buffer = SystolicSetup(size, self.accum_width)
+        # Input wires
+        self.data_in = [WireVector(data_width) for _ in range(size)]
+        self.weights_in = [WireVector(data_width) for _ in range(size)]
+        self.results_out = [WireVector(accum_width) for _ in range(size)]
 
-        # Connect internal components
-        self._connect_internal_components()
+        # Control wires
+        self.weight_enable = WireVector(1)
 
-    def _connect_internal_components(self):
-        """Connect systolic array to input/output buffers"""
+        # Create PE array
+        self.pe_array = self._create_pe_array()
+
+        # Connect PEs in systolic pattern based on dataflow type
+        self._connect_array()
+
+    @abstractmethod
+    def _create_pe_array(self) -> List[List[ProcessingElement]]:
+        return [
+            [
+                ProcessingElement(
+                    self.data_type,
+                    self.accum_type,
+                    self.multiplier,
+                    self.adder,
+                )
+                for _ in range(self.size)
+            ]
+            for _ in range(self.size)
+        ]
+
+    @abstractmethod
+    def _connect_array(self):
+        pass
+
+    # -----------------------------------------------------------------------------
+    # Connection functions return their inputs to allow for more concise simulation
+    # -----------------------------------------------------------------------------
+    def connect_weight_enable(self, source: WireVector):
+        """Connect weight load enable signal"""
+        self.weight_enable <<= source
+        return source
+
+    def connect_data_input(self, row: int, source: WireVector):
+        """Connect data input for specified row"""
+        assert 0 <= row < self.size
+        self.data_in[row] <<= source
+        return source
+
+    def connect_weight_input(self, col: int, source: WireVector):
+        """Connect weight input for specified column"""
+        assert 0 <= col < self.size
+        self.weights_in[col] <<= source
+        return source
+
+    def connect_result_output(self, col: int, dest: WireVector):
+        """Connect result output from specified column"""
+        assert 0 <= col < self.size
+        dest <<= self.results_out[col]
+        return dest
+
+    # -----------------------------------------------------------------------------
+    # Simulation helper methods
+    # -----------------------------------------------------------------------------
+    def inspect_weights(self, sim: Simulation, verbose: bool = True):
+        weights = np.zeros((self.size, self.size))
+        enabled = sim.inspect(self.weight_enable.name) == 1
+        for row in range(self.size):
+            for col in range(self.size):
+                w = sim.inspect(self.pe_array[row][col].weight_reg.name)
+                weights[row][col] = self.data_type(binint=w).decimal_approx
+        if verbose:
+            print(f"Weights: {enabled=}")
+            print(np.array_str(weights, precision=3, suppress_small=True), "\n")
+        return weights
+
+    def inspect_data(self, sim: Simulation, verbose: bool = True):
+        data = np.zeros((self.size, self.size))
+        for row in range(self.size):
+            for col in range(self.size):
+                d = sim.inspect(self.pe_array[row][col].data_reg.name)
+                data[row][col] = self.data_type(binint=d).decimal_approx
+        if verbose:
+            print("Data:")
+            print(np.array_str(data, precision=4, suppress_small=True), "\n")
+        return data
+
+    def inspect_outputs(self, sim: Simulation, verbose: bool = True):
+        current_results = np.zeros(self.size)
         for i in range(self.size):
-            self.systolic_array.connect_data_input(i, self.systolic_setup.outputs[i])
-            self.systolic_array.connect_result_output(
-                i, self.result_buffer.inputs[-i - 1]
-            )
+            r = sim.inspect(self.results_out[i].name)
+            current_results[i] = self.accum_type(binint=r).decimal_approx
+        if verbose:
+            print("Output:")
+            print(np.array_str(current_results, precision=4, suppress_small=True), "\n")
+        return current_results
 
-    def _validate_wire_list(
-        self, wires: List[WireVector], expected_width: int, purpose: str
+
+class SystolicArrayDiP(BaseSystolicArray):
+    def __init__(
+        self,
+        size: int,
+        data_type: Type[BaseFloat],
+        accum_type: Type[BaseFloat],
+        multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
+        adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
+        pipeline: bool = False,
     ):
-        """Validate a list of wires meets requirements"""
-        if len(wires) != self.size:
-            raise ValueError(f"{purpose} requires {self.size} wires, got {len(wires)}")
-        if not all(isinstance(w, WireVector) for w in wires):
-            raise TypeError(f"All {purpose} must be WireVector instances")
-        if not all(w.bitwidth == expected_width for w in wires):
-            raise ValueError(f"All {purpose} must have bitwidth {expected_width}")
+        """Initialize systolic array hardware structure.
 
-    def _split_wide_wire(
-        self, wire: WireVector, width_per_slice: int
-    ) -> List[WireVector]:
-        """Split a wide wire into equal slices"""
-        expected_width = width_per_slice * self.size
-        if wire.bitwidth != expected_width:
-            raise ValueError(
-                f"Wide wire must have bitwidth {expected_width}, got {wire.bitwidth}"
-            )
-        # Use chop instead of manual slicing
-        return chop(wire, *([width_per_slice] * self.size))
+        This class uses Ḏiagonal-I̱nput and P̱ermutated weight-stationary (DiP) dataflow.
 
-    def connect_weight_enable(self, enable: WireVector):
-        """Connect weight enable signal"""
-        if not isinstance(enable, WireVector) or enable.bitwidth != 1:
-            raise ValueError("Weight enable must be 1-bit WireVector")
-        self.systolic_array.connect_weight_load(enable)
+        Args:
+            size: N for NxN array
+            data_type: Number format for inputs (Float8, BF16)
+            accum_type: Number format for accumulation
+            multiplier: Multiplier implementation to use
+            adder: Adder implementation to use
+            pipeline: Add pipeline register after multiplication in processing element
+        """
+        self.pipeline = pipeline
 
-    def connect_weights(self, weights: WireVector | List[WireVector]):
-        """Connect weight inputs either as list of wires or single wide wire"""
-        if isinstance(weights, list):
-            self._validate_wire_list(weights, self.data_width, "weight inputs")
-            weight_wires = weights
-        else:
-            # Split wide wire into individual weight wires
-            weight_wires = chop(weights, *([self.data_width] * self.size))
+        # Control signal registers to propogate signal down the array
+        self.enable_in = WireVector(1)
+        self.control_registers = [Register(1) for _ in range(size)]
 
-        for i, wire in enumerate(weight_wires):
-            self.systolic_array.connect_weight_input(i, wire)
+        # If PEs contain an extra pipeline stage, 1 additional control reg is needed
+        if self.pipeline:
+            self.control_registers.append(Register(1))
 
-    def connect_data(self, data: WireVector | List[WireVector]):
-        """Connect data inputs either as list of wires or single wide wire"""
-        if isinstance(data, list):
-            self._validate_wire_list(data, self.data_width, "data inputs")
-            data_wires = data
-        else:
-            # Split wide wire into individual data wires
-            data_wires = chop(data, *([self.data_width] * self.size))
+        super().__init__(size, data_type, accum_type, multiplier, adder)
 
-        for i, wire in enumerate(data_wires):
-            self.systolic_setup.connect_input(i, wire)
+    def _create_pe_array(self) -> List[List[ProcessingElement]]:
+        # Create PE array
+        return [
+            [
+                ProcessingElement(
+                    self.data_type,
+                    self.accum_type,
+                    self.multiplier,
+                    self.adder,
+                    self.pipeline,
+                )
+                for _ in range(self.size)
+            ]
+            for _ in range(self.size)
+        ]
 
-    def connect_results(self, results: WireVector | List[WireVector]):
-        """Connect result outputs either as list of wires or single wide wire"""
-        if isinstance(results, list):
-            self._validate_wire_list(results, self.accum_width, "result outputs")
-            result_wires = results
-        else:
-            # Split wide wire into individual result wires
-            result_wires = chop(results, *([self.accum_width] * self.size))
+    def _connect_array(self):
+        """Connect processing elements in DiP configuration
+        - All data flows top to bottom diagonally shifted
+        - Weights are loaded simultaneously across array
+        - Data inputs arrive synchronously
+        """
+        # Connect control signal registers that propagate down the array
+        self.control_registers[0].next <<= self.enable_in
+        for i in range(1, len(self.control_registers)):
+            self.control_registers[i].next <<= self.control_registers[i - 1]
 
-        for i, wire in enumerate(result_wires):
-            self.result_buffer.connect_output(-i - 1, wire)
+        for row in range(self.size):
+            for col in range(self.size):
+                pe = self.pe_array[row][col]
+
+                # Connect PE inputs:
+                # First row gets external input, others connect to PE above
+                if row == 0:
+                    pe.connect_data_enable(self.enable_in)
+                    pe.connect_data(self.data_in[col])
+                    pe.connect_weight(self.weights_in[col])
+                    pe.connect_accum(Const(0))
+
+                # DiP config: PEs connected to previous row and data diagonally shifted by 1
+                else:
+                    pe.connect_data_enable(self.control_registers[row - 1])
+                    pe.connect_data(self.pe_array[row - 1][col - self.size + 1])
+                    pe.connect_weight(self.pe_array[row - 1][col])
+                    pe.connect_accum(self.pe_array[row - 1][col])
+
+                # Delay the control signal for accumulator by num pipeline stages
+                if self.pipeline:
+                    pe.connect_mul_enable(self.control_registers[row])
+                    pe.connect_adder_enable(self.control_registers[row + 1])
+                else:
+                    pe.connect_adder_enable(self.control_registers[row])
+
+                # Connect weight enable signal (shared by all PEs)
+                pe.connect_weight_enable(self.weight_enable)
+
+                # Connect bottom row results to output ports
+                if row == self.size - 1:
+                    self.results_out[col] <<= pe.outputs.accum
+
+    def connect_enable_input(self, source: WireVector):
+        """Connect PE enable signal. Controls writing to the data input register"""
+        self.enable_in <<= source
+        return source
 
 
-@dataclass
-class SystolicArrayPorts:
-    """Container for array I/O ports"""
-
-    # Input ports for each row/column
-    data_in: List[WireVector]  # Input activations flowing left->right
-    weights_in: List[WireVector]  # Input weights flowing top->bottom
-    weight_load: WireVector  # Weight load enable signal (1-bit)
-    # Output ports from bottom row
-    results_out: List[WireVector]  # Output partial sums
-
-
-# TODO: add different ways of initializing systolic array for various dataflow patterns (static weight vs. output)
-class SystolicArray:
+# TODO: Add control logic
+class SystolicArrayWS(BaseSystolicArray):
     """Hardware implementation of a configurable systolic processing array.
 
     Creates and connects an NxN array of processing elements (PEs) in a systolic pattern.
@@ -157,11 +243,6 @@ class SystolicArray:
     - Input activations flow left to right through the array
     - Weights are loaded and remain stationary in PEs
     - Partial sums flow top to bottom and accumulate
-
-    Future implementations will support different dataflow patterns:
-    - Output stationary: Partial sums remain in PEs, inputs flow through
-    - Input stationary: Activations remain in PEs, weights flow through
-    - Time-multiplexed: Multiple dataflow patterns using the same hardware
 
     The array provides external interfaces for:
     - Data inputs (one per row)
@@ -177,7 +258,6 @@ class SystolicArray:
         data_type: Number format for input data and weights
         accum_type: Number format for accumulation
         pe_array: 2D list containing all processing elements
-        ports: Container for all external interface wires
     """
 
     def __init__(
@@ -185,10 +265,8 @@ class SystolicArray:
         size: int,
         data_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
-        multiplier_type,
-        adder_type,
-        pipeline_mult: bool = False,
-        dip: bool = False,
+        multiplier,
+        adder,
     ):
         """Initialize systolic array hardware structure for weight stationary dataflow
 
@@ -196,52 +274,24 @@ class SystolicArray:
             size: N for NxN array
             data_type: Number format for inputs (Float8, BF16)
             accum_type: Number format for accumulation
-            multiplier_type: Multiplier implementation to use
-            adder_type: Adder implementation to use
-            pipeline_mult: Add pipeline register after multiplication
-            dip: Control the dataflow configuration between PEs (False creates standard weight stationary setup, True uses new architecture and requires permutation of weights before loading)
+            multiplier: Multiplier implementation to use
+            adder: Adder implementation to use
+            pipeline: Add pipeline register after multiplication
         """
-        self.size = size
-        self.dip = dip
-        self.data_type = data_type
-        self.accum_type = accum_type
 
-        # Create interface wires
-        data_width = data_type.bitwidth()
-        accum_width = accum_type.bitwidth()
+        self.systolic_setup = SystolicSetup(size, self.data_type)
+        self.result_buffer = SystolicSetup(size, self.accum_type)
 
-        self.data_in = [WireVector(bitwidth=data_width) for _ in range(size)]
-        self.weights_in = [WireVector(bitwidth=data_width) for _ in range(size)]
-        self.weight_load = WireVector(bitwidth=1)
-        self.results_out = [WireVector(bitwidth=accum_width) for _ in range(size)]
+        super().__init__(size, data_type, accum_type, multiplier, adder)
 
-        # Create PE array
-        self.pe_array = [
-            [
-                ProcessingElement(
-                    data_type, accum_type, multiplier_type, adder_type, pipeline_mult
-                )
-                for _ in range(size)
-            ]
-            for _ in range(size)
-        ]
-
-        # Connect PEs in systolic pattern
-        self._connect_array()
-
-        # Package ports for external access
-        self.ports = SystolicArrayPorts(
-            data_in=self.data_in,
-            weights_in=self.weights_in,
-            weight_load=self.weight_load,
-            results_out=self.results_out,
-        )
+    def _create_pe_array(self) -> List[List[ProcessingElement]]:
+        return super()._create_pe_array()
 
     def _connect_array(self):
         """Connect processing elements in systolic pattern
 
         Data flow patterns:
-        - Activations flow left to right
+        - Activations flow left to right, must be diagonally buffered with FIFO
         - Weights flow top to bottom
         - Partial sums flow top to bottom
         """
@@ -250,56 +300,30 @@ class SystolicArray:
                 pe = self.pe_array[row][col]
 
                 # Connect activation input:
-                # First column gets external input, others connect to PE on left
-                if not self.dip:
-                    if col == 0:
-                        pe.connect_data(self.data_in[row])
-                    else:
-                        pe.connect_data(self.pe_array[row][col - 1])
+                if col == 0:
+                    # First column gets external input
+                    self.systolic_setup.connect_input(row, self.data_in[row])
+                    pe.connect_data(self.systolic_setup.outputs[row])
+                else:
+                    # PE data comes from PE to the left
+                    pe.connect_data(self.pe_array[row][col - 1])
 
-                # Connect weight input:
+                # Connect weight and accumulator inputs:
                 # First row gets external input, others connect to PE above
                 if row == 0:
                     pe.connect_weight(self.weights_in[col])
-                    if self.dip:
-                        pe.connect_data(self.data_in[col])
-                else:
-                    pe.connect_weight(self.pe_array[row - 1][col])
-                    if self.dip:
-                        pe.connect_data(self.pe_array[row - 1][col - self.size + 1])
-
-                # Connect accumulator input:
-                # First row starts at 0, others connect to PE above
-                if row == 0:
                     pe.connect_accum(Const(0))
                 else:
+                    pe.connect_weight(self.pe_array[row - 1][col])
                     pe.connect_accum(self.pe_array[row - 1][col])
 
                 # Connect weight enable to all PEs
-                pe.connect_weight_enable(self.weight_load)
+                pe.connect_weight_enable(self.weight_enable)
 
                 # Connect bottom row results to output ports
                 if row == self.size - 1:
-                    self.results_out[col] <<= pe.outputs.accum
-
-    def connect_data_input(self, row: int, source: WireVector):
-        """Connect data input for specified row"""
-        assert 0 <= row < self.size
-        self.data_in[row] <<= source
-
-    def connect_weight_input(self, col: int, source: WireVector):
-        """Connect weight input for specified column"""
-        assert 0 <= col < self.size
-        self.weights_in[col] <<= source
-
-    def connect_weight_load(self, source: WireVector):
-        """Connect weight load enable signal"""
-        self.weight_load <<= source
-
-    def connect_result_output(self, col: int, dest: WireVector):
-        """Connect result output from specified column"""
-        assert 0 <= col < self.size
-        dest <<= self.results_out[col]
+                    self.result_buffer.inputs[-col - 1] <<= pe.outputs.accum
+                    self.results_out[col] <<= self.result_buffer.outputs[-col - 1]
 
 
 class SystolicSetup:
@@ -318,7 +342,7 @@ class SystolicSetup:
     - Can be used for both input and output buffering
     """
 
-    def __init__(self, size: int, data_width: int):
+    def __init__(self, size: int, dtype: Type[BaseFloat]):
         """Initialize delay register network
 
         Args:
@@ -326,20 +350,20 @@ class SystolicSetup:
             data_width: Bit width of data values
         """
         self.size = size
-        self.data_width = data_width
+        self.data_width = dtype.bitwidth()
 
         # Create input wires for each row
-        self.inputs = [WireVector(bitwidth=data_width) for _ in range(size)]
+        self.inputs = [WireVector(self.data_width) for _ in range(size)]
 
         # Create delay register network - more delays for lower rows
         self.delay_regs = []
-        self.outputs = [WireVector(bitwidth=data_width) for _ in range(size)]
+        self.outputs = [WireVector(self.data_width) for _ in range(size)]
 
         for i in range(size):  # Create num rows equal to the size of systolic array
             row: List[Register] = []
             # Number of buffer registers equals row index for lower triangular config
             for j in range(i + 1):
-                row.append(Register(bitwidth=data_width))
+                row.append(Register(self.data_width))
                 if j != 0:
                     # Left most register connects to inputs, others connect to previous reg
                     row[j].next <<= row[j - 1]
