@@ -4,6 +4,9 @@ from ..dtypes.base import BaseFloat
 from dataclasses import dataclass
 from typing import Callable, Type, Self
 
+# TODO: Add float type conversion logic to pass different bitwidths to the accumulator
+# TODO: specify different dtypes for weights and activations
+
 
 @dataclass
 class PEOutputs:

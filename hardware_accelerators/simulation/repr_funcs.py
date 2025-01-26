@@ -10,7 +10,7 @@ def repr_bf16(x):
 
 
 def repr_bf16_binary(x):
-    return f"{BF16(binint=x).binary}"
+    return f"{BF16(binint=x)._format_binary_string()}"
 
 
 def repr_sign(x):

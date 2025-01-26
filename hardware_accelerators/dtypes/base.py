@@ -152,9 +152,11 @@ class BaseFloat(ABC):
         """Convert binary string to decimal approximation"""
         pass
 
-    def _format_binary_string(self, binary: str) -> str:
+    def _format_binary_string(self, binary=None) -> str:
         """Format binary string with dots for readability"""
         # Clean the input string first
+        if binary is None:
+            binary = self.binary
         clean_binary = "".join(c for c in binary if c in "01")
         if len(clean_binary) != self.bitwidth():
             raise ValueError(f"Binary string must be {self.bitwidth()} bits")

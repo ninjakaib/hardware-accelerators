@@ -4,11 +4,14 @@ from pyrtl import WireVector, Register, Const, chop, Simulation
 from .processing_element import ProcessingElement
 from ..dtypes.base import BaseFloat
 
-
 from hardware_accelerators import *
 from hardware_accelerators.simulation import *
 import numpy as np
 from typing import Callable, Type, List, Type
+
+
+# TODO: Add float type conversion logic to pass different bitwidths to the accumulator
+# TODO: specify different dtypes for weights and activations
 
 
 class BaseSystolicArray(ABC):
@@ -122,6 +125,17 @@ class BaseSystolicArray(ABC):
             print("Data:")
             print(np.array_str(data, precision=4, suppress_small=True), "\n")
         return data
+
+    def inspect_accumulators(self, sim: Simulation, verbose: bool = True):
+        acc_regs = np.zeros((self.size, self.size))
+        for row in range(self.size):
+            for col in range(self.size):
+                d = sim.inspect(self.pe_array[row][col].accum_reg.name)
+                acc_regs[row][col] = self.accum_type(binint=d).decimal_approx
+        if verbose:
+            print("Data:")
+            print(np.array_str(acc_regs, precision=4, suppress_small=True), "\n")
+        return acc_regs
 
     def inspect_outputs(self, sim: Simulation, verbose: bool = True):
         current_results = np.zeros(self.size)
