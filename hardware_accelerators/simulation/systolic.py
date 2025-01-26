@@ -40,7 +40,7 @@ class SimulationState:
         )
 
 
-class SystolicArrayDiPSimulator:
+class SystolicArraySimulator:
     def __init__(
         self,
         size: int,
