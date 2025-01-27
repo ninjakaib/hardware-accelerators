@@ -11,23 +11,22 @@ class BF16(BaseFloat):
     - 7 mantissa bits
     """
 
-    FORMAT_SPEC = FormatSpec(
-        total_bits=16,
-        exponent_bits=8,
-        mantissa_bits=7,
-        bias=127,
-        # max_normal: exp=11111110 (254-127=127), mantissa=1111111 (1 + 127/128)
-        max_normal=2**127 * (1 + 127 / 128),
-        # min_normal: exp=00000001 (1-127=-126), mantissa=0000000 (1 + 0/128)
-        min_normal=2**-126 * (1 + 0 / 128),
-        # max_subnormal: exp=00000000 (-126), mantissa=1111111 (127/128)
-        max_subnormal=2**-126 * (127 / 128),
-        # min_subnormal: exp=00000000 (-126), mantissa=0000001 (1/128)
-        min_subnormal=2**-126 * (1 / 128),
-    )
-
-    def _get_format_spec(self) -> FormatSpec:
-        return self.FORMAT_SPEC
+    @classmethod
+    def format_spec(cls) -> FormatSpec:
+        return FormatSpec(
+            total_bits=16,
+            exponent_bits=8,
+            mantissa_bits=7,
+            bias=127,
+            # max_normal: exp=11111110 (254-127=127), mantissa=1111111 (1 + 127/128)
+            max_normal=2**127 * (1 + 127 / 128),
+            # min_normal: exp=00000001 (1-127=-126), mantissa=0000000 (1 + 0/128)
+            min_normal=2**-126 * (1 + 0 / 128),
+            # max_subnormal: exp=00000000 (-126), mantissa=1111111 (127/128)
+            max_subnormal=2**-126 * (127 / 128),
+            # min_subnormal: exp=00000000 (-126), mantissa=0000001 (1/128)
+            min_subnormal=2**-126 * (1 / 128),
+        )
 
     def _float32_to_bf16_parts(self, f32: float) -> Tuple[int, int, int]:
         """Convert float32 to BF16 parts (sign, exponent, mantissa)"""
@@ -129,9 +128,7 @@ class BF16(BaseFloat):
             "binary": binary,
             "sign": sign_bit,
             "exponent_bits": exp_bits,
-            "exponent_value": (
-                exp_val - self._format_spec.bias if exp_val != 0 else "subnormal"
-            ),
+            "exponent_value": (exp_val - self.bias() if exp_val != 0 else "subnormal"),
             "mantissa_bits": mantissa_bits,
             "mantissa_value": mantissa_val,
             "decimal_approx": self.decimal_approx,

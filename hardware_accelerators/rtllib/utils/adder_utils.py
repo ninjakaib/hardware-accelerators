@@ -24,12 +24,12 @@ def adder_stage_2(
     assert len(exp_a) == len(exp_b) == e_bits
     assert len(mant_a) == len(mant_b) == m_bits + 1
 
-    sign_xor = WireVector(1, name="sign_xor")
-    exp_diff = WireVector(e_bits + 1, name="exp_diff")
-    signed_shift = WireVector(e_bits + 1, name="signed_shift")
-    exp_larger = WireVector(e_bits, name="exp_larger")
-    mant_smaller = WireVector(m_bits + 1, name="mant_smaller")
-    mant_larger = WireVector(m_bits + 1, name="mant_larger")
+    sign_xor = WireVector(1)  # , name="sign_xor")
+    exp_diff = WireVector(e_bits + 1)  # , name="exp_diff")
+    signed_shift = WireVector(e_bits + 1)  # , name="signed_shift")
+    exp_larger = WireVector(e_bits)  # , name="exp_larger")
+    mant_smaller = WireVector(m_bits + 1)  # , name="mant_smaller")
+    mant_larger = WireVector(m_bits + 1)  # , name="mant_larger")
 
     sign_xor <<= sign_a ^ sign_b
 
@@ -154,8 +154,8 @@ def adder_stage_5(
 
 def calculate_exponent_difference(exp_a: WireVector, exp_b: WireVector):
     assert len(exp_a) == len(exp_b)
-    exp_diff = WireVector(len(exp_a) + 1, name="exp_diff")
-    exp_greater = WireVector(len(exp_a), name="exp_greater")
+    exp_diff = WireVector(len(exp_a) + 1)  # , name="exp_diff")
+    exp_greater = WireVector(len(exp_a))  # , name="exp_greater")
 
     exp_diff <<= pyrtl.signed_sub(
         exp_a, exp_b
@@ -185,7 +185,7 @@ def align_mantissa(
     max_useful_shift = 2 * (m_bits + 1)
 
     # Clamp shift amount to maximum useful value
-    clamped_shift = WireVector(e_bits, "clamped_shift")
+    clamped_shift = WireVector(e_bits)  # , "clamped_shift")
     clamped_shift <<= pyrtl.select(
         shift_amount > max_useful_shift,
         max_useful_shift,
@@ -195,11 +195,11 @@ def align_mantissa(
     # Perform the right shift
     extended_mantissa = pyrtl.concat(mant_smaller, pyrtl.Const(0, m_bits + 1))
 
-    aligned_mantissa = WireVector(max_useful_shift, name="aligned_mantissa")
+    aligned_mantissa = WireVector(max_useful_shift)  # , name="aligned_mantissa")
     assert len(extended_mantissa) == len(aligned_mantissa)
 
     aligned_mantissa <<= pyrtl.shift_right_logical(extended_mantissa, clamped_shift)
-    return pyrtl.chop(aligned_mantissa, *[m_bits + 1] * 2)
+    return pyrtl.chop(aligned_mantissa, *[m_bits + 1] * 2)  # type: ignore
 
 
 def add_sub_mantissas(
@@ -224,7 +224,7 @@ def add_sub_mantissas(
     assert len(mant_aligned) == len(mant_unchanged) == m_bits + 1
     assert len(sign_xor) == 1
 
-    raw_result = WireVector(m_bits + 3, "raw_result")
+    raw_result = WireVector(m_bits + 3)  # , "raw_result")
     with pyrtl.conditional_assignment:
         with sign_xor:
             raw_result |= mant_unchanged.zero_extended(
@@ -236,11 +236,11 @@ def add_sub_mantissas(
             ) + mant_aligned.zero_extended(m_bits + 2)
 
     # Detect if result is negative
-    is_negative = WireVector(1, "is_negative")
+    is_negative = WireVector(1)  # , "is_negative")
     is_negative <<= raw_result[m_bits + 2]  # MSB indicates sign
 
     # If result is negative, convert back to positive
-    abs_result = WireVector(m_bits + 2, "abs_result")
+    abs_result = WireVector(m_bits + 2)  # , "abs_result")
     abs_result <<= pyrtl.select(is_negative, ~raw_result + 1, raw_result)
 
     return abs_result, is_negative
@@ -266,7 +266,7 @@ def leading_zero_detector_module(mantissa_sum: WireVector, m_bits: int) -> WireV
     # Use the carry bit from the sum result to determine if we use the LZC or not
     carry_bit = mantissa_sum[-1]
 
-    lzc = WireVector(4, "leading_zero_count")
+    lzc = WireVector(4)  # , "leading_zero_count")
     lzc <<= pyrtl.select(
         carry_bit, 0, leading_zero_counter(mantissa_sum[:-1], m_bits) + 1
     )
@@ -296,7 +296,7 @@ def detect_final_sign(
     assert len(sign_a) == len(sign_b) == len(is_neg) == 1
     assert len(exp_diff) == e_bits + 1  # Signed difference
 
-    final_sign = WireVector(1, "final_sign")
+    final_sign = WireVector(1)  # , "final_sign")
 
     # Check if signs are the same
     same_signs = ~(sign_a ^ sign_b)
@@ -347,14 +347,14 @@ def normalize_and_round(
     assert len(lzc) == 4
 
     # Normalize by shifting left according to LZD
-    norm_shift = WireVector(m_bits + 2, "norm_shift")
+    norm_shift = WireVector(m_bits + 2)  # , "norm_shift")
     norm_shift <<= pyrtl.shift_left_logical(abs_mantissa, lzc.zero_extended(m_bits + 2))
 
     # Round-to-nearest-even logic
     # Round up if:
     # 1. Guard is 1 AND (Round OR Sticky is 1)
     # 2. Guard is 1 AND Round=Sticky=0 AND LSB=1 (tie case, round to even)
-    round_up = WireVector(1, "round_up")
+    round_up = WireVector(1)  # , "round_up")
     lsb = norm_shift[1]  # LSB of normalized mantissa
 
     round_up <<= (guard_bit & (round_bit | sticky_bit)) | (
@@ -362,15 +362,15 @@ def normalize_and_round(
     )
 
     # Add rounding increment
-    rounded_mantissa = WireVector(m_bits + 2, "rounded_mantissa")
+    rounded_mantissa = WireVector(m_bits + 2)  # , "rounded_mantissa")
     rounded_mantissa <<= norm_shift + round_up
 
     # Check if rounding caused overflow
-    extra_increment = WireVector(1, "extra_increment")
+    extra_increment = WireVector(1)  # , "extra_increment")
     extra_increment <<= rounded_mantissa[m_bits + 1]  # New carry after rounding
 
     # Final mantissa (excluding hidden bit)
-    final_mantissa = WireVector(m_bits, "final_mantissa")
+    final_mantissa = WireVector(m_bits)  # , "final_mantissa")
     final_mantissa <<= pyrtl.select(
         extra_increment,
         rounded_mantissa[
@@ -402,11 +402,11 @@ def adjust_final_exponent(
     assert len(round_increment) == 1
 
     # First subtract LZC from larger exponent
-    lzc_adjusted = WireVector(e_bits, "lzc_adjusted")
+    lzc_adjusted = WireVector(e_bits)  # , "lzc_adjusted")
     lzc_adjusted <<= exp_larger - lzc.zero_extended(e_bits)
 
     # Then add 1 if rounding caused overflow
-    final_exp = WireVector(e_bits, "final_exp")
+    final_exp = WireVector(e_bits)  # , "final_exp")
     final_exp <<= lzc_adjusted + round_increment
 
     return final_exp

@@ -76,9 +76,9 @@ class TestBF16SpecialValues:
         min_normal = BF16.min_normal()
         min_subnormal = BF16.min_subnormal()
 
-        assert float(max_val) == BF16.FORMAT_SPEC.max_normal
-        assert float(min_normal) == BF16.FORMAT_SPEC.min_normal
-        assert float(min_subnormal) == BF16.FORMAT_SPEC.min_subnormal
+        assert float(max_val) == BF16.max_normal()
+        assert float(min_normal) == BF16.min_normal()
+        assert float(min_subnormal) == BF16.min_subnormal()
 
 
 class TestBF16Arithmetic:

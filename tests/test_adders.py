@@ -1,3 +1,4 @@
+from typing import Type
 import pytest
 import pyrtl
 import numpy as np
@@ -42,7 +43,7 @@ def generate_test_cases():
 
     # Add Float8 cases with appropriate tolerance
     for a, b, expected in f8_cases:
-        test_cases.append((a, b, Float8, 4, 3, 0.1))
+        test_cases.append((a, b, Float8, 0.1))
 
     # BF16 test cases
     bf16_cases = [
@@ -71,42 +72,40 @@ def generate_test_cases():
 
     # Add BF16 cases with appropriate tolerance
     for a, b, expected in bf16_cases:
-        test_cases.append((a, b, BF16, 8, 7, 0.05))
+        test_cases.append((a, b, BF16, 0.05))
 
     return test_cases
 
 
-def simulate_float_addition(a, b, format_class: BaseFloat, e_bits, m_bits):
+def simulate_float_addition(a, b, dtype: Type[BaseFloat]):
     """Simulate floating point addition with PyRTL"""
     pyrtl.reset_working_block()
 
-    width = format_class.FORMAT_SPEC.total_bits
+    width = dtype.bitwidth()
     float_a = pyrtl.Input(width, "float_a")
     float_b = pyrtl.Input(width, "float_b")
     float_out = pyrtl.WireVector(width, "float_out")
 
-    float_out <<= float_adder(float_a, float_b, e_bits, m_bits)
+    float_out <<= float_adder(float_a, float_b, dtype)
 
     trace = pyrtl.SimulationTrace([float_a, float_b, float_out])
     sim = pyrtl.Simulation(tracer=trace)
 
     # Convert inputs to binary integers and simulate
-    a_val = format_class(a).binint
-    b_val = format_class(b).binint
-    sim.step({float_a: a_val, float_b: b_val})
+    a_val = dtype(a).binint
+    b_val = dtype(b).binint
+    sim.step({float_a.name: a_val, float_b.name: b_val})
 
     # Convert output back to float
-    result = format_class(binint=sim.inspect(float_out))
+    result = dtype(binint=sim.inspect(float_out.name))
     return result.decimal_approx
 
 
-@pytest.mark.parametrize(
-    "a,b,format_class,e_bits,m_bits,tolerance", generate_test_cases()
-)
-def test_float_adder(a, b, format_class, e_bits, m_bits, tolerance):
+@pytest.mark.parametrize("a,b,dtype,tolerance", generate_test_cases())
+def test_float_adder(a, b, dtype: Type[BaseFloat], tolerance):
     """Test floating point adder with various test cases"""
     # Get actual result from hardware simulation
-    actual = simulate_float_addition(a, b, format_class, e_bits, m_bits)
+    actual = simulate_float_addition(a, b, dtype)
 
     # Calculate expected result
     expected = a + b
@@ -119,7 +118,7 @@ def test_float_adder(a, b, format_class, e_bits, m_bits, tolerance):
         rel_error = abs((actual - expected) / expected)
         assert (
             rel_error <= tolerance
-        ), f"Failed for {format_class.__name__}: {a} + {b} = {actual} (expected {expected})"
+        ), f"Failed for {dtype.__name__}: {a} + {b} = {actual} (expected {expected})"
 
 
 def test_float_adder_random():
@@ -131,9 +130,9 @@ def test_float_adder_random():
         b = np.random.uniform(-200, 200)
 
         try:
-            result = simulate_float_addition(a, b, Float8, 4, 3)
+            result = simulate_float_addition(a, b, Float8)
             expected = a + b
-            if abs(expected) > Float8.FORMAT_SPEC.max_normal:
+            if abs(expected) > Float8.max_normal():
                 continue  # Skip if result would overflow
             rel_error = (
                 abs((result - expected) / expected) if expected != 0 else abs(result)
@@ -149,9 +148,9 @@ def test_float_adder_random():
         b = np.random.uniform(-1e38, 1e38)
 
         try:
-            result = simulate_float_addition(a, b, BF16, 8, 7)
+            result = simulate_float_addition(a, b, BF16)
             expected = a + b
-            if abs(expected) > BF16.FORMAT_SPEC.max_normal:
+            if abs(expected) > BF16.max_normal():
                 continue  # Skip if result would overflow
             rel_error = (
                 abs((result - expected) / expected) if expected != 0 else abs(result)
