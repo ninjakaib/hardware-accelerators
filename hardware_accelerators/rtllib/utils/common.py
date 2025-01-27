@@ -27,8 +27,8 @@ def extract_sign(
     Returns:
         Tuple of sign bits for both inputs
     """
-    sign_a = WireVector(1, name="sign_a")
-    sign_b = WireVector(1, name="sign_b")
+    sign_a = WireVector(1)  # , name="sign_a")
+    sign_b = WireVector(1)  # , name="sign_b")
 
     sign_a <<= input_a[msb]  # Assuming the MSB is the sign bit
     sign_b <<= input_b[msb]
@@ -50,8 +50,8 @@ def extract_exponent(
     Returns:
         Tuple of exponent bits for both inputs
     """
-    exp_a = WireVector(e_bits, name="exp_a")
-    exp_b = WireVector(e_bits, name="exp_b")
+    exp_a = WireVector(e_bits)  # , name="exp_a")
+    exp_b = WireVector(e_bits)  # , name="exp_b")
 
     exp_a <<= input_a[-(1 + e_bits) : -1]
     exp_b <<= input_b[-(1 + e_bits) : -1]
@@ -73,8 +73,8 @@ def extract_mantissa(
     Returns:
         Tuple of mantissa bits (with implicit 1) for both inputs
     """
-    mantissa_a = WireVector(m_bits + 1, name="mantissa_a")
-    mantissa_b = WireVector(m_bits + 1, name="mantissa_b")
+    mantissa_a = WireVector(m_bits + 1)  # , name="mantissa_a")
+    mantissa_b = WireVector(m_bits + 1)  # , name="mantissa_b")
 
     # Concatenate the implicit leading 1
     mantissa_a <<= pyrtl.concat(Const(1, 1), input_a[:m_bits])
@@ -150,26 +150,26 @@ def leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
     Returns:
         4-bit WireVector containing the count of leading zeros (max 8 zeros)
     """
-    assert len(value) == m_bits + 1, "Input must be 8 bits wide"
+    assert len(value) == m_bits + 1, f"Input must be 8 bits wide, {len(value)=}"
 
     # First level: encode pairs of bits (4 pairs total for 8 bits)
     # Results in a list with 4 2-bit WireVectors, indexed from MSB [0] to LSB [-1]
     pairs = pyrtl.chop(value, *[2 for _ in range((m_bits + 1) // 2)])
     encoded_pairs = [enc2(pair) for pair in pairs]
 
-    if m_bits == 7:
+    if m_bits == 7:  # bfloat16
         first_merge = [
             clzi(encoded_pairs[0], encoded_pairs[1], 2),  # First group
             clzi(
                 encoded_pairs[2], encoded_pairs[3], 2
             ),  # Last group (handles remaining bits)
         ]
-        final_result = WireVector(4, "lzc_result")
+        final_result = WireVector(4)  # , "lzc_result")
         final_result <<= clzi(first_merge[0], first_merge[1], 3)
         return final_result
 
-    elif m_bits == 3:
-        final_result = WireVector(4, "lzc_result")
+    elif m_bits == 3:  # float8
+        final_result = WireVector(4)  # , "lzc_result")
         final_result <<= clzi(encoded_pairs[0], encoded_pairs[1], 2)
         return final_result
 
@@ -189,36 +189,9 @@ def generate_sgr(
     """
     assert len(aligned_mant_lsb) == m_bits + 1
 
-    guard_bit = WireVector(1, name="guard_bit")
-    round_bit = WireVector(1, name="round_bit")
-    sticky_bit = WireVector(1, name="sticky_bit")
-
-    guard_bit <<= aligned_mant_lsb[m_bits]
-    round_bit <<= aligned_mant_lsb[m_bits - 1]
-    sticky_bit <<= pyrtl.or_all_bits(aligned_mant_lsb[: m_bits - 1])
-
-    return sticky_bit, guard_bit, round_bit
-
-
-def generate_sgr(
-    aligned_mant_lsb: WireVector, m_bits: int
-) -> tuple[WireVector, WireVector, WireVector]:
-    """
-    Generate sticky, guard, and round bits
-
-    Args:
-        mant_smaller: original mantissa before shifting (m_bits + 1 wide)
-        shift_amount: number of positions shifted right (e_bits wide)
-        m_bits: number of mantissa bits (7 for bfloat16)
-
-    Returns:
-        sticky_bit, guard_bit, round_bit
-    """
-    assert len(aligned_mant_lsb) == m_bits + 1
-
-    guard_bit = WireVector(1, name="guard_bit")
-    round_bit = WireVector(1, name="round_bit")
-    sticky_bit = WireVector(1, name="sticky_bit")
+    guard_bit = WireVector(1)  # , name="guard_bit")
+    round_bit = WireVector(1)  # , name="round_bit")
+    sticky_bit = WireVector(1)  # , name="sticky_bit")
 
     guard_bit <<= aligned_mant_lsb[m_bits]
     round_bit <<= aligned_mant_lsb[m_bits - 1]

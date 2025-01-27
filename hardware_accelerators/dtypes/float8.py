@@ -9,21 +9,19 @@ class Float8(BaseFloat):
     - 3 mantissa bits
     """
 
-    # Define format spec as class constant
-    FORMAT_SPEC = FormatSpec(
-        total_bits=8,
-        exponent_bits=4,
-        mantissa_bits=3,
-        bias=7,
-        # These values are pre-calculated from their binary representations
-        max_normal=2**8 * 1.75,  # from 0.1111.110
-        min_normal=2**-6,  # from 0.0001.000
-        max_subnormal=2**-6 * (7 / 8),  # from 0.0000.111
-        min_subnormal=2**-6 * (1 / 8),  # from 0.0000.001
-    )
-
-    def _get_format_spec(self) -> FormatSpec:
-        return self.FORMAT_SPEC
+    @classmethod
+    def format_spec(cls) -> FormatSpec:
+        return FormatSpec(
+            total_bits=8,
+            exponent_bits=4,
+            mantissa_bits=3,
+            bias=7,
+            # These values are pre-calculated from their binary representations
+            max_normal=2**8 * 1.75,  # from 0.1111.110
+            min_normal=2**-6,  # from 0.0001.000
+            max_subnormal=2**-6 * (7 / 8),  # from 0.0000.111
+            min_subnormal=2**-6 * (1 / 8),  # from 0.0000.001
+        )
 
     def _decimal_to_binary(self, num: float) -> str:
         """Convert decimal number to binary string in E4M3 format"""
@@ -39,7 +37,7 @@ class Float8(BaseFloat):
             return sign + ".1111.111"
 
         # Clamp to max value if overflow
-        if num > self.FORMAT_SPEC.max_normal:
+        if num > self.max_normal():
             return "0.1111.110" if sign == "0" else "1.1111.110"
 
         # Find exponent and normalized mantissa
@@ -65,15 +63,15 @@ class Float8(BaseFloat):
         if temp < 1:  # Subnormal
             biased_exp = "0000"
         else:  # Normal
-            biased_exp = format(exp + self.format_spec.bias, "04b")
+            biased_exp = format(exp + self.bias(), "04b")
 
         # Calculate mantissa bits
         if temp < 1:  # Subnormal
-            mantissa_value = int(temp * (2**self.format_spec.mantissa_bits))
+            mantissa_value = int(temp * (2 ** self.mantissa_bits()))
         else:  # Normal
-            mantissa_value = int((temp - 1) * (2**self.format_spec.mantissa_bits))
+            mantissa_value = int((temp - 1) * (2 ** self.mantissa_bits()))
 
-        mantissa = format(mantissa_value, f"0{self.format_spec.mantissa_bits}b")
+        mantissa = format(mantissa_value, f"0{self.mantissa_bits()}b")
 
         return f"{sign}.{biased_exp}.{mantissa}"
 
@@ -100,11 +98,11 @@ class Float8(BaseFloat):
 
         if biased_exp == 0:  # Subnormal number
             actual_exp = -6  # emin
-            mantissa_value = int(mantissa, 2) / (2**self.format_spec.mantissa_bits)
+            mantissa_value = int(mantissa, 2) / (2 ** self.mantissa_bits())
             return sign * (2**actual_exp) * mantissa_value
         else:  # Normal number
-            actual_exp = biased_exp - self.format_spec.bias
-            mantissa_value = 1 + int(mantissa, 2) / (2**self.format_spec.mantissa_bits)
+            actual_exp = biased_exp - self.bias()
+            mantissa_value = 1 + int(mantissa, 2) / (2 ** self.mantissa_bits())
             return sign * (2**actual_exp) * mantissa_value
 
     @classmethod
@@ -153,9 +151,7 @@ class Float8(BaseFloat):
             "binary": self.binary,
             "sign": sign_bit,
             "exponent_bits": exp_bits,
-            "exponent_value": (
-                exp_val - self.format_spec.bias if exp_val != 0 else "subnormal"
-            ),
+            "exponent_value": (exp_val - self.bias() if exp_val != 0 else "subnormal"),
             "mantissa_bits": mantissa_bits,
             "mantissa_value": mantissa_val,
             "decimal_approx": self.decimal_approx,

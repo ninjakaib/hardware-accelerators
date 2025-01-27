@@ -62,19 +62,19 @@ class TestFloat8SpecialValues:
         """Test maximum value"""
         max_val = Float8.max_value()
         assert max_val.binary == "0.1111.110"
-        assert float(max_val) == Float8.FORMAT_SPEC.max_normal
+        assert float(max_val) == Float8.max_normal()
 
     def test_min_value(self):
         """Test minimum normal value"""
         min_val = Float8.min_value()
         assert min_val.binary == "0.0001.000"
-        assert float(min_val) == Float8.FORMAT_SPEC.min_normal
+        assert float(min_val) == Float8.min_normal()
 
     def test_min_subnormal(self):
         """Test minimum subnormal value"""
         min_sub = Float8.min_subnormal()
         assert min_sub.binary == "0.0000.001"
-        assert float(min_sub) == Float8.FORMAT_SPEC.min_subnormal
+        assert float(min_sub) == Float8.min_subnormal()
 
 
 class TestFloat8Arithmetic:
