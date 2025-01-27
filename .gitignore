@@ -1,5 +1,5 @@
-model_data
-tpu
+model_data/
+tpu/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
