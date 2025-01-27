@@ -172,22 +172,22 @@ class BaseFloat(ABC):
     @property
     def original_value(self) -> float:
         """Get original input value"""
-        return self._original_value
+        return self._original_value  # type: ignore
 
     @property
     def decimal_approx(self) -> float:
         """Get decimal approximation"""
-        return self._decimal_approx
+        return self._decimal_approx  # type: ignore
 
     @property
     def binary(self) -> str:
         """Get binary string representation"""
-        return self._binary
+        return self._binary  # type: ignore
 
     @property
     def binint(self) -> int:
         """Get integer representation of binary"""
-        return self._binint
+        return self._binint  # type: ignore
 
     # Basic arithmetic operations
     def __add__(self, other):

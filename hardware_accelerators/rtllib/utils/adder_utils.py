@@ -199,7 +199,7 @@ def align_mantissa(
     assert len(extended_mantissa) == len(aligned_mantissa)
 
     aligned_mantissa <<= pyrtl.shift_right_logical(extended_mantissa, clamped_shift)
-    return pyrtl.chop(aligned_mantissa, *[m_bits + 1] * 2)
+    return pyrtl.chop(aligned_mantissa, *[m_bits + 1] * 2)  # type: ignore
 
 
 def add_sub_mantissas(
