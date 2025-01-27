@@ -173,6 +173,11 @@ def leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
         final_result <<= clzi(encoded_pairs[0], encoded_pairs[1], 2)
         return final_result
 
+    else:
+        raise Warning(
+            f"Leading zero counter not implemented for float type with {m_bits} mantissa bits"
+        )
+
 
 def generate_sgr(
     aligned_mant_lsb: WireVector, m_bits: int
