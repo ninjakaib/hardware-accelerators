@@ -16,7 +16,7 @@ def get_lmul_lk_offset(m_bits):
     return l
 
 
-def get_combined_offset(e_bits, m_bits, twos_comp=False, fmt: str = None):
+def get_combined_offset(e_bits, m_bits, twos_comp=False, fmt: str | None = None):
     """
     Calculate the offset term for the LMUL (Large Multiply) algorithm for a given floating-point format.
 

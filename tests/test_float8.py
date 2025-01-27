@@ -1,6 +1,8 @@
 # tests/test_float8.py
-import pytest
 import math
+
+import pytest
+
 from hardware_accelerators import Float8
 
 

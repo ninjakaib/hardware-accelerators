@@ -1,12 +1,13 @@
 import copy
-from pyrtl import WireVector, Input, Output, Simulation, reset_working_block
-import numpy as np
 from dataclasses import dataclass
-from typing import Any, List, Callable, Optional, Type, Dict, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
-from .utils import *
-from ..rtllib import *
+import numpy as np
+from pyrtl import Input, Output, Simulation, WireVector, reset_working_block
+
 from ..dtypes import *
+from ..rtllib import *
+from .utils import *
 
 
 @dataclass

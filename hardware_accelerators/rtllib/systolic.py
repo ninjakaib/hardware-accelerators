@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import List, Type
-from pyrtl import WireVector, Register, Const, chop, Simulation
-from .processing_element import ProcessingElement
-from ..dtypes.base import BaseFloat
+from typing import Callable, List, Type
+
+import numpy as np
+from pyrtl import Const, Register, Simulation, WireVector, chop
 
 from hardware_accelerators import *
 from hardware_accelerators.simulation import *
-import numpy as np
-from typing import Callable, Type, List, Type
 
+from ..dtypes.base import BaseFloat
+from .processing_element import ProcessingElement
 
 # TODO: Add float type conversion logic to pass different bitwidths to the accumulator
 # TODO: specify different dtypes for weights and activations

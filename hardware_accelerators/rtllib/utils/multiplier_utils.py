@@ -1,13 +1,10 @@
 from typing import Tuple
-import pyrtl
-from pyrtl.rtllib import adders
-from pyrtl.rtllib import multipliers
-from pyrtl import (
-    WireVector,
-    Const,
-)
 
-from .common import clzi, enc2, leading_zero_counter, generate_sgr
+import pyrtl
+from pyrtl import Const, WireVector
+from pyrtl.rtllib import adders, multipliers
+
+from .common import clzi, enc2, generate_sgr, leading_zero_counter
 
 ### ===================================================================
 ### MULTIPLIER STAGE FUNCTIONS

@@ -1,11 +1,12 @@
 from typing import Type
+
 import pyrtl
 from pyrtl import WireVector
 
-from .utils.common import extract_float_components
-from .utils.pipeline import SimplePipeline
-from .utils.multiplier_utils import *
 from ..dtypes import BaseFloat
+from .utils.common import extract_float_components
+from .utils.multiplier_utils import *
+from .utils.pipeline import SimplePipeline
 
 
 def float_multiplier(
