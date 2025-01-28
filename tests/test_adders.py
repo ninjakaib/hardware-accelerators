@@ -1,10 +1,11 @@
 from typing import Type
-import pytest
-import pyrtl
-import numpy as np
 
-from hardware_accelerators.dtypes import BaseFloat, Float8, BF16
-from hardware_accelerators.rtllib import float_adder, FloatAdderPipelined
+import numpy as np
+import pyrtl
+import pytest
+
+from hardware_accelerators.dtypes import BF16, BaseFloat, Float8
+from hardware_accelerators.rtllib import FloatAdderPipelined, float_adder
 
 
 def generate_test_cases():

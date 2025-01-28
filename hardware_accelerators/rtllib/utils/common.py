@@ -1,6 +1,7 @@
 from typing import Tuple
+
 import pyrtl
-from pyrtl import WireVector, Const
+from pyrtl import Const, WireVector
 
 
 def extract_float_components(

@@ -1,12 +1,11 @@
+import datetime
+import os
+import subprocess
+import sys
+from typing import Callable, Dict, List, Type
+
 import numpy as np
 import pyrtl
-from typing import Callable, Dict, List, Type
-from pyrtl.simulation import default_renderer
-from typing import Callable, List
-import subprocess
-import os
-import sys
-import datetime
 from pyrtl.simulation import default_renderer
 
 from ..dtypes.base import BaseFloat
@@ -122,7 +121,7 @@ def render_waveform(
         print(f"Trace written to {output_file}")
     else:
         # Original display behavior for notebook environment
-        from IPython.display import display, HTML, Javascript  # type: ignore
+        from IPython.display import HTML, Javascript, display  # type: ignore
 
         html_elem = HTML(htmlstring)
         display(html_elem)

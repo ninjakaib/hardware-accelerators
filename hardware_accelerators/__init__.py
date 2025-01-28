@@ -1,12 +1,12 @@
-from .dtypes import Float8, BF16
+from .dtypes import BF16, Float8
 from .rtllib import (
-    float_adder,
     FloatAdderPipelined,
-    float_multiplier,
     FloatMultiplierPipelined,
-    lmul_simple,
-    lmul_fast,
     LmulPipelined,
+    float_adder,
+    float_multiplier,
+    lmul_fast,
+    lmul_simple,
 )
 
 __all__ = [

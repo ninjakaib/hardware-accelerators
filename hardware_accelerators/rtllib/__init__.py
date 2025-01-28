@@ -1,6 +1,6 @@
-from .adders import float_adder, FloatAdderPipelined
-from .multipliers import float_multiplier, FloatMultiplierPipelined
-from .lmul import lmul_simple, lmul_fast, LmulPipelined
+from .adders import FloatAdderPipelined, float_adder
+from .lmul import LmulPipelined, lmul_fast, lmul_simple
+from .multipliers import FloatMultiplierPipelined, float_multiplier
 from .systolic import SystolicArrayDiP
 
 all = [

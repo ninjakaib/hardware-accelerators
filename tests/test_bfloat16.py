@@ -1,6 +1,8 @@
 # tests/test_bfloat16.py
-import pytest
 import math
+
+import pytest
+
 from hardware_accelerators import BF16
 
 

@@ -1,9 +1,9 @@
 from typing import Tuple
+
 import pyrtl
-from pyrtl import WireVector, Const
+from pyrtl import Const, WireVector
 
 from .common import generate_sgr, leading_zero_counter
-
 
 ### ===================================================================
 ### ADDER STAGE FUNCTIONS

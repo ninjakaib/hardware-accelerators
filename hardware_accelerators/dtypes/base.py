@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional
 from dataclasses import dataclass
+from typing import Optional, Union
 
 
 @dataclass
@@ -104,6 +104,12 @@ class BaseFloat(ABC):
         elif isinstance(value, BaseFloat):
             self._original_value = value.original_value
             self._binary = value.binary
+            self._update_all_representations()
+        elif hasattr(
+            value, "__float__"
+        ):  # Handle numpy types and other float-like objects
+            self._original_value = float(value)
+            self._binary = self._decimal_to_binary(float(value))
             self._update_all_representations()
         else:
             try:

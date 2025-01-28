@@ -9,12 +9,12 @@ description = "Internal package for hardware accelerator implementations"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = [
-    "-v",
-    "--import-mode=importlib",
-]
+addopts = ["-v", "--import-mode=importlib"]
 pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["hardware_accelerators"]
 omit = ["tests/*"]
+
+[tool.isort]
+profile = "black"

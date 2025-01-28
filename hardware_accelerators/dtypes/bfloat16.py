@@ -1,5 +1,6 @@
 import struct
 from typing import Tuple
+
 from .base import BaseFloat, FormatSpec
 
 

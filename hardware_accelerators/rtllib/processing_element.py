@@ -1,8 +1,10 @@
-import pyrtl
-from pyrtl import WireVector, Register, conditional_assignment
-from ..dtypes.base import BaseFloat
 from dataclasses import dataclass
-from typing import Callable, Type, Self
+from typing import Callable, Self, Type
+
+import pyrtl
+from pyrtl import Register, WireVector, conditional_assignment
+
+from ..dtypes.base import BaseFloat
 
 # TODO: Add float type conversion logic to pass different bitwidths to the accumulator
 # TODO: specify different dtypes for weights and activations

@@ -1,13 +1,12 @@
 from typing import Type
+
 import pyrtl
 from pyrtl import WireVector
 
 from ..dtypes import BaseFloat
-
-from .utils.common import extract_float_components
 from .utils.adder_utils import *
+from .utils.common import extract_float_components
 from .utils.pipeline import SimplePipeline
-
 
 ### ===================================================================
 ### Fully Combinatorial Design

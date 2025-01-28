@@ -1,10 +1,11 @@
 from typing import Type
+
 import pyrtl
 from pyrtl import WireVector
 from pyrtl.rtllib.adders import carrysave_adder, kogge_stone
 
-from .utils.lmul_utils import get_combined_offset
 from ..dtypes import BaseFloat, Float8
+from .utils.lmul_utils import get_combined_offset
 
 
 def lmul_simple(
