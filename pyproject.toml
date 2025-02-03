@@ -16,5 +16,10 @@ pythonpath = ["."]
 source = ["hardware_accelerators"]
 omit = ["tests/*"]
 
+[tool.black]
+verbose = true
+target-version = ['py312']
+extend-exclude = "rtllib/utils/converters.py"
+
 [tool.isort]
 profile = "black"
