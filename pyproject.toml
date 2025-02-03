@@ -19,8 +19,6 @@ omit = ["tests/*"]
 [tool.black]
 verbose = true
 target-version = ['py312']
-diff = true
-check = true
 
 [tool.isort]
 profile = "black"
