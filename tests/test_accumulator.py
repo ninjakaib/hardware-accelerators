@@ -1,6 +1,7 @@
-import pytest
+from typing import Dict, List
+
 import numpy as np
-from typing import List, Dict
+import pytest
 
 from hardware_accelerators.dtypes import BF16, Float8
 from hardware_accelerators.simulation.accumulators import AccumulatorBankSimulator

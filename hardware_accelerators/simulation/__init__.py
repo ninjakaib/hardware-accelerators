@@ -1,2 +1,2 @@
 from .repr_funcs import *
-from .utils import render_waveform, convert_array_dtype
+from .utils import convert_array_dtype, render_waveform

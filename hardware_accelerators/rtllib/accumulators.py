@@ -1,14 +1,14 @@
+from enum import IntEnum
+from typing import Callable, Type
+
 from pyrtl import (
-    WireVector,
-    Register,
     MemBlock,
+    Register,
     RomBlock,
+    WireVector,
     conditional_assignment,
     otherwise,
 )
-
-from typing import Callable, Type
-from enum import IntEnum
 
 from ..dtypes.base import BaseFloat
 

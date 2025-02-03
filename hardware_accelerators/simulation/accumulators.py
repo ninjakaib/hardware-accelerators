@@ -1,12 +1,11 @@
-from typing import Callable
+from typing import Callable, Optional, Type
 
-from ..dtypes import BaseFloat, BF16
-from ..rtllib.adders import float_adder
-from ..rtllib.accumulators import AccumulatorMemoryBank
+import numpy as np
 from pyrtl import Input, Simulation, reset_working_block
 
-from typing import Type, Optional
-import numpy as np
+from ..dtypes import BF16, BaseFloat
+from ..rtllib.accumulators import AccumulatorMemoryBank
+from ..rtllib.adders import float_adder
 
 
 class AccumulatorBankSimulator:
