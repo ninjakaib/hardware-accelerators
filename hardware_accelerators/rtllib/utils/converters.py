@@ -5,4 +5,4 @@
     - Mantissa alignment and rounding
     - Exponent bias adjustment
     - Special case handling (inf, nan, subnormals)
-    """
+"""
