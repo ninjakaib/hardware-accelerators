@@ -1,198 +1,229 @@
-from dataclasses import dataclass
-from typing import Any, List
-from ..rtllib.accumulators import TiledAccumulatorFSM, TiledAddressGenerator
-from pyrtl import Input, Output, Simulation, reset_working_block
+from typing import Callable
+
+from ..dtypes import BaseFloat, BF16
+from ..rtllib.adders import float_adder
+from ..rtllib.accumulators import AccumulatorMemoryBank
+from pyrtl import Input, Simulation, reset_working_block
+
+from typing import Type, Optional
+import numpy as np
 
 
-@dataclass
-class TiledAddressGeneratorExpectedState:
-    """Expected state at each simulation step"""
+class AccumulatorBankSimulator:
+    """Simulator for AccumulatorMemoryBank with integrated address generator"""
 
-    state: TiledAccumulatorFSM
-    row: int
-    addr: int
-    write_enable: bool
-
-
-@dataclass
-class TiledAddressGeneratorState:
-    """Stores the state of the address generator at a given simulation step"""
-
-    inputs: dict[str, Any]  # tile_addr, start, write_valid
-    state: TiledAccumulatorFSM
-    current_row: int
-    write_addr: int
-    write_enable: int
-    step: int
-
-    def __repr__(self) -> str:
-        """Pretty print the simulation state"""
-        width = 40
-        sep = "-" * width
-        return (
-            f"\nAddress Generator State - Step {self.step}\n{sep}\n"
-            f"Inputs:\n"
-            f"  tile_addr: {self.inputs['tile_addr']}\n"
-            f"  start: {self.inputs['start']}\n"
-            f"  write_valid: {self.inputs['write_valid']}\n"
-            f"FSM State: {self.state.name}\n"
-            f"Current Row: {self.current_row}\n"
-            f"Write Address: {self.write_addr}\n"
-            f"Write Enable: {self.write_enable}\n"
-            f"{sep}\n"
-        )
-
-
-class TiledAddressGeneratorSimulator:
     def __init__(
         self,
         array_size: int,
         num_tiles: int,
+        data_type: Type[BaseFloat] = BF16,
+        adder: Callable = float_adder,
     ):
-        """Initialize address generator simulator
+        """Initialize simulator configuration
 
         Args:
             array_size: Dimension of systolic array (NxN)
             num_tiles: Number of tiles to support
+            data_type: Number format for data (default: BF16)
+            adder: Floating point adder implementation
         """
         self.array_size = array_size
         self.num_tiles = num_tiles
+        self.data_type = data_type
         self.tile_addr_width = (num_tiles - 1).bit_length()
-        self.history: List[TiledAddressGeneratorState] = []
 
-    def _setup(self):
-        """Setup PyRTL simulation environment"""
+        # Store configuration for setup
+        self.config = {
+            "array_size": array_size,
+            "tile_addr_width": self.tile_addr_width,
+            "data_type": data_type,
+            "adder": adder,
+        }
+        self.sim = None
+
+    def setup(self):
+        """Initialize PyRTL simulation environment"""
         reset_working_block()
 
-        # Create inputs
-        self.tile_addr = Input(self.tile_addr_width, "tile_addr")
-        self.start = Input(1, "start")
-        self.write_valid = Input(1, "write_valid")
+        # Input ports
+        self._write_tile_addr = Input(self.tile_addr_width, "write_tile_addr")
+        self._write_start = Input(1, "write_start")
+        self._write_mode = Input(1, "write_mode")
+        self._write_valid = Input(1, "write_valid")
+        self._read_tile_addr = Input(self.tile_addr_width, "read_tile_addr")
+        self._read_start = Input(1, "read_start")
+        self._data_in = [
+            Input(self.data_type.bitwidth(), f"data_in_{i}")
+            for i in range(self.array_size)
+        ]
 
-        # Create address generator
-        self.addr_gen = TiledAddressGenerator(
-            tile_addr_width=self.tile_addr_width, array_size=self.array_size
+        # Create accumulator bank
+        self.acc_bank = AccumulatorMemoryBank(**self.config)
+        self.acc_bank.connect_inputs(
+            self._write_tile_addr,
+            self._write_start,
+            self._write_mode,
+            self._write_valid,
+            self._read_tile_addr,
+            self._read_start,
+            self._data_in,  # type: ignore
         )
-
-        # Connect signals
-        self.addr_gen.connect_tile_addr(self.tile_addr)
-        self.addr_gen.connect_start(self.start)
-        self.addr_gen.connect_write_valid(self.write_valid)
 
         # Create simulation
         self.sim = Simulation()
-        self.sim_inputs = {"tile_addr": 0, "start": 0, "write_valid": 0}
 
-    def simulate(
-        self, steps: List[dict], verbose: bool = False
-    ) -> List[TiledAddressGeneratorState]:
-        """Run simulation with provided input sequence
+        return self
+
+    def _get_default_inputs(self, updates: dict = {}) -> dict:
+        """Get dictionary of default input values with optional updates"""
+        defaults = {
+            "write_tile_addr": 0,
+            "write_start": 0,
+            "write_mode": 0,
+            "write_valid": 0,
+            "read_tile_addr": 0,
+            "read_start": 0,
+            **{f"data_in_{i}": 0 for i in range(self.array_size)},
+        }
+        defaults.update(updates)
+        return defaults
+
+    def write_tile(
+        self,
+        tile_addr: int,
+        data: np.ndarray,
+        accumulate: bool = False,
+        check_bounds: bool = True,
+    ) -> None:
+        """Write data to specified tile
 
         Args:
-            steps: List of dictionaries containing input values for each step
-            verbose: If True, print detailed cycle-by-cycle analysis
+            tile_addr: Destination tile address
+            data: Input data array (array_size x array_size)
+            accumulate: If True, accumulate with existing values
+            check_bounds: If True, validate input dimensions
         """
-        self._setup()
-        self.history = []
+        if self.sim is None:
+            raise RuntimeError("Simulator not initialized. Call setup() first")
 
-        if verbose:
-            print("\nCycle by cycle analysis:")
-            print("-" * 70)
-            print("Cycle | Inputs      | State    | Row | Addr | WE | Notes")
-            print("-" * 70)
+        if check_bounds:
+            if tile_addr >= self.num_tiles or tile_addr < 0:
+                raise ValueError(f"Tile address {tile_addr} out of range")
+            if data.shape != (self.array_size, self.array_size):
+                raise ValueError(f"Data must be {self.array_size}x{self.array_size}")
 
-        for i, step in enumerate(steps):
-            self.sim_inputs.update(step)
-            self._step()
+        # Convert data to binary format
+        binary_data = [[self.data_type(val).binint for val in row] for row in data]
 
-            if verbose:
-                state = self.history[-1]
-                # Generate note about what's happening
-                if step["start"] and state.state == TiledAccumulatorFSM.IDLE:
-                    note = "Starting new tile"
-                elif state.state == TiledAccumulatorFSM.WRITING and step["write_valid"]:
-                    note = f"Writing to tile {step['tile_addr']}"
-                elif step["start"] and state.state == TiledAccumulatorFSM.WRITING:
-                    note = "Start ignored (busy)"
-                else:
-                    note = ""
-
-                print(
-                    f"{i:5d} | "
-                    f"t={step['tile_addr']} "
-                    f"s={step['start']} "
-                    f"v={step['write_valid']} | "
-                    f"{state.state.name:8s} | "
-                    f"{state.current_row:3d} | "
-                    f"{state.write_addr:4d} | "
-                    f"{state.write_enable:2d} | "
-                    f"{note}"
-                )
-
-        return self.history
-
-    def _step(self):
-        """Advance simulation one step and record state"""
-        self.sim.step(self.sim_inputs)
-
-        # Record simulation state
-        state = TiledAddressGeneratorState(
-            inputs=self.sim_inputs.copy(),
-            state=TiledAccumulatorFSM(self.sim.inspect(self.addr_gen.state.name)),
-            current_row=self.sim.inspect(self.addr_gen.current_row.name),
-            write_addr=self.sim.inspect(self.addr_gen.internal_write_addr.name),
-            write_enable=self.sim.inspect(self.addr_gen.internal_write_enable.name),
-            step=len(self.history),
+        # Start write operation
+        self.sim.step(
+            self._get_default_inputs(
+                {
+                    "write_tile_addr": tile_addr,
+                    "write_start": 1,
+                    "write_mode": int(accumulate),
+                }
+            )
         )
-        self.history.append(state)
 
-    def compute_expected_behavior(
-        self, steps: List[dict]
-    ) -> List[TiledAddressGeneratorExpectedState]:
-        """Compute expected behavior without using simulation
-
-        Models the expected FSM behavior and address generation in software,
-        completely independent of the hardware implementation.
-
-        Args:
-            steps: List of input dictionaries
-
-        Returns:
-            List of expected states for each cycle
-        """
-        expected_history = []
-        state = TiledAccumulatorFSM.IDLE
-        row = 0
-        addr = 0
-
-        # Compute base addresses for all tiles
-        tile_bases = [self.array_size * i for i in range(2**self.tile_addr_width)]
-
-        for i, step in enumerate(steps):
-            # Calculate write enable
-            write_enable = state == TiledAccumulatorFSM.WRITING and step["write_valid"]
-
-            # Store current expected state
-            expected_history.append(
-                TiledAddressGeneratorExpectedState(
-                    state=state, row=row, addr=addr, write_enable=write_enable
+        # Write each row
+        for row in binary_data:
+            self.sim.step(
+                self._get_default_inputs(
+                    {
+                        "write_tile_addr": tile_addr,
+                        "write_mode": int(accumulate),
+                        "write_valid": 1,
+                        **{f"data_in_{i}": row[i] for i in range(self.array_size)},
+                    }
                 )
             )
 
-            # Calculate next state and outputs
-            if state == TiledAccumulatorFSM.IDLE:
-                if step["start"]:
-                    state = TiledAccumulatorFSM.WRITING
-                    addr = tile_bases[step["tile_addr"]]
-                    row = 0
+    def read_tile(self, tile_addr: int) -> np.ndarray:
+        """Read data from specified tile
 
-            elif state == TiledAccumulatorFSM.WRITING:
-                if step["write_valid"]:
-                    if row == self.array_size - 1:
-                        state = TiledAccumulatorFSM.IDLE
-                        row = 0
-                    else:
-                        row += 1
-                        addr += 1
+        Args:
+            tile_addr: Tile address to read from
 
-        return expected_history
+        Returns:
+            Array containing tile data
+        """
+        if self.sim is None:
+            raise RuntimeError("Simulator not initialized. Call setup() first")
+
+        results = []
+
+        # Start read operation
+        self.sim.step(
+            self._get_default_inputs({"read_tile_addr": tile_addr, "read_start": 1})
+        )
+
+        # Read rows until done
+        while True:
+            self.sim.step(self._get_default_inputs({"read_tile_addr": tile_addr}))
+
+            # Capture outputs
+            row = [
+                float(
+                    self.data_type(
+                        binint=self.sim.inspect(self.acc_bank.get_output(i).name)
+                    )
+                )
+                for i in range(self.array_size)
+            ]
+            results.append(row)
+
+            if self.sim.inspect(self.acc_bank.read_done.name):
+                break
+
+        return np.array(results[-self.array_size :])
+
+    def get_all_tiles(self) -> np.ndarray:
+        """Read all tile memories
+
+        Returns:
+            3D array of shape (num_tiles, array_size, array_size)
+        """
+        if self.sim is None:
+            raise RuntimeError("Simulator not initialized. Call setup() first")
+
+        mems = self.acc_bank.memory_banks
+        result = {}
+
+        # Initialize empty lists for each address
+        for addr in range(self.array_size * self.num_tiles):
+            result[addr] = []
+
+        # Collect memory contents
+        for mem in mems:
+            d = self.sim.inspect_mem(mem)
+            for addr in range(self.array_size * self.num_tiles):
+                result[addr].append(d.get(addr, 0))
+
+        # Convert to numpy array and reshape
+        tiles = [
+            [float(self.data_type(binint=x)) for x in tile] for tile in result.values()
+        ]
+        tiles = np.array(tiles)
+
+        # Reshape into tile matrices
+        result_3d = []
+        for i in range(self.num_tiles):
+            start_idx = i * self.array_size
+            end_idx = start_idx + self.array_size
+            result_3d.append(tiles[start_idx:end_idx])
+
+        return np.array(result_3d)
+
+    def print_state(self, message: Optional[str] = None):
+        """Print current state of all tiles"""
+        if message:
+            print(f"\n{message}")
+
+        tiles = self.get_all_tiles()
+        print("\nTile States:")
+        print("-" * 50)
+        for i, tile in enumerate(tiles):
+            print(f"Tile {i}:")
+            print(np.array2string(tile, precision=2, suppress_small=True))
+        print("-" * 50)
