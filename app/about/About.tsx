@@ -58,7 +58,7 @@ const people: Person[] = [
   {
     name: "Lukas Fullner",
     role: "Verilog Enjoyer (somehow)",
-    image: "/hardware-accelerators-site/lukas.jpg?height=400&width=400",
+    image: "/hardware-accelerators/lukas.jpg?height=400&width=400",
     bio: "[bio]",
     socials: {
       linkedin: "https://linkedin.com/in/lukas-fullner-172639284",
