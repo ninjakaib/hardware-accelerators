@@ -28,6 +28,9 @@
 
 ## Project Overview
 
+> [!NOTE]
+> Website code is under the [`pages`](https://github.com/ninjakaib/hardware-accelerators/tree/pages) branch!
+
 This project explores the implementation of the Linear-complexity Multiplication (L-Mul) algorithm for efficient floating-point multiplication on ASICs. As modern AI systems grow in scale and complexity, their computational processes require increasingly large amounts of energy. For example, ChatGPT required an estimated 564 MWh per day as of February 2023, with inference costs significantly outweighing training costs in the long term.
 
 ### The L-Mul Algorithm
