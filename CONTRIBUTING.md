@@ -27,7 +27,8 @@ We use the Black formatter to maintain consistent code style. It is configured b
 
 This will automatically format Python files when you save them, ensuring consistent code style across the project.
 
-> **Note**: Make sure you have [Black](https://github.com/psf/black) installed in your development environment: `pip install black[jupyter]`
+>[!NOTE]
+> Make sure you have [Black](https://github.com/psf/black) installed in your development environment: `pip install black[jupyter]`
 
 ## Branch Guidelines
 
@@ -51,7 +52,7 @@ git checkout -b feature/your-feature-name main
 git push -u origin feature/your-feature-name
 ```
 
-Keep your feature branch up to date with main:
+Update your feature branch from main frequently (daily or every few days) to catch conflicts early and keep them manageable.
 
 ```bash
 # Fetch latest changes
@@ -63,10 +64,8 @@ git rebase origin/main
 # Push updates to your feature branch
 git push
 ```
-
-We prefer using rebase to keep a cleaner, linear commit history when syncing feature branches.
-
-> **Tip**: Update your feature branch from main frequently (daily or every few days) to catch conflicts early and keep them manageable.
+>[!TIP]
+> Use rebase instead of merge to keep a cleaner, linear commit history when syncing feature branches.
 
 ### Pull Request Process
 
