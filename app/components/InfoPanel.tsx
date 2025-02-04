@@ -13,7 +13,7 @@ export default function InfoPanel() {
       try {
         setIsLoading(true);
         const response = await fetch(
-          "/hardware-accelerators-site/content/technical-report.md",
+          "/hardware-accelerators/content/technical-report.md",
           {
             headers: {
               "Content-Type": "text/plain",
