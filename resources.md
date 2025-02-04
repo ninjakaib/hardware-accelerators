@@ -1,37 +1,5 @@
 # Project Resources
 
-## Todo List:
-1. **Design base class for hardware simulations:**  
-  All of the hardware modules should have a class that makes it easy to simulate them. The simulation classes should all share a common base class with some methods like simulate and build hardware. This will make testing them much easier. Something else we could do is create configuration dataclasses that make it easy to define a hardware spec (float dtype, lmul/regular multiplication, systolic array size, accumulator width, etc) and allows us to test a wide range of setups without rewriting a ton of parameters every time.
-
-2. **Float type casting:**  
-  Need to make a simple resuable hardware unit that can cast from one floating point type to another. Upcast is easy, downcast we need to choose a rounding method.
-
-3. **Accumulator Buffer:**  
-  Design another memory system that can be used for computing tiled matrix multiplications. This component will connect directly to the systolic array and accumulate the outputs at software specified addresses.
-
-4. **Activation Module:**  
-  Create a configurable activation function component that can easily be connected to other steps in the pipeline (matmul outputs) and supports the most commonly used functions like ReLU, Sigmoid, GeLU, Swish, Softmax, etc. This is essentially a vector/tensor processing unit.
-
-5. **Memory Implementation:**  
-  We need to design a memory system in PyRTL using `MemBlocks` that can store weights and activations to be used by other components like the systolic array. Since model weights will likely be too large to store completely in hardware memory (SRAM), we can emulate DRAM in software during simulation.
-
-6. **ISA and Compiler Stack:**  
-  We need to be able to take a ML model, and convert its inference steps into a sequence of operations supported by our hardware. We really need to solidify the overall chip architecture before defining an ISA. Once the ISA is done, we can create a compiler that turns models into instructions.
-
-7. **Decoder and top level integration:**  
-  We need to design a hardware decoder that takes binary instructions and maps them to various hardware components and operations. This is essentially the control unit that connects everything together (systolic array, activation module, accumulators, and memory)
-
-8. **Analysis and Results:**  
-  Time to finally simulate running models! Collect data for various configurations and combinations of different hardware units. Validate accuracy of operations at both individual component level and ML model level. Let's see if we can calculate the amount of compute/memory required to ensure our design optimizes the balance between computation and memory bandwidth limitations. We should also attempt to synthesize our design to estimate power, area, and delay statistics. It would be awesome if we could estimate some higher level stats like tokens/sec for an LLM.
-
-9. **Create Website:**  
-  We need to show off all the hard work we did in a way that's both meaningful/comprehensive and easy to understand. An interactive visualization of running a model and the active circuits in the synthesized hardware, and showing the results of the computation would be really cool. This is probably way too hard, so a demo that runs the simulation is probably good enough. We should also try to display a visualization of the chip design after generating a physical layout (GDSII).
-
-
----
-
-
 1. Architectural level planning, requirements analysis, specification design, and division of work
 
    > - Google TPU ([paper](https://arxiv.org/abs/1704.04760), [blog](https://cloud.google.com/blog/products/ai-machine-learning/an-in-depth-look-at-googles-first-tensor-processing-unit-tpu))

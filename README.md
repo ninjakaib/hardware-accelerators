@@ -73,81 +73,8 @@ For more details about our Q1 work, see our [technical report](reports/main.pdf)
 
 ## Contributing
 
-This project follows the [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow) branching strategy. The `main` branch is locked to prevent direct pushes - all changes must be made through pull requests.
+See more details in the [contributing](CONTRIBUTING.md) section.
 
-### Development Environment Setup
+## Extra Info
 
-#### Dev Containers
-
-To use the development environment, open VSCode and install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers). From there, the Dev Container options will be available in the bottom left of VSCode. Click on the icon in the status bar (it will say "Open a Remote Window"), or open the command palette with `Cmd/Ctrl+Shift+P`. Select "Reopen in container" to build and run the container. You should be all set to begin working on the project now!
-
-#### Python Formatting
-
-We use the Black formatter to maintain consistent code style. It is configured by default in the devcontainer. If you are working outside the container, you can configure VSCode to automatically format Python code on save by following these steps:
-
-1. Install the Black Formatter extension from the VSCode marketplace
-2. Open VSCode Settings (Command Palette → "Preferences: Open Settings (JSON)")
-3. Add the following configuration:
-
-```json
-{
-  "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
-    "editor.formatOnSave": true
-  }
-}
-```
-
-This will automatically format Python files when you save them, ensuring consistent code style across the project.
-
-> **Note**: Make sure you have Black installed in your development environment: `pip install black`
-
-### Branch Guidelines
-
-- Create feature branches for specific tasks/features
-- Branch names should be descriptive and follow the pattern: `feature/` or `fix/` followed by what you're working on
-- Keep branches focused on single features/fixes to maintain clean version control
-- Commit code frequently with clear commit messages
-
-Good branch names: `feature/systolic-memory-controller` or `fix/latex-workflow`  
-Bad branch names: `kais-dev-branch` or `feature/misc-changes`
-
-### Working with Branches
-
-Create and switch to a new feature branch:
-
-```bash
-# Create and checkout new branch
-git checkout -b feature/your-feature-name main
-
-# Set upstream to track remote branch
-git push -u origin feature/your-feature-name
-```
-
-Keep your feature branch up to date with main:
-
-```bash
-# Fetch latest changes
-git fetch origin main
-
-# Merge main into your feature branch
-git merge origin/main
-
-# Push updates to your feature branch
-git push
-```
-
-> **Tip**: Update your feature branch from main frequently (daily or every few days) to catch conflicts early and keep them manageable.
-
-### Pull Request Process
-
-1. Ensure your code is well-tested and documented
-2. Create a pull request against the `main` branch
-3. PRs require 2 approvals from other contributors before merging
-4. Use the PR description to explain your changes and any important considerations
-5. Reviewers should provide constructive feedback and test the changes locally if needed
-6. Before merging, ensure your branch is up to date with main
-
-Remember to commit code frequently and keep your branches focused on specific tasks. This helps maintain a clear version history and makes code review easier for everyone.
-
-After a pull request is merged into `main`, your branch will automatically be deleted. You can update your local repository to reflect these changes with `git fetch --prune`.
+See some of the things that helped us, and other cool or similar projects on the [resources](resources.md) page.
