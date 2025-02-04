@@ -247,6 +247,62 @@ class SystolicArrayDiP(BaseSystolicArray):
         self.enable_in <<= source
         return source
 
+    def connect_inputs(
+        self,
+        data_inputs: list[WireVector] | None = None,
+        weight_inputs: list[WireVector] | None = None,
+        enable_input: WireVector | None = None,
+        weight_enable: WireVector | None = None,
+    ) -> None:
+        """Connect input control and data wires to the systolic array.
+
+        Args:
+            data_inputs: List of data input wires (data_width bits each)
+                Input data for each row of the systolic array.
+                Length must match array size.
+
+            weight_inputs: List of weight input wires (data_width bits each)
+                Input weights for each column of the systolic array.
+                Length must match array size.
+
+            enable_input: Enable signal for data streaming (1 bit)
+                Controls writing to the data input register.
+
+            weight_enable: Weight load enable signal (1 bit)
+                Controls writing to the weight registers.
+
+        Raises:
+            AssertionError: If input wire widths don't match expected widths or
+                            if input list lengths don't match array size.
+        """
+        if data_inputs is not None:
+            assert (
+                len(data_inputs) == self.size
+            ), f"Expected {self.size} data inputs, got {len(data_inputs)}"
+            for row, data_input in enumerate(data_inputs):
+                assert (
+                    len(data_input) == self.data_type.bitwidth()
+                ), f"Data input {row} width mismatch. Expected {self.data_type.bitwidth()}, got {len(data_input)}"
+                self.connect_data_input(row, data_input)
+
+        if weight_inputs is not None:
+            assert (
+                len(weight_inputs) == self.size
+            ), f"Expected {self.size} weight inputs, got {len(weight_inputs)}"
+            for col, weight_input in enumerate(weight_inputs):
+                assert (
+                    len(weight_input) == self.data_type.bitwidth()
+                ), f"Weight input {col} width mismatch. Expected {self.data_type.bitwidth()}, got {len(weight_input)}"
+                self.connect_weight_input(col, weight_input)
+
+        if enable_input is not None:
+            assert len(enable_input) == 1, "Enable input must be 1 bit wide"
+            self.connect_enable_input(enable_input)
+
+        if weight_enable is not None:
+            assert len(weight_enable) == 1, "Weight enable must be 1 bit wide"
+            self.connect_weight_enable(weight_enable)
+
 
 # TODO: Add control logic
 class SystolicArrayWS(BaseSystolicArray):

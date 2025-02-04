@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 from ..dtypes import *
 
-from typing import Type
+from typing import List, Type
 from pyrtl import (
     MemBlock,
     WireVector,
@@ -11,10 +12,104 @@ from pyrtl import (
 )
 
 
+@dataclass
+class BufferOutputs:
+    """Container for buffer memory output wires.
+
+    Attributes:
+        datas_out: List of data output wires, one per array column
+        weights_out: List of weight output wires, one per array column
+        data_valid: Wire indicating valid data on datas_out
+        weight_valid: Wire indicating valid weights on weights_out
+    """
+
+    datas_out: List[WireVector]
+    """List of data output wires, one per array column"""
+    weights_out: List[WireVector]
+    """List of weight output wires, one per array column"""
+    data_valid: WireVector
+    """Wire indicating valid data on datas_out"""
+    weight_valid: WireVector
+    """Wire indicating valid weights on weights_out"""
+
+
 class BufferMemory:
+    """Dual-bank memory buffer for streaming data and weights to a systolic array.
+
+    This class implements a memory buffer with separate banks for both data and weights,
+    designed to feed a systolic array for matrix multiplication. It features:
+
+    - Dual memory banks for both data and weights enabling ping-pong buffering
+    - Configurable data widths for both data and weight values
+    - Controlled streaming of rows to systolic array
+    - Status signals for monitoring buffer operations
+
+    The buffer stores each row of the matrix as a single concatenated entry in memory,
+    with the bitwidth scaled by the array size. This enables efficient reading of full
+    rows during streaming operations.
+
+    Input Control Wires:
+        - data_start_in (1 bit): Initiates data streaming operation
+        - data_select_in (1 bit): Selects which data memory bank to read from (0 or 1)
+        - weight_start_in (1 bit): Initiates weight streaming operation
+        - weight_select_in (1 bit): Selects which weight memory bank to read from (0 or 1)
+
+    Output Status Wires:
+        - data_load_busy (1 bit): Indicates data streaming is in progress
+        - data_load_done (1 bit): Indicates data streaming has completed
+        - weight_load_busy (1 bit): Indicates weight streaming is in progress
+        - weight_load_done (1 bit): Indicates weight streaming has completed
+
+    Data Output Wires:
+        - datas_out: List of data output wires (data_type.bitwidth() each)
+        - weights_out: List of weight output wires (weight_type.bitwidth() each)
+
+    Usage Example:
+        buffer = BufferMemory(
+            array_size=4,
+            data_type=BF16,
+            weight_type=BF16
+        )
+
+        # Connect control signals
+        buffer.connect_inputs(
+            data_start=control.data_start,
+            data_select=control.data_select,
+            weight_start=control.weight_start,
+            weight_select=control.weight_select
+        )
+
+        # Access outputs
+        outputs = buffer.get_outputs()
+        systolic_array.connect_data_inputs(outputs.datas_out)
+        systolic_array.connect_weight_inputs(outputs.weights_out)
+    """
+
     def __init__(
         self, array_size: int, data_type: Type[BaseFloat], weight_type: Type[BaseFloat]
     ):
+        """Initialize the buffer memory with specified dimensions and data types.
+
+        Args:
+            array_size: Size N of the NxN systolic array this buffer will feed.
+                       Determines the number of parallel output wires and memory organization.
+
+            data_type: Float data type for activation/data values (e.g., BF16, Float8).
+                      Determines the bitwidth of data storage and output wires.
+
+            weight_type: Float data type for weight values (e.g., BF16, Float8).
+                        Determines the bitwidth of weight storage and output wires.
+
+        Memory Organization:
+            - Each memory bank contains array_size entries
+            - Each entry stores one full row of the matrix
+            - Entry bitwidth = type.bitwidth() * array_size
+
+        The class automatically calculates:
+            - Address width based on array_size
+            - Memory entry width based on data types and array_size
+            - Required control register sizes
+        """
         # Configuration parameters
         self.array_size = array_size
         self.addr_width = (array_size - 1).bit_length()
@@ -151,3 +246,24 @@ class BufferMemory:
         if weight_bank is not None:
             assert len(weight_bank) == 1
             self.weight_bank <<= weight_bank
+
+    def get_outputs(self) -> BufferOutputs:
+        """Get all output wires from the buffer memory.
+
+        Returns:
+            BufferOutputs containing:
+                - datas_out: List of data output wires [array_size]
+                - weights_out: List of weight output wires [array_size]
+                - data_valid: Indicates valid data on outputs
+                - weight_valid: Indicates valid weights on outputs
+
+        The valid signals should be used to enable downstream components:
+        - weight_valid connects to systolic array's weight_enable
+        - data_valid indicates when data values are ready to be consumed
+        """
+        return BufferOutputs(
+            datas_out=self.datas_out,
+            weights_out=self.weights_out,
+            data_valid=self.data_valid,
+            weight_valid=self.weight_valid,
+        )
