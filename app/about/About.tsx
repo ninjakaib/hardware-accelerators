@@ -19,7 +19,7 @@ const people: Person[] = [
   {
     name: "Dr. Rajesh Gupta",
     role: "Mentor",
-    image: "/hardware-accelerators-site/rajesh.jpg?height=400&width=400",
+    image: "/hardware-accelerators/rajesh.jpg?height=400&width=400",
     bio: "Founding Director at HDSI. Distinguished Professor at UCSD.",
     socials: {
       linkedin: "https://linkedin.com/in/rajeshgupta4",
@@ -28,7 +28,7 @@ const people: Person[] = [
   {
     name: "Kai Breese",
     role: "De-facto Captain",
-    image: "/hardware-accelerators-site/kai.jpg?height=400&width=400",
+    image: "/hardware-accelerators/kai.jpg?height=400&width=400",
     bio: "[bio]",
     socials: {
       linkedin: "https://linkedin.com/in/kaibreese",
@@ -38,7 +38,7 @@ const people: Person[] = [
   {
     name: "Justin Chou",
     role: "Code Monkey",
-    image: "/hardware-accelerators-site/justin.jpg?height=400&width=400",
+    image: "/hardware-accelerators/justin.jpg?height=400&width=400",
     bio: "[bio]",
     socials: {
       linkedin: "https://www.linkedin.com/in/justintchou/",
@@ -48,7 +48,7 @@ const people: Person[] = [
   {
     name: "Katelyn Abille",
     role: "Figma God",
-    image: "/hardware-accelerators-site/katelyn.jpg?height=400&width=400",
+    image: "/hardware-accelerators/katelyn.jpg?height=400&width=400",
     bio: "[bio]",
     socials: {
       linkedin: "https://linkedin.com/in/katelynmaea",
