@@ -1,7 +1,7 @@
 /** @type {import('next/config').NextConfig} */
 const nextConfig = {
   output: "export",
-  basePath: "/hardware-accelerators-site",
+  basePath: "/hardware-accelerators",
   images: {
     unoptimized: true,
   },
