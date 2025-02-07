@@ -176,6 +176,10 @@ class SystolicArrayDiP(BaseSystolicArray):
         self.enable_in = WireVector(1)
         self.control_registers = [Register(1) for _ in range(size)]
 
+        # Control signal output
+        self.control_out = WireVector(1)
+        self.control_out <<= self.control_registers[-1]
+
         # If PEs contain an extra pipeline stage, 1 additional control reg is needed
         if self.pipeline:
             self.control_registers.append(Register(1))
