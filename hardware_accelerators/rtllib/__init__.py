@@ -4,6 +4,7 @@ from .multipliers import FloatMultiplierPipelined, float_multiplier
 from .systolic import SystolicArrayDiP
 from .accumulators import AccumulatorMemoryBank
 from .buffer import BufferMemory
+from .accelerator import AcceleratorConfig, MatrixEngine
 
 all = [
     "float_adder",
@@ -16,4 +17,6 @@ all = [
     "SystolicArrayDiP",
     "AccumulatorMemoryBank",
     "BufferMemory",
+    "AcceleratorConfig",
+    "MatrixEngine",
 ]
