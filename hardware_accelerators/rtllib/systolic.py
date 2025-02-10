@@ -174,15 +174,15 @@ class SystolicArrayDiP(BaseSystolicArray):
 
         # Control signal registers to propogate signal down the array
         self.enable_in = WireVector(1)
-        self.control_registers = [Register(1) for _ in range(size)]
+        self.control_registers = [Register(1) for _ in range(size + 2 + int(pipeline))]
 
         # Control signal output
         self.control_out = WireVector(1)
         self.control_out <<= self.control_registers[-1]
 
-        # If PEs contain an extra pipeline stage, 1 additional control reg is needed
-        if self.pipeline:
-            self.control_registers.append(Register(1))
+        # # If PEs contain an extra pipeline stage, 1 additional control reg is needed
+        # if self.pipeline:
+        #     self.control_registers.append(Register(1))
 
         super().__init__(size, data_type, accum_type, multiplier, adder)
 
@@ -306,6 +306,12 @@ class SystolicArrayDiP(BaseSystolicArray):
         if weight_enable is not None:
             assert len(weight_enable) == 1, "Weight enable must be 1 bit wide"
             self.connect_weight_enable(weight_enable)
+
+    def inspect_control_regs(self, sim: Simulation):
+        control_signals = []
+        for reg in self.control_registers:
+            control_signals.append(sim.inspect(reg.name))
+        return np.array(control_signals).reshape(-1, 1)
 
 
 # TODO: Add control logic

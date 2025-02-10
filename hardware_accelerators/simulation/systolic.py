@@ -19,6 +19,7 @@ class SimulationState:
     data: np.ndarray
     outputs: np.ndarray
     accumulators: np.ndarray
+    control_regs: np.ndarray
     step: int
 
     def __repr__(self) -> str:
@@ -36,6 +37,7 @@ class SimulationState:
             f"\nWeights Matrix:\n{np.array2string(self.weights, precision=4, suppress_small=True)}\n"
             f"\nData Matrix:\n{np.array2string(self.data, precision=4, suppress_small=True)}\n"
             f"\nAccumulators:\n{np.array2string(self.accumulators, precision=4, suppress_small=True)}\n"
+            f"\nControl Registers:\n{self.control_regs}\n"
             f"\nOutputs:\n{np.array2string(self.outputs, precision=4, suppress_small=True)}\n"
             f"{sep}\n"
         )
@@ -211,6 +213,7 @@ class SystolicArraySimulator:
             data=self.array.inspect_data(self.sim, False),
             outputs=self.array.inspect_outputs(self.sim, False),
             accumulators=self.array.inspect_accumulators(self.sim, False),
+            control_regs=self.array.inspect_control_regs(self.sim),
             step=len(self.history),
         )
         self.history.append(state)

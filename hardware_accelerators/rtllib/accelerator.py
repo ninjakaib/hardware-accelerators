@@ -264,7 +264,7 @@ class MatrixEngine:
                 ]
             )
             tiles.append(tile_data)
-        return np.array(tiles)
+        return np.array(tiles[::-1])
 
     def get_accumulator_outputs(self, sim: Simulation) -> np.ndarray:
         """Return current values on accumulator output ports"""
