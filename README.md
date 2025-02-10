@@ -45,7 +45,7 @@ We've also implemented the following but have yet to build out the test suite fo
 - Systolic array tiling logic
 - SwiGLU activation block
 
-To reproduce our tests, you need Docker installed on your PC. Then follow these steps:
+To reproduce our tests, you'll need Docker installed on your PC and have the daemon open. Then follow these steps:
 
 1. Pull the docker image using: `docker pull nakschou/hardware_accelerators:q2_checkpoint`
 2. Run the docker image using `docker run nakschou/hardware_accelerators:q2_checkpoint`
