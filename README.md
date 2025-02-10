@@ -28,6 +28,8 @@
 
 ## Q2 Checkpoint
 
+For evaluation of our code, please look primarily at our `./hardware_accelerators` and `./tests` folders. Within those, we have some of our migrated code from Q1 in addition to some new features we've added -- namely, the systolic array, ONNX hardware simulation, and accumulators logic.
+
 The PyRTL portion of our Quarter 2 project code had a few major implementations:
 
 - An accumulator, which we initialize and simulate in our pytest
@@ -45,7 +47,7 @@ We've also implemented the following but have yet to build out the test suite fo
 
 To reproduce our tests, you need Docker installed on your PC. Then follow these steps:
 
-1. Pull the docker image using: `docker pull nakschou/hardware_accelerators:q1_project`
+1. Pull the docker image using: `docker pull nakschou/hardware_accelerators:q2_checkpoint`
 2. Run the docker image using `docker run nakschou/hardware_accelerators:q2_checkpoint`
 
 The output should be the result of our test cases.
