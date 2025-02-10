@@ -26,6 +26,32 @@
 
 ---
 
+## Q2 Checkpoint
+
+The PyRTL portion of our Quarter 2 project code had a few major implementations:
+
+- An accumulator, which we initialize and simulate in our pytest
+- The floating point adders, which we generated testcases for
+- The BaseFloat abstract base class, which verifies that it works and cannot be instantiated
+- The BF16 data class, which we test with special values, arithmetic operations, and edge cases
+- The FP8 data class, which we test with special values, arithmetic operations, and edge cases
+- The ONNX hardware simulator, which we test by loading in a model we've tested on and ensuring its outputs are correct
+
+We've also implemented the following but have yet to build out the test suite for the following:
+
+- The systolic array and accumulator buffer
+- Systolic array tiling logic
+- SwiGLU activation block
+
+To reproduce our tests, you need Docker installed on your PC. Then follow these steps:
+
+1. Pull the docker image using: `docker pull nakschou/hardware_accelerators:q1_project`
+2. Run the docker image using `docker run nakschou/hardware_accelerators:q2_checkpoint`
+
+The output should be the result of our test cases.
+
+---
+
 ## Project Overview
 
 > [!NOTE]
