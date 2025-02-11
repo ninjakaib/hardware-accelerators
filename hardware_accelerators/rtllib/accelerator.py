@@ -68,6 +68,7 @@ class MatrixEngine:
         self.systolic_array = SystolicArrayDiP(
             size=config.array_size,
             data_type=config.data_type,
+            weight_type=config.weight_type,
             accum_type=config.accum_type,
             multiplier=config.pe_multiplier,
             adder=config.pe_adder,

@@ -58,6 +58,7 @@ class BaseSystolicArray(ABC):
         self,
         size: int,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
@@ -74,6 +75,7 @@ class BaseSystolicArray(ABC):
         # Set configuration attributes
         self.size = size
         self.data_type = data_type
+        self.weight_type = weight_type
         self.accum_type = accum_type
         data_width = data_type.bitwidth()
         accum_width = accum_type.bitwidth()
@@ -100,6 +102,7 @@ class BaseSystolicArray(ABC):
             [
                 ProcessingElement(
                     self.data_type,
+                    self.weight_type,
                     self.accum_type,
                     self.multiplier,
                     self.adder,
@@ -200,6 +203,7 @@ class SystolicArrayDiP(BaseSystolicArray):
         self,
         size: int,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
@@ -241,7 +245,7 @@ class SystolicArrayDiP(BaseSystolicArray):
         # if self.pipeline:
         #     self.control_registers.append(Register(1))
 
-        super().__init__(size, data_type, accum_type, multiplier, adder)
+        super().__init__(size, data_type, weight_type, accum_type, multiplier, adder)
         self._connect_control_logic()
 
     def _connect_control_logic(self):
@@ -269,6 +273,7 @@ class SystolicArrayDiP(BaseSystolicArray):
             [
                 ProcessingElement(
                     self.data_type,
+                    self.weight_type,
                     self.accum_type,
                     self.multiplier,
                     self.adder,
@@ -457,6 +462,7 @@ class SystolicArrayWS(BaseSystolicArray):
         self,
         size: int,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier,
         adder,
@@ -475,7 +481,7 @@ class SystolicArrayWS(BaseSystolicArray):
         self.systolic_setup = SystolicSetup(size, self.data_type)
         self.result_buffer = SystolicSetup(size, self.accum_type)
 
-        super().__init__(size, data_type, accum_type, multiplier, adder)
+        super().__init__(size, data_type, weight_type, accum_type, multiplier, adder)
 
     def _create_pe_array(self) -> List[List[ProcessingElement]]:
         return super()._create_pe_array()

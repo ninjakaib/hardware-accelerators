@@ -1,7 +1,110 @@
 from typing import Tuple
-
+from ...dtypes import BaseFloat, Float8
 import pyrtl
 from pyrtl import Const, WireVector
+
+
+def convert_float_format(
+    input_wire: pyrtl.WireVector,
+    input_dtype: type[BaseFloat],
+    output_dtype: type[BaseFloat],
+) -> pyrtl.WireVector:
+    """
+    Convert a WireVector representing a floating point number from one format to another.
+    Only allows upcasting (converting from smaller to larger formats).
+
+    Args:
+        input_wire: WireVector containing the input floating point number
+        input_dtype: Input floating point format class (subclass of BaseFloat)
+        output_dtype: Output floating point format class (subclass of BaseFloat)
+
+    Returns:
+        WireVector containing the converted floating point number
+
+    Raises:
+        ValueError: If attempting to downcast or if formats are incompatible
+    """
+    # Validate input and output types
+    if not issubclass(input_dtype, BaseFloat) or not issubclass(
+        output_dtype, BaseFloat
+    ):
+        raise ValueError("Input and output types must be BaseFloat subclasses")
+
+    # Validate wire width matches input format
+    if len(input_wire) != input_dtype.bitwidth():
+        raise ValueError(
+            f"Input wire width {len(input_wire)} does not match format width {input_dtype.bitwidth()}"
+        )
+
+    # Check for valid upcasting
+    if output_dtype.bitwidth() < input_dtype.bitwidth():
+        raise ValueError("Cannot downcast to smaller format")
+
+    # If same format, return input wire directly
+    if input_dtype == output_dtype:
+        return input_wire
+
+    # # Special handling for Float8 due to its unique special cases
+    # if input_dtype == Float8:
+    #     return upcast_float8(input_wire, output_dtype)
+
+    # Extract components from input using the input format's specs
+    sign = input_wire[input_dtype.bitwidth() - 1]
+    exp = input_wire[input_dtype.mantissa_bits() : input_dtype.bitwidth() - 1]
+    mantissa = input_wire[: input_dtype.mantissa_bits()]
+
+    # Calculate the bias difference between formats
+    bias_diff = output_dtype.bias() - input_dtype.bias()
+
+    result = pyrtl.WireVector(output_dtype.bitwidth())
+
+    # Create new exponent with adjusted bias
+    new_exp = pyrtl.WireVector(output_dtype.exponent_bits())
+
+    # Create new mantissa with padding
+    new_mantissa = pyrtl.WireVector(output_dtype.mantissa_bits())
+    # Pad with zeros on the right
+
+    # Handle bias adjustment for normal numbers
+    if input_dtype == Float8:
+        # Special handling for Float8
+        is_nan = pyrtl.and_all_bits(input_wire[:7])
+
+        with pyrtl.conditional_assignment:
+            # If input is zero (all exp bits are 0)
+            with exp == 0:
+                new_exp |= 0
+                new_mantissa |= 0
+            # If input is nan (all bits are 1)
+            with is_nan:
+                new_exp |= 2 ** output_dtype.exponent_bits() - 1
+                new_mantissa |= 2 ** output_dtype.mantissa_bits() - 1
+            # Normal numbers - adjust bias
+            with pyrtl.otherwise:
+                new_exp |= exp + bias_diff
+                new_mantissa |= pyrtl.concat(
+                    mantissa,
+                    pyrtl.Const(
+                        0, output_dtype.mantissa_bits() - input_dtype.mantissa_bits()
+                    ),
+                )
+
+    else:
+        with pyrtl.conditional_assignment:
+            # If input is zero (all exp bits are 0)
+            with exp == 0:
+                new_exp |= 0
+            # If input is inf/nan (all exp bits are 1)
+            with exp == (2 ** input_dtype.exponent_bits() - 1):
+                new_exp |= 2 ** output_dtype.exponent_bits() - 1
+            # Normal numbers - adjust bias
+            with pyrtl.otherwise:
+                new_exp |= exp + bias_diff
+
+    # Combine components into final result
+    result <<= pyrtl.concat(sign, new_exp, new_mantissa)
+
+    return result
 
 
 def extract_float_components(
