@@ -56,7 +56,7 @@ class TiledAddressGenerator:
         self.internal_addr_width = (self.num_tiles * array_size - 1).bit_length()
 
         # Base address ROM
-        base_addrs = [i * array_size + array_size - 1 for i in range(self.num_tiles)]
+        base_addrs = [i * array_size for i in range(self.num_tiles)]
         self.base_addr_rom = RomBlock(
             bitwidth=self.internal_addr_width,
             addrwidth=tile_addr_width,
@@ -129,7 +129,7 @@ class TiledAddressGenerator:
                         self.write_state.next |= TiledAccumulatorFSM.IDLE
                         self.write_row.next |= 0
                     with otherwise:
-                        self.write_addr.next |= self.write_addr - 1
+                        self.write_addr.next |= self.write_addr + 1
                         self.write_row.next |= self.write_row + 1
 
     def _implement_read_fsm(self):
@@ -273,7 +273,9 @@ class AccumulatorMemoryBank:
 
         # Read logic
         for i, mem in enumerate(self.memory_banks):
-            self._data_out[i] <<= mem[self.addr_gen.read_addr_out]
+            with conditional_assignment:
+                with self.read_busy:
+                    self._data_out[i] |= mem[self.addr_gen.read_addr_out]
 
     def connect_inputs(
         self,

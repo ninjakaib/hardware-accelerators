@@ -172,8 +172,8 @@ class MatrixEngineSimulator:
         results = []
         self.step(accum_read_tile_addr=tile, accum_read_start=1)
         for _ in range(self.config.array_size):
-            results.append(self.engine.get_accumulator_outputs(self.sim))
             self.step()
+            results.append(self.engine.get_accumulator_outputs(self.sim))
 
         return np.array(results)  # [-self.config.array_size :]
 
