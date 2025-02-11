@@ -167,13 +167,13 @@ class MatrixEngineSimulator:
 
     def read_accumulator_tile(self, tile: int) -> np.ndarray:
         """Read tile from accumulator memory"""
-        self.step(accum_read_tile_addr=tile, accum_read_start=1)
 
         # Capture outputs over array_size cycles
         results = []
+        self.step(accum_read_tile_addr=tile, accum_read_start=1)
         for _ in range(self.config.array_size):
-            self.step()
             results.append(self.engine.get_accumulator_outputs(self.sim))
+            self.step()
 
         return np.array(results)  # [-self.config.array_size :]
 

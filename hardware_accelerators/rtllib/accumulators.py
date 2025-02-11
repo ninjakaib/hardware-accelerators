@@ -75,6 +75,13 @@ class TiledAddressGenerator:
         self.write_row = Register(array_size.bit_length())
         self.write_mode_reg = Register(1)  # Stores mode for current operation
 
+        # Outputs
+        self.write_addr_out = WireVector(self.internal_addr_width)
+        self.write_enable = WireVector(1)
+        self.write_busy = WireVector(1)
+        self.write_done = WireVector(1)
+        self.write_mode_out = WireVector(1)
+
         # ================== Read Interface ==================
         self._read_tile_addr = WireVector(tile_addr_width)
         self._read_start = WireVector(1)
@@ -85,12 +92,6 @@ class TiledAddressGenerator:
         self.read_row = Register(array_size.bit_length())
 
         # Outputs
-        self.write_addr_out = WireVector(self.internal_addr_width)
-        self.write_enable = WireVector(1)
-        self.write_busy = WireVector(1)
-        self.write_done = WireVector(1)
-        self.write_mode_out = WireVector(1)
-
         self.read_addr_out = WireVector(self.internal_addr_width)
         self.read_busy = WireVector(1)
         self.read_done = WireVector(1)
