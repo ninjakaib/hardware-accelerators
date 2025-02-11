@@ -259,16 +259,13 @@ def adder_leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
     assert (
         len(value) == m_bits + 1
     ), f"Input must be {m_bits + 1} bits wide, got {len(value)}"
-    print(f"adder_leading_zero_counter() called from adder_utils.py on line 261")
 
     # First level: encode pairs of bits (4 pairs total for 8 bits)
     # Results in a list with 4 2-bit WireVectors, indexed from MSB [0] to LSB [-1]
     pairs = pyrtl.chop(value, *[2 for _ in range((m_bits + 1) // 2)])
     encoded_pairs = [enc2(pair) for pair in pairs]
-    print(f"{len(encoded_pairs)=}")
 
     if m_bits == 7:  # bfloat16
-        print(f"{m_bits=}")
         first_merge = [
             clzi(encoded_pairs[0], encoded_pairs[1], 2),  # First group
             clzi(
