@@ -244,45 +244,6 @@ def clzi(left: WireVector, right: WireVector, n: int) -> WireVector:
     return result
 
 
-def leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
-    """
-    Calculate leading zeros for a 8-bit input (for bf16 mantissa addition)
-
-    Args:
-        value: 8-bit input WireVector (mantissa with hidden bit and overflow bit)
-
-    Returns:
-        4-bit WireVector containing the count of leading zeros (max 8 zeros)
-    """
-    assert len(value) == m_bits + 1, f"Input must be 8 bits wide, {len(value)=}"
-
-    # First level: encode pairs of bits (4 pairs total for 8 bits)
-    # Results in a list with 4 2-bit WireVectors, indexed from MSB [0] to LSB [-1]
-    pairs = pyrtl.chop(value, *[2 for _ in range((m_bits + 1) // 2)])
-    encoded_pairs = [enc2(pair) for pair in pairs]
-
-    if m_bits == 7:  # bfloat16
-        first_merge = [
-            clzi(encoded_pairs[0], encoded_pairs[1], 2),  # First group
-            clzi(
-                encoded_pairs[2], encoded_pairs[3], 2
-            ),  # Last group (handles remaining bits)
-        ]
-        final_result = WireVector(4)  # , "lzc_result")
-        final_result <<= clzi(first_merge[0], first_merge[1], 3)
-        return final_result
-
-    elif m_bits == 3:  # float8
-        final_result = WireVector(4)  # , "lzc_result")
-        final_result <<= clzi(encoded_pairs[0], encoded_pairs[1], 2)
-        return final_result
-
-    else:
-        raise Warning(
-            f"Leading zero counter not implemented for float type with {m_bits} mantissa bits"
-        )
-
-
 def generate_sgr(
     aligned_mant_lsb: WireVector, m_bits: int
 ) -> tuple[WireVector, WireVector, WireVector]:
