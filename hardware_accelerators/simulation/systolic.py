@@ -5,42 +5,45 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 import numpy as np
 from pyrtl import Input, Output, Simulation, WireVector, reset_working_block
 
+from ..rtllib.systolic import SystolicArraySimState
+
 from ..dtypes import *
 from ..rtllib import *
 from .utils import *
 
 
-@dataclass
-class SimulationState:
-    """Stores the state of the systolic array at a given simulation step"""
+# @dataclass
+# class SimulationState:
+#     """Stores the state of the systolic array at a given simulation step"""
 
-    inputs: dict[str, Any]
-    weights: np.ndarray
-    data: np.ndarray
-    outputs: np.ndarray
-    accumulators: np.ndarray
-    control_regs: np.ndarray
-    step: int
+#     inputs: dict[str, Any]
+#     weights: np.ndarray
+#     data: np.ndarray
+#     outputs: np.ndarray
+#     accumulators: np.ndarray
+#     control_regs: dict
+#     step: int | None = None
 
-    def __repr__(self) -> str:
-        """Pretty print the simulation state at this step"""
-        width = 40
-        sep = "-" * width
+#     def __repr__(self) -> str:
+#         """Pretty print the simulation state at this step"""
+#         width = 40
+#         sep = "-" * width
+#         step_str = f"\nSimulation State - Step {self.step}\n{sep}\n" if self.step is not None else ""
 
-        return (
-            f"\nSimulation State - Step {self.step}\n{sep}\n"
-            f"Inputs:\n"
-            f"  w_en: {self.inputs['w_en']}\n"
-            f"  enable: {self.inputs['enable']}\n"
-            f"  weights: {np.array2string(self.inputs['weights'], precision=4, suppress_small=True)}\n"
-            f"  data: {np.array2string(self.inputs['data'], precision=4, suppress_small=True)}\n"
-            f"\nWeights Matrix:\n{np.array2string(self.weights, precision=4, suppress_small=True)}\n"
-            f"\nData Matrix:\n{np.array2string(self.data, precision=4, suppress_small=True)}\n"
-            f"\nAccumulators:\n{np.array2string(self.accumulators, precision=4, suppress_small=True)}\n"
-            f"\nControl Registers:\n{self.control_regs}\n"
-            f"\nOutputs:\n{np.array2string(self.outputs, precision=4, suppress_small=True)}\n"
-            f"{sep}\n"
-        )
+#         return (
+#             f"{step_str}"
+#             f"Inputs:\n"
+#             f"  w_en: {self.inputs['w_en']}\n"
+#             f"  enable: {self.inputs['enable']}\n"
+#             f"  weights: {np.array2string(self.inputs['weights'], precision=4, suppress_small=True)}\n"
+#             f"  data: {np.array2string(self.inputs['data'], precision=4, suppress_small=True)}\n"
+#             f"\nWeights Matrix:\n{np.array2string(self.weights, precision=4, suppress_small=True)}\n"
+#             f"\nData Matrix:\n{np.array2string(self.data, precision=4, suppress_small=True)}\n"
+#             f"\nAccumulators:\n{np.array2string(self.accumulators, precision=4, suppress_small=True)}\n"
+#             f"\nControl Registers:\n{self.control_regs}\n"
+#             f"\nOutputs:\n{np.array2string(self.outputs, precision=4, suppress_small=True)}\n"
+#             f"{sep}\n"
+#         )
 
 
 class SystolicArraySimulator:
@@ -74,7 +77,7 @@ class SystolicArraySimulator:
         self.accwidth = accum_type.bitwidth()
         self.multiplier = multiplier
         self.adder = adder
-        self.history: List[SimulationState] = []
+        self.history: List[SystolicArraySimState] = []
 
     def _setup(self):
         # Setup PyRTL simulation
@@ -188,10 +191,15 @@ class SystolicArraySimulator:
         # Additional step to flush pipeline
         self._step()
         self._reset_inputs()
+        if self.pipeline:
+            self._step()
 
         # Collect results
         results = []
-        for _ in range(self.size + int(self.pipeline)):
+        # while self.sim.inspect(self.array.control_out.name):
+        #     results.insert(0, self.array.inspect_outputs(self.sim, False))
+        #     self._step()
+        for _ in range(self.size):  # + int(self.pipeline)):
             self._step()
             results.insert(0, self.array.inspect_outputs(self.sim, False))
 
@@ -207,15 +215,16 @@ class SystolicArraySimulator:
         self.sim.step(self.sim_inputs)
 
         # Record simulation state
-        state = SimulationState(
-            inputs=self.get_readable_inputs(),
-            weights=self.array.inspect_weights(self.sim, False),
-            data=self.array.inspect_data(self.sim, False),
-            outputs=self.array.inspect_outputs(self.sim, False),
-            accumulators=self.array.inspect_accumulators(self.sim, False),
-            control_regs=self.array.inspect_control_regs(self.sim),
-            step=len(self.history),
-        )
+        state = self.array.get_state(self.sim, len(self.history))
+        # state = SimulationState(
+        #     inputs=self.get_readable_inputs(),
+        #     weights=self.array.inspect_weights(self.sim, False),
+        #     data=self.array.inspect_data(self.sim, False),
+        #     outputs=self.array.inspect_outputs(self.sim, False),
+        #     accumulators=self.array.inspect_accumulators(self.sim, False),
+        #     control_regs=self.array.inspect_control_regs(self.sim),
+        #     step=len(self.history),
+        # )
         self.history.append(state)
 
     def get_readable_inputs(self) -> dict[str, Any]:

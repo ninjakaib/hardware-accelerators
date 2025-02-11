@@ -229,14 +229,9 @@ class MatrixEngine:
             ),
         }
 
-    def inspect_systolic_array_state(self, sim: Simulation) -> Dict[str, np.ndarray]:
+    def inspect_systolic_array_state(self, sim: Simulation):
         """Return current PE array state"""
-        return {
-            "weights": self.systolic_array.inspect_weights(sim, False),
-            "data": self.systolic_array.inspect_data(sim, False),
-            "accumulators": self.systolic_array.inspect_accumulators(sim, False),
-            "outputs": self.systolic_array.inspect_outputs(sim, False),
-        }
+        return self.systolic_array.get_state(sim)
 
     def inspect_accumulator_state(self, sim: Simulation) -> np.ndarray:
         """Return all accumulator tiles as 3D array.
@@ -264,7 +259,7 @@ class MatrixEngine:
                 ]
             )
             tiles.append(tile_data)
-        return np.array(tiles[::-1])
+        return np.array(tiles)
 
     def get_accumulator_outputs(self, sim: Simulation) -> np.ndarray:
         """Return current values on accumulator output ports"""
