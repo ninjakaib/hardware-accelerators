@@ -114,6 +114,7 @@ class MatrixEngineSimulator:
             "accum_read_tile_addr": Input(
                 self.config.accum_addr_width, "accum_read_tile_addr"
             ),
+            "enable_activation": Input(1, "enable_activation"),
         }
         self.engine.connect_inputs(**inputs)
         return inputs
@@ -130,6 +131,7 @@ class MatrixEngineSimulator:
             "accum_mode": 0,
             "accum_read_start": 0,
             "accum_read_tile_addr": 0,
+            "enable_activation": 0,
         }
 
     def load_weights(self, weights: np.ndarray, bank: int):
@@ -167,6 +169,7 @@ class MatrixEngineSimulator:
             concatenated += binary << (i * dtype.bitwidth())
         return concatenated
 
+    # TODO: change to control the activation module
     def read_accumulator_tile(self, tile: int) -> np.ndarray:
         """Read tile from accumulator memory"""
 
