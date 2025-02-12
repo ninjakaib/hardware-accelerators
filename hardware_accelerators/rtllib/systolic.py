@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Callable, List, Type
+from dataclasses import dataclass
+from typing import Any, Callable, List, Type
 
 import numpy as np
-from pyrtl import Const, Register, Simulation, WireVector, chop
+from pyrtl import Const, Register, Simulation, WireVector, chop, conditional_assignment
 
-from hardware_accelerators import *
-from hardware_accelerators.simulation import *
+# from hardware_accelerators import *
+# from hardware_accelerators.simulation import *
 
 from ..dtypes.base import BaseFloat
 from .processing_element import ProcessingElement
@@ -14,11 +15,50 @@ from .processing_element import ProcessingElement
 # TODO: specify different dtypes for weights and activations
 
 
+@dataclass
+class SystolicArraySimState:
+    """Stores the state of the systolic array at a given simulation step"""
+
+    inputs: dict[str, Any]
+    weights: np.ndarray
+    data: np.ndarray
+    outputs: np.ndarray
+    accumulators: np.ndarray
+    control_regs: dict
+    step: int | None = None
+
+    def __repr__(self) -> str:
+        """Pretty print the simulation state at this step"""
+        width = 40
+        sep = "-" * width
+        step_str = (
+            f"\nSimulation State - Step {self.step}\n{sep}\n"
+            if self.step is not None
+            else ""
+        )
+
+        return (
+            f"{step_str}"
+            f"Inputs:\n"
+            f"  w_en: {self.inputs['w_en']}\n"
+            f"  enable: {self.inputs['enable']}\n"
+            f"  weights: {np.array2string(self.inputs['weights'], precision=4, suppress_small=True)}\n"
+            f"  data: {np.array2string(self.inputs['data'], precision=4, suppress_small=True)}\n"
+            f"\nWeights Matrix:\n{np.array2string(self.weights, precision=4, suppress_small=True)}\n"
+            f"\nData Matrix:\n{np.array2string(self.data, precision=4, suppress_small=True)}\n"
+            f"\nAccumulators:\n{np.array2string(self.accumulators, precision=4, suppress_small=True)}\n"
+            f"\nControl Registers:\n{self.control_regs}\n"
+            f"\nOutputs:\n{np.array2string(self.outputs, precision=4, suppress_small=True)}\n"
+            f"{sep}\n"
+        )
+
+
 class BaseSystolicArray(ABC):
     def __init__(
         self,
         size: int,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
@@ -35,6 +75,7 @@ class BaseSystolicArray(ABC):
         # Set configuration attributes
         self.size = size
         self.data_type = data_type
+        self.weight_type = weight_type
         self.accum_type = accum_type
         data_width = data_type.bitwidth()
         accum_width = accum_type.bitwidth()
@@ -61,6 +102,7 @@ class BaseSystolicArray(ABC):
             [
                 ProcessingElement(
                     self.data_type,
+                    self.weight_type,
                     self.accum_type,
                     self.multiplier,
                     self.adder,
@@ -147,12 +189,21 @@ class BaseSystolicArray(ABC):
             print(np.array_str(current_results, precision=4, suppress_small=True), "\n")
         return current_results
 
+    def inspect_register_list(
+        self, registers: list[Register], sim: Simulation
+    ) -> list[int]:
+        values = []
+        for reg in registers:
+            values.append(sim.inspect(reg.name))
+        return values
+
 
 class SystolicArrayDiP(BaseSystolicArray):
     def __init__(
         self,
         size: int,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
@@ -174,13 +225,47 @@ class SystolicArrayDiP(BaseSystolicArray):
 
         # Control signal registers to propogate signal down the array
         self.enable_in = WireVector(1)
-        self.control_registers = [Register(1) for _ in range(size)]
-
-        # If PEs contain an extra pipeline stage, 1 additional control reg is needed
+        # 1 smaller since input signal directly enables first row
+        self.data_enable_regs = [Register(1) for _ in range(size - 1)]
+        self.accum_enable_regs = [Register(1) for _ in range(size)]
         if self.pipeline:
-            self.control_registers.append(Register(1))
+            self.mul_enable_regs = [Register(1) for _ in range(size)]
 
-        super().__init__(size, data_type, accum_type, multiplier, adder)
+        # self.control_registers = [Register(1) for _ in range(size + 2 + int(pipeline))]
+
+        # Control signal output
+        self.control_out_reg = Register(1)
+        self.control_out_reg.next <<= self.accum_enable_regs[-1]
+        self.control_out = WireVector(1)
+        self.control_out <<= self.control_out_reg  # & self.accum_enable_regs[-1]
+        # self.control_out = WireVector(1)
+        # self.control_out <<= self.accum_enable_regs[-1]
+
+        # # If PEs contain an extra pipeline stage, 1 additional control reg is needed
+        # if self.pipeline:
+        #     self.control_registers.append(Register(1))
+
+        super().__init__(size, data_type, weight_type, accum_type, multiplier, adder)
+        self._connect_control_logic()
+
+    def _connect_control_logic(self):
+        # Connect input control signal to first registers in control pipeline
+        self.data_enable_regs[0].next <<= self.enable_in
+        if not self.pipeline:
+            self.accum_enable_regs[0].next <<= self.enable_in
+        else:
+            self.mul_enable_regs[0].next <<= self.enable_in
+            self.accum_enable_regs[0].next <<= self.mul_enable_regs[0]
+
+        # Connect data enable registers
+        for i in range(1, self.size - 1):
+            self.data_enable_regs[i].next <<= self.data_enable_regs[i - 1]
+
+        # Connect accum enable registers (and mul enable if pipelined)
+        for i in range(1, self.size):
+            self.accum_enable_regs[i].next <<= self.accum_enable_regs[i - 1]
+            if self.pipeline:
+                self.mul_enable_regs[i].next <<= self.mul_enable_regs[i - 1]
 
     def _create_pe_array(self) -> List[List[ProcessingElement]]:
         # Create PE array
@@ -188,6 +273,7 @@ class SystolicArrayDiP(BaseSystolicArray):
             [
                 ProcessingElement(
                     self.data_type,
+                    self.weight_type,
                     self.accum_type,
                     self.multiplier,
                     self.adder,
@@ -204,10 +290,6 @@ class SystolicArrayDiP(BaseSystolicArray):
         - Weights are loaded simultaneously across array
         - Data inputs arrive synchronously
         """
-        # Connect control signal registers that propagate down the array
-        self.control_registers[0].next <<= self.enable_in
-        for i in range(1, len(self.control_registers)):
-            self.control_registers[i].next <<= self.control_registers[i - 1]
 
         for row in range(self.size):
             for col in range(self.size):
@@ -223,29 +305,131 @@ class SystolicArrayDiP(BaseSystolicArray):
 
                 # DiP config: PEs connected to previous row and data diagonally shifted by 1
                 else:
-                    pe.connect_data_enable(self.control_registers[row - 1])
+                    pe.connect_data_enable(self.data_enable_regs[row - 1])
                     pe.connect_data(self.pe_array[row - 1][col - self.size + 1])
                     pe.connect_weight(self.pe_array[row - 1][col])
                     pe.connect_accum(self.pe_array[row - 1][col])
 
                 # Delay the control signal for accumulator by num pipeline stages
+                pe.connect_adder_enable(self.accum_enable_regs[row])
                 if self.pipeline:
-                    pe.connect_mul_enable(self.control_registers[row])
-                    pe.connect_adder_enable(self.control_registers[row + 1])
-                else:
-                    pe.connect_adder_enable(self.control_registers[row])
+                    pe.connect_mul_enable(self.mul_enable_regs[row])
+                # else:
+                #     pe.connect_adder_enable(self.control_registers[row])
 
                 # Connect weight enable signal (shared by all PEs)
                 pe.connect_weight_enable(self.weight_enable)
 
                 # Connect bottom row results to output ports
                 if row == self.size - 1:
-                    self.results_out[col] <<= pe.outputs.accum
+                    with conditional_assignment:
+                        # with self.accum_enable_regs[row]:
+                        with self.control_out:
+                            self.results_out[col] |= pe.outputs.accum
 
     def connect_enable_input(self, source: WireVector):
         """Connect PE enable signal. Controls writing to the data input register"""
         self.enable_in <<= source
         return source
+
+    def connect_inputs(
+        self,
+        data_inputs: list[WireVector] | None = None,
+        weight_inputs: list[WireVector] | None = None,
+        enable_input: WireVector | None = None,
+        weight_enable: WireVector | None = None,
+    ) -> None:
+        """Connect input control and data wires to the systolic array.
+
+        Args:
+            data_inputs: List of data input wires (data_width bits each)
+                Input data for each row of the systolic array.
+                Length must match array size.
+
+            weight_inputs: List of weight input wires (data_width bits each)
+                Input weights for each column of the systolic array.
+                Length must match array size.
+
+            enable_input: Enable signal for data streaming (1 bit)
+                Controls writing to the data input register.
+
+            weight_enable: Weight load enable signal (1 bit)
+                Controls writing to the weight registers.
+
+        Raises:
+            AssertionError: If input wire widths don't match expected widths or
+                            if input list lengths don't match array size.
+        """
+        if data_inputs is not None:
+            assert (
+                len(data_inputs) == self.size
+            ), f"Expected {self.size} data inputs, got {len(data_inputs)}"
+            for row, data_input in enumerate(data_inputs):
+                assert (
+                    len(data_input) == self.data_type.bitwidth()
+                ), f"Data input {row} width mismatch. Expected {self.data_type.bitwidth()}, got {len(data_input)}"
+                self.connect_data_input(row, data_input)
+
+        if weight_inputs is not None:
+            assert (
+                len(weight_inputs) == self.size
+            ), f"Expected {self.size} weight inputs, got {len(weight_inputs)}"
+            for col, weight_input in enumerate(weight_inputs):
+                assert (
+                    len(weight_input) == self.data_type.bitwidth()
+                ), f"Weight input {col} width mismatch. Expected {self.data_type.bitwidth()}, got {len(weight_input)}"
+                self.connect_weight_input(col, weight_input)
+
+        if enable_input is not None:
+            assert len(enable_input) == 1, "Enable input must be 1 bit wide"
+            self.connect_enable_input(enable_input)
+
+        if weight_enable is not None:
+            assert len(weight_enable) == 1, "Weight enable must be 1 bit wide"
+            self.connect_weight_enable(weight_enable)
+
+    def inspect_control_regs(self, sim: Simulation):
+        values = {
+            "data_controls": [
+                sim.inspect(self.enable_in.name),
+                self.inspect_register_list(self.data_enable_regs, sim),
+            ],
+            "accum_controls": self.inspect_register_list(self.accum_enable_regs, sim),
+            "control_out": sim.inspect(self.control_out.name),
+        }
+        if self.pipeline:
+            values["mul_controls"] = self.inspect_register_list(
+                self.mul_enable_regs, sim
+            )
+        return values
+
+    def get_state(self, sim: Simulation, step: int | None = None):
+        inputs = {
+            "w_en": sim.inspect(self.weight_enable.name),
+            "enable": sim.inspect(self.enable_in.name),
+            "weights": np.array(
+                [
+                    float(self.data_type(binint=sim.inspect(w.name)))
+                    for w in self.weights_in
+                ]
+            ),
+            "data": np.array(
+                [
+                    float(self.data_type(binint=sim.inspect(d.name)))
+                    for d in self.data_in
+                ]
+            ),
+        }
+
+        return SystolicArraySimState(
+            step=step,
+            inputs=inputs,
+            weights=self.inspect_weights(sim, False),
+            data=self.inspect_data(sim, False),
+            accumulators=self.inspect_accumulators(sim, False),
+            control_regs=self.inspect_control_regs(sim),
+            outputs=self.inspect_outputs(sim, False),
+        )
 
 
 # TODO: Add control logic
@@ -278,6 +462,7 @@ class SystolicArrayWS(BaseSystolicArray):
         self,
         size: int,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier,
         adder,
@@ -296,7 +481,7 @@ class SystolicArrayWS(BaseSystolicArray):
         self.systolic_setup = SystolicSetup(size, self.data_type)
         self.result_buffer = SystolicSetup(size, self.accum_type)
 
-        super().__init__(size, data_type, accum_type, multiplier, adder)
+        super().__init__(size, data_type, weight_type, accum_type, multiplier, adder)
 
     def _create_pe_array(self) -> List[List[ProcessingElement]]:
         return super()._create_pe_array()

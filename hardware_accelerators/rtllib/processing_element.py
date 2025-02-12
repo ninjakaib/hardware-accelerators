@@ -4,6 +4,8 @@ from typing import Callable, Self, Type
 import pyrtl
 from pyrtl import Register, WireVector, conditional_assignment
 
+from .utils.common import convert_float_format
+
 from ..dtypes.base import BaseFloat
 
 # TODO: Add float type conversion logic to pass different bitwidths to the accumulator
@@ -23,6 +25,7 @@ class ProcessingElement:
     def __init__(
         self,
         data_type: Type[BaseFloat],
+        weight_type: Type[BaseFloat],
         accum_type: Type[BaseFloat],
         multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
@@ -41,6 +44,7 @@ class ProcessingElement:
 
         # Get bit widths from format specs
         data_width = data_type.bitwidth()
+        weight_width = weight_type.bitwidth()
         acc_width = accum_type.bitwidth()
 
         # Input wires
@@ -48,30 +52,50 @@ class ProcessingElement:
         self.weight_in = WireVector(data_width)
         self.accum_in = WireVector(acc_width)
 
-        # Registers
-        self.data_reg = Register(data_width)
-        self.weight_reg = Register(data_width)
-        self.accum_reg = Register(acc_width)
-
         # Control signals
         self.weight_en = WireVector(1)  # Weight write enable
         self.data_en = WireVector(1)  # Enable writing to the data input register
         self.adder_en = WireVector(1)  # Enable writing to the accumulator register
 
-        # Multiply logic
-        product = multiplier(self.data_reg, self.weight_reg, data_type)
-        self.adder_input = product
+        # Registers
+        self.data_reg = Register(data_width)
+        self.weight_reg = Register(data_width)
+        self.accum_reg = Register(acc_width)
 
-        # TODO: Add float type conversion logic to pass different bitwidths to the accumulator
+        # Convert inputs to multiplier if necessary
+        multiplier_data_input = self.data_reg
+        multiplier_weight_input = self.weight_reg
+        multiplier_dtype = data_type
+
+        if data_width < weight_width:
+            multiplier_data_input = convert_float_format(
+                self.data_reg, data_type, weight_type
+            )
+            multiplier_dtype = weight_type
+        elif weight_width < data_width:
+            multiplier_weight_input = convert_float_format(
+                self.weight_reg, weight_type, data_type
+            )
+
+        # Multiply logic
+        product = multiplier(
+            multiplier_data_input, multiplier_weight_input, multiplier_dtype
+        )
 
         # Optionally build a pipeline register to hold the multiplier result
         if self.pipeline:
             self.mul_en = WireVector(1)
-            product_reg = Register(data_width)
-            self.adder_input = product_reg
+            product_reg = Register(multiplier_dtype.bitwidth())
+            product_out = product_reg
             with conditional_assignment:
                 with self.mul_en:  # Enable writing to product register
                     product_reg.next |= product
+        else:
+            product_out = product
+
+        self.adder_input = convert_float_format(
+            product_out, multiplier_dtype, accum_type
+        )
 
         # Add the product and previous accumulation value to get partial sum
         sum_result = adder(self.adder_input, self.accum_in, accum_type)

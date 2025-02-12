@@ -75,6 +75,13 @@ class TiledAddressGenerator:
         self.write_row = Register(array_size.bit_length())
         self.write_mode_reg = Register(1)  # Stores mode for current operation
 
+        # Outputs
+        self.write_addr_out = WireVector(self.internal_addr_width)
+        self.write_enable = WireVector(1)
+        self.write_busy = WireVector(1)
+        self.write_done = WireVector(1)
+        self.write_mode_out = WireVector(1)
+
         # ================== Read Interface ==================
         self._read_tile_addr = WireVector(tile_addr_width)
         self._read_start = WireVector(1)
@@ -85,12 +92,6 @@ class TiledAddressGenerator:
         self.read_row = Register(array_size.bit_length())
 
         # Outputs
-        self.write_addr_out = WireVector(self.internal_addr_width)
-        self.write_enable = WireVector(1)
-        self.write_busy = WireVector(1)
-        self.write_done = WireVector(1)
-        self.write_mode_out = WireVector(1)
-
         self.read_addr_out = WireVector(self.internal_addr_width)
         self.read_busy = WireVector(1)
         self.read_done = WireVector(1)
@@ -219,6 +220,7 @@ class AccumulatorMemoryBank:
         self.addr_gen = TiledAddressGenerator(
             tile_addr_width=tile_addr_width, array_size=array_size
         )
+        self.num_tiles = self.addr_gen.num_tiles
 
         # Input ports
         self._write_tile_addr = WireVector(self.tile_addr_width)
@@ -271,7 +273,9 @@ class AccumulatorMemoryBank:
 
         # Read logic
         for i, mem in enumerate(self.memory_banks):
-            self._data_out[i] <<= mem[self.addr_gen.read_addr_out]
+            with conditional_assignment:
+                with self.read_busy:
+                    self._data_out[i] |= mem[self.addr_gen.read_addr_out]
 
     def connect_inputs(
         self,

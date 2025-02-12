@@ -1,10 +1,9 @@
 from typing import Tuple
-
 import pyrtl
-from pyrtl import Const, WireVector
+from pyrtl import Const, WireVector, concat
 from pyrtl.rtllib import adders, multipliers
 
-from .common import clzi, enc2, generate_sgr, leading_zero_counter
+from .common import clzi, enc2, generate_sgr
 
 ### ===================================================================
 ### MULTIPLIER STAGE FUNCTIONS
@@ -12,12 +11,12 @@ from .common import clzi, enc2, generate_sgr, leading_zero_counter
 
 
 def multiplier_stage_2(
+    sign_a: WireVector,
+    sign_b: WireVector,
     exp_a: WireVector,
     exp_b: WireVector,
-    sign_a,
-    sign_b,
-    mantissa_a,
-    mantissa_b,
+    mantissa_a: WireVector,
+    mantissa_b: WireVector,
     m_bits: int,
 ):
     # calculate sign using xor
@@ -36,10 +35,11 @@ def multiplier_stage_2(
 def multiplier_stage_3(exp_sum, mantissa_product, e_bits, m_bits: int):
     # find leading zeros in mantissa product
     leading_zeros = WireVector(e_bits)  # , name="leading_zeros")
-    if m_bits == 7:
-        leading_zeros <<= leading_zero_count_16bit_multiply(mantissa_product, m_bits)
-    else:
-        leading_zeros <<= leading_zero_counter(mantissa_product, m_bits)
+    leading_zeros <<= multiplier_leading_zero_counter(mantissa_product, m_bits)
+    # if m_bits == 7:
+    #     leading_zeros <<= leading_zero_count_16bit_multiply(mantissa_product, m_bits)
+    # else:
+    #     leading_zeros <<= leading_zero_counter(mantissa_product, m_bits)
 
     # adjust exponent
     unbiased_exp = WireVector(e_bits)  # , name="unbiased_exp")
@@ -79,7 +79,7 @@ def multiplier_stage_4(
 
 def normalize_mantissa_product(mantissa_product, leading_zeros, m_bits: int):
     assert mantissa_product.bitwidth == 2 * m_bits + 2
-    assert leading_zeros.bitwidth == 8
+    # assert leading_zeros.bitwidth == 8
     # shift mantissa product to the left by leading zeros
     normalized_mantissa_product = WireVector(
         2 * m_bits + 2
@@ -147,7 +147,7 @@ def adjust_final_exponent(
         final_exp: adjusted exponent value (e_bits wide)
     """
     assert len(unbiased_exp) == e_bits
-    assert len(lzc) == 8
+    # assert len(lzc) == 8
     assert len(round_increment) == 1
 
     # First subtract LZC from larger exponent
@@ -161,39 +161,51 @@ def adjust_final_exponent(
     return final_exp
 
 
-def leading_zero_count_16bit_multiply(value: WireVector, m_bits: int) -> WireVector:
+def multiplier_leading_zero_counter(
+    mantissa_product: WireVector, m_bits: int
+) -> WireVector:
     """
-    Calculate leading zeros for a 8-bit input (for bf16 mantissa addition)
+    Calculate leading zeros for a mantissa product input with dynamic width.
+    The input width must be a power of 2 for the pair reduction to work properly.
 
     Args:
-        value: 8-bit input WireVector (mantissa with hidden bit and overflow bit)
+        mantissa_product: Input WireVector (mantissa product with hidden bit and overflow bit)
+        m_bits: Number of mantissa bits for one operand (total width will be 2*m_bits + 2)
 
     Returns:
-        4-bit WireVector containing the count of leading zeros (max 8 zeros)
+        WireVector containing the count of leading zeros
     """
-    assert len(value) == m_bits * 2 + 2, "Input must be 8 bits wide"
+    total_width = 2 * m_bits + 2
 
-    # First level: encode pairs of bits (4 pairs total for 8 bits)
-    # Results in a list with 4 2-bit WireVectors, indexed from MSB [0] to LSB [-1]
-    pairs = pyrtl.chop(value, *[2 for _ in range((2 * m_bits + 2) // 2)])
-    encoded_pairs = [enc2(pair) for pair in pairs]
+    # Find next power of 2 that's >= total_width
+    next_pow2 = 1 << (total_width - 1).bit_length()
 
-    first_merge = [
-        clzi(encoded_pairs[0], encoded_pairs[1], 2),  # First group
-        clzi(
-            encoded_pairs[2], encoded_pairs[3], 2
-        ),  # Last group (handles remaining bits)
-        clzi(encoded_pairs[4], encoded_pairs[5], 2),  # First group
-        clzi(
-            encoded_pairs[6], encoded_pairs[7], 2
-        ),  # Last group (handles remaining bits)
-    ]
+    # Zero extend the value if needed
+    if next_pow2 > total_width:
+        value = concat(mantissa_product, Const(0, bitwidth=(next_pow2 - total_width)))
+        total_width = next_pow2
+    else:
+        value = mantissa_product
 
-    second_merge = [
-        clzi(first_merge[0], first_merge[1], 3),  # First group
-        clzi(first_merge[2], first_merge[3], 3),  # Last group (handles remaining bits)
-    ]
+    # First level: encode pairs of bits
+    pairs = pyrtl.chop(value, *[2 for _ in range(total_width // 2)])  # type: ignore
+    current_level = [enc2(pair) for pair in pairs]
 
-    final_result = WireVector(5)  # , "lzc_result")
-    final_result <<= clzi(second_merge[0], second_merge[1], 4)
+    # Keep merging pairs until we have a single result
+    bits_per_section = 2  # Start with 2 bits per section after enc2
+    while len(current_level) > 1:
+        next_level = []
+        # Process pairs of sections
+        for i in range(0, len(current_level), 2):
+            left = current_level[i]
+            right = current_level[i + 1]
+            merged = clzi(left, right, bits_per_section)
+            next_level.append(merged)
+
+        current_level = next_level
+        bits_per_section += 1
+
+    # The final result should be in current_level[0]
+    final_result = WireVector(8)
+    final_result <<= current_level[0]
     return final_result
