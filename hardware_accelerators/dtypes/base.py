@@ -277,3 +277,6 @@ class BaseFloat(ABC):
 
     def __float__(self):
         return self.decimal_approx
+
+    def __neg__(self):
+        return self.__class__(binint=self.binint ^ (1 << self.bitwidth() - 1))
