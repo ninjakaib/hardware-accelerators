@@ -250,7 +250,7 @@ class AccumulatorMemoryBank:
         ]
 
         # Output ports
-        self._data_out = [WireVector(self.data_width) for _ in range(array_size)]
+        self.data_out = [WireVector(self.data_width) for _ in range(array_size)]
         self.write_busy = self.addr_gen.write_busy
         self.write_done = self.addr_gen.write_done
         self.read_busy = self.addr_gen.read_busy
@@ -275,7 +275,7 @@ class AccumulatorMemoryBank:
         for i, mem in enumerate(self.memory_banks):
             with conditional_assignment:
                 with self.read_busy:
-                    self._data_out[i] |= mem[self.addr_gen.read_addr_out]
+                    self.data_out[i] |= mem[self.addr_gen.read_addr_out]
 
     def connect_inputs(
         self,
@@ -366,8 +366,8 @@ class AccumulatorMemoryBank:
         return {
             "tile_addr": self._read_tile_addr,
             "start": self._read_start,
-            "data": self._data_out,
+            "data": self.data_out,
         }
 
     def get_output(self, bank: int) -> WireVector:
-        return self._data_out[bank]
+        return self.data_out[bank]

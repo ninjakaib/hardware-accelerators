@@ -4,11 +4,10 @@ import numpy as np
 import pyrtl
 from pyrtl import Input, Output, WireVector, Simulation, Register, MemBlock, RomBlock
 
-from .accumulators import AccumulatorMemoryBank
-
-from .systolic import SystolicArrayDiP
-
 from .buffer import BufferMemory
+from .systolic import SystolicArrayDiP
+from .accumulators import AccumulatorMemoryBank
+from .activations import ReluUnit
 from ..dtypes import BaseFloat
 
 
@@ -80,6 +79,14 @@ class MatrixEngine:
             data_type=config.accum_type,
             adder=config.accum_adder,
         )
+        self.activation = ReluUnit(
+            size=config.array_size,
+            dtype=config.accum_type,
+        )
+
+        self.outputs = [
+            WireVector(config.accum_type.bitwidth()) for _ in range(config.array_size)
+        ]
 
         # Connect components
         self._connect_components()
@@ -95,6 +102,7 @@ class MatrixEngine:
         self.accum_mode = WireVector(1)
         self.accum_read_start = WireVector(1)
         self.accum_read_tile_addr = WireVector(self.config.accum_addr_width)
+        self.enable_activation = WireVector(1)
 
     def _connect_components(self):
         """Internal component connections"""
@@ -126,6 +134,15 @@ class MatrixEngine:
             read_tile_addr=self.accum_read_tile_addr,
         )
 
+        # Connect activation function to accumulator outputs
+        self.activation.connect_inputs(
+            inputs=self.accumulator.data_out,
+            start=self.accum_read_start,
+            enable=self.enable_activation,
+            valid=self.accumulator.read_busy,
+        )
+        self.activation.connect_outputs(self.outputs)
+
     def connect_inputs(
         self,
         data_start: WireVector | None = None,
@@ -137,6 +154,7 @@ class MatrixEngine:
         accum_mode: WireVector | None = None,
         accum_read_start: WireVector | None = None,
         accum_read_tile_addr: WireVector | None = None,
+        enable_activation: WireVector | None = None,
     ) -> None:
         """Connect input control wires to the matrix engine.
 
@@ -150,6 +168,7 @@ class MatrixEngine:
             accum_mode: 1-bit mode select (0=overwrite, 1=accumulate with existing values)
             accum_read_start: 1-bit signal that initiates accumulator read sequence when pulsed high
             accum_read_tile_addr: Address selecting which tile's data to output
+            enable_activation: 1-bit signal to enable activation function on output data
         Raises:
             AssertionError: If input wire widths don't match expected widths.
         """
@@ -194,6 +213,12 @@ class MatrixEngine:
                 len(accum_read_tile_addr) == self.config.accum_addr_width
             ), f"Accumulator read tile address width mismatch. Expected {self.config.accum_addr_width}, got {len(accum_read_tile_addr)}"
             self.accum_read_tile_addr <<= accum_read_tile_addr
+
+        if enable_activation is not None:
+            assert (
+                len(enable_activation) == 1
+            ), "Enable activation signal must be 1 bit wide"
+            self.enable_activation <<= enable_activation
 
     # Inspection methods
     def inspect_buffer_state(self, sim: Simulation) -> Dict[str, np.ndarray]:
