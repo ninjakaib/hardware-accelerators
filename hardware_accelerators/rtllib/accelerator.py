@@ -51,7 +51,7 @@ class AcceleratorConfig:
     @property
     def accum_addr_width(self):
         """Get the width of the accumulator address bus in bits"""
-        return (self.accumulator_tiles - 1).bit_length()
+        return (self.accumulator_tiles - 1).bit_length() | 1
 
 
 class MatrixEngine:
