@@ -11,6 +11,8 @@ from pyrtl import (
     WireVector,
     reset_working_block,
 )
+
+from ..rtllib.multipliers import float_multiplier
 from ..dtypes import BaseFloat, BF16
 from ..rtllib.accumulators import AccumulatorMemoryBank
 from ..rtllib.adders import float_adder
@@ -219,6 +221,31 @@ class MatrixEngineSimulator:
                 accum_outputs=self.engine.get_accumulator_outputs(self.sim),
             )
         )
+
+    @classmethod
+    def calculate_matmul(cls, weights: np.ndarray, data: np.ndarray):
+        # Ensure weights and data are square matrices of the same size
+        assert weights.shape[0] == weights.shape[1], "Weights must be a square matrix"
+        assert data.shape[0] == data.shape[1], "Data must be a square matrix"
+        assert (
+            weights.shape[0] == data.shape[0]
+        ), "Weights and data must be the same size"
+        config = AcceleratorConfig(
+            array_size=weights.shape[0],
+            data_type=BF16,
+            weight_type=BF16,
+            accum_type=BF16,
+            pe_adder=float_adder,
+            accum_adder=float_adder,
+            pe_multiplier=float_multiplier,
+            pipeline=False,
+            accumulator_tiles=1,
+        )
+        sim = cls(config)
+        sim.load_weights(weights, bank=0)
+        sim.load_activations(data, bank=0)
+        sim.matmul(0, 0, 0, False)
+        return sim.read_accumulator_tile(0)[::-1]
 
     @property
     def data_banks(self) -> np.ndarray:
