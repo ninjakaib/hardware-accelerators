@@ -1,12 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import json
 from typing import Any, Callable, List, Type
 
-from graphviz import pipe
 import numpy as np
-from pyrtl import Const, Register, Simulation, WireVector, chop, conditional_assignment
-from zmq import has
+from pyrtl import Const, Register, Simulation, WireVector, conditional_assignment
 
 # from hardware_accelerators import *
 # from hardware_accelerators.simulation import *
@@ -14,8 +11,7 @@ from zmq import has
 from ..dtypes.base import BaseFloat
 from .processing_element import ProcessingElement
 
-# TODO: Add float type conversion logic to pass different bitwidths to the accumulator
-# TODO: specify different dtypes for weights and activations
+# TODO: Add double buffering for weights in processing elements
 
 
 @dataclass
