@@ -1,18 +1,14 @@
 from dataclasses import dataclass
-from os import read
-from typing import Callable, Type, Dict, Any
+from typing import Callable, Type, Dict
 import numpy as np
 
 from pyrtl import (
-    Input,
-    Output,
     WireVector,
     Simulation,
     Register,
-    MemBlock,
-    RomBlock,
     concat,
 )
+
 
 from .buffer import BufferMemory, WeightFIFO
 from .systolic import SystolicArrayDiP
@@ -283,7 +279,7 @@ class Accelerator:
         tiles = []
         for addr in range(2**self.config.accum_addr_width):
             row = [
-                float(self.config.accum_type(binint=sim.inspect_mem(bank)[addr]))
+                float(self.config.accum_type(binint=sim.inspect_mem(bank).get(addr, 0)))
                 for bank in self.accumulator.memory_banks
             ]
             tiles.append(row)

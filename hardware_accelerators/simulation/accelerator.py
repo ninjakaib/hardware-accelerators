@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Type
+from typing import Any, Callable, Dict, List, Literal, Self, Type
 import numpy as np
 import pyrtl
 from pyrtl import (
@@ -25,6 +25,7 @@ from ..rtllib import (
     Accelerator,
 )
 from .utils import permutate_weight_matrix, convert_array_dtype
+from typing import TypedDict, Optional, Literal, NotRequired, Unpack
 
 
 # @dataclass
@@ -447,6 +448,38 @@ class AcceleratorSimState:
         )
 
 
+# New TypedDict for step parameters
+class StepInputs(TypedDict):
+    """Type hints for simulator step inputs with documentation for each control signal.
+
+    All fields are optional (NotRequired) and default to 0 if not specified.
+    """
+
+    data_enable: NotRequired[int]
+    """1-bit signal that enables data flow into the systolic array"""
+
+    weight_start: NotRequired[int]
+    """1-bit signal that triggers loading of a new weight tile when pulsed high"""
+
+    weight_tile_addr: NotRequired[int]
+    """Address selecting which weight tile to load from the FIFO"""
+
+    accum_addr: NotRequired[int]
+    """Address for the accumulator memory bank"""
+
+    accum_mode: NotRequired[int]
+    """1-bit mode select (0=overwrite, 1=accumulate with existing values)"""
+
+    act_start: NotRequired[int]
+    """1-bit signal to enable passing data through the activation unit"""
+
+    act_func: NotRequired[int]
+    """1-bit signal to select activation function (0=passthrough, 1=ReLU)"""
+
+    data: NotRequired[np.ndarray]
+    """Input data vector of length array_size. Will set data_enable=1 if provided"""
+
+
 class AcceleratorSimulator:
     """Simulator for the Accelerator hardware design.
 
@@ -457,9 +490,27 @@ class AcceleratorSimulator:
     def __init__(self, config: AcceleratorConfig):
         self.config = config
         self.history: List[AcceleratorSimState] = []
-        self._setup()
+        self.setup()
 
-    def _setup(self):
+    @classmethod
+    def default_config(cls, array_size: int, num_weight_tiles: int) -> Self:
+        """Create a default configuration for the accelerator"""
+        return cls(
+            AcceleratorConfig(
+                array_size=array_size,
+                num_weight_tiles=num_weight_tiles,
+                data_type=BF16,
+                weight_type=BF16,
+                accum_type=BF16,
+                pe_adder=float_adder,
+                accum_adder=float_adder,
+                pe_multiplier=float_multiplier,
+                pipeline=False,
+                accum_addr_width=array_size,
+            )
+        )
+
+    def setup(self):
         """Initialize the simulation environment and hardware"""
         reset_working_block()
         self.accelerator = Accelerator(self.config)
@@ -490,10 +541,12 @@ class AcceleratorSimulator:
         data_vec: np.ndarray | None = None,
         accum_addr: int = 0,
         accum_mode: int = 0,  # 0=overwrite, 1=accumulate
-        activation_enable: bool = False,  # 0=nothing, 1=passthrough, 2=ReLU
+        activation_enable: bool = False,  # 0=nothing, 1=enable
         activation_func: Literal["passthrough", "relu"] = "passthrough",
         load_new_weights: bool = False,  # 0=don't load, 1=load (blocking)
         weight_tile_addr: int = 0,  # address of weight tile to load
+        flush_pipeline: bool = True,
+        nop: bool = False,
     ) -> None:
         """Execute one instruction with the given inputs. Will step more than one cycle
 
@@ -501,62 +554,65 @@ class AcceleratorSimulator:
             data_vec: Input data vector of length array_size. If None, data_enable will be 0
             accum_addr: Address in accumulator memory to read/write
             accum_mode: 0 for overwrite, 1 for accumulate with existing values
-            activation: 0 for no activation, 1 for passthrough, 2 for ReLU
-            weights: 0 to maintain current weights, 1 to load new weights
+            activation_enable: Whether to enable the activation unit
+            activation_func: Activation function to use (passthrough or ReLU)
+            load_new_weights: Whether to load a new weight tile from FIFO memory
             weight_tile_addr: Address of weight tile to load when weights=1
+            flush_pipeline: Whether to flush the systolic array after input data to allow for new data/weights on the next cycle. If False, the systolic array will be held in the same state for the next cycle allowing for multiple data inputs to be streamed in.
+            nop: No operation, step 1 cycle with no inputs
         """
-        # Prepare input values
-        input_values = {
-            "data_enable": 0 if load_new_weights else 1,
-            "weight_start": int(load_new_weights),
-            "weight_tile_addr": weight_tile_addr,
-            "accum_addr": accum_addr,
-            "accum_mode": accum_mode,
-            "act_start": int(activation_enable),
-            "act_func": 1 if activation_func == "relu" else 0,
-        }
-
-        # Add data inputs if provided
-        if data_vec is not None:
-            data_inputs = {
-                f"data_in_{i}": self.config.data_type(value).binint
-                for i, value in data_vec
-            }
-        else:
-            data_inputs = {f"data_in_{i}": 0 for i in range(self.config.array_size)}
+        if nop:
+            self.step()
+            return
 
         if load_new_weights:
             # Start streaming weights into systolic array
             self.step(weight_start=1, weight_tile_addr=weight_tile_addr)
 
             # Load all except the "last" (actually 1st) row of weights
-            for _ in range(self.config.array_size - 2):
+            for _ in range(self.config.array_size - 1):
                 self.step()
 
-            # Start streaming data into systolic array
-            # actual data stream is delayed by 1 cycle so we have to start when there are 2 rows of weights left
-            self.step(data_bank=data_bank, data_start=1)
-
-            self.step(**input_values)
-
-        # Record state
-        self.history.append(
-            AcceleratorSimState(
-                step=len(self.history),
-                inputs=input_values,
-                systolic_state=self.accelerator.inspect_systolic_array_state(self.sim),
-                accum_state=self.accelerator.inspect_accumulator_state(self.sim),
-                outputs=self._get_outputs(),
+        if data_vec is not None:
+            # Start streaming data into systolic array at the same time as last weights
+            self.step(
+                data=data_vec,
+                accum_addr=accum_addr,
+                accum_mode=accum_mode,
+                act_start=activation_enable,
+                act_func=1 if activation_func == "relu" else 0,
             )
-        )
 
-    def step(self, **kwargs):
-        """Execute a simulation step with the given inputs"""
+        if flush_pipeline:
+            for _ in range(self.config.array_size + self.config.pipeline):
+                self.step()
+
+    def step(
+        self,
+        **kwargs: Unpack[StepInputs],
+    ) -> None:
+        """Execute a simulation step with the given inputs.
+
+        Args:
+            data: Input data vector of length array_size. If provided, data_enable will be set to 1
+            **kwargs: Additional control signals
+        """
+        data = kwargs.pop("data", None)
         inputs = self.get_sim_inputs(**kwargs)
-        self.sim.step(inputs)
-        self.update_history(inputs)
 
-    def update_history(self, inputs):
+        # Handle data input array
+        if data is not None:
+            if len(data) != self.config.array_size:
+                raise ValueError(f"Data length must be {self.config.array_size}")
+            inputs["data_enable"] = 1
+            for i, value in enumerate(data):
+                inputs[f"data_in_{i}"] = self.config.data_type(value).binint
+
+        self.sim.step(inputs)
+        inputs.update(data_inputs=data)  # type: ignore
+        self._update_history(inputs)
+
+    def _update_history(self, inputs):
         self.history.append(
             AcceleratorSimState(
                 step=len(self.history),
