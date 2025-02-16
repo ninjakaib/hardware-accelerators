@@ -211,7 +211,7 @@ class SystolicArrayDiP(BaseSystolicArray):
         multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
         pipeline: bool = False,
-        accum_addr_width: int | None = None,
+        # accum_addr_width: int | None = None,
     ):
         """Initialize systolic array hardware structure.
 
@@ -236,20 +236,20 @@ class SystolicArrayDiP(BaseSystolicArray):
         if self.pipeline:
             self.mul_enable_regs = [Register(1) for _ in range(size)]
 
-        self.accum_addr_width = accum_addr_width
-        if accum_addr_width is not None:
-            num_registers = size + 1 + int(pipeline)
-            self.accum_addr_in = WireVector(accum_addr_width)
-            self.accum_addr_regs = [
-                Register(accum_addr_width) for _ in range(num_registers)
-            ]
-            self.accum_addr_out = WireVector(accum_addr_width)
-            self.accum_addr_out <<= self.accum_addr_regs[-1]
+        # self.accum_addr_width = accum_addr_width
+        # if accum_addr_width is not None:
+        #     num_registers = size + 1 + int(pipeline)
+        #     self.accum_addr_in = WireVector(accum_addr_width)
+        #     self.accum_addr_regs = [
+        #         Register(accum_addr_width) for _ in range(num_registers)
+        #     ]
+        #     self.accum_addr_out = WireVector(accum_addr_width)
+        #     self.accum_addr_out <<= self.accum_addr_regs[-1]
 
-            self.accum_mode_in = WireVector(1)
-            self.accum_mode_regs = [Register(1) for _ in range(num_registers)]
-            self.accum_mode_out = WireVector(1)
-            self.accum_mode_out <<= self.accum_mode_regs[-1]
+        #     self.accum_mode_in = WireVector(1)
+        #     self.accum_mode_regs = [Register(1) for _ in range(num_registers)]
+        #     self.accum_mode_out = WireVector(1)
+        #     self.accum_mode_out <<= self.accum_mode_regs[-1]
 
         # Control signal output
         self.control_out_reg = Register(1)
@@ -279,11 +279,11 @@ class SystolicArrayDiP(BaseSystolicArray):
             if self.pipeline:
                 self.mul_enable_regs[i].next <<= self.mul_enable_regs[i - 1]
 
-        # Connect address pipeline registers
-        if hasattr(self, "accum_addr_regs"):
-            self.accum_addr_regs[0].next <<= self.accum_addr_in
-            for i in range(1, len(self.accum_addr_regs)):
-                self.accum_addr_regs[i].next <<= self.accum_addr_regs[i - 1]
+        # # Connect address pipeline registers
+        # if hasattr(self, "accum_addr_regs"):
+        #     self.accum_addr_regs[0].next <<= self.accum_addr_in
+        #     for i in range(1, len(self.accum_addr_regs)):
+        #         self.accum_addr_regs[i].next <<= self.accum_addr_regs[i - 1]
 
     def _create_pe_array(self) -> List[List[ProcessingElement]]:
         # Create PE array
@@ -356,8 +356,8 @@ class SystolicArrayDiP(BaseSystolicArray):
         weight_inputs: list[WireVector] | None = None,
         enable_input: WireVector | None = None,
         weight_enable: WireVector | None = None,
-        accum_addr: WireVector | None = None,
-        accum_mode: WireVector | None = None,
+        # accum_addr: WireVector | None = None,
+        # accum_mode: WireVector | None = None,
     ) -> None:
         """Connect input control and data wires to the systolic array.
 
@@ -412,19 +412,19 @@ class SystolicArrayDiP(BaseSystolicArray):
             assert len(weight_enable) == 1, "Weight enable must be 1 bit wide"
             self.connect_weight_enable(weight_enable)
 
-        if accum_addr is not None:
-            assert (
-                self.accum_addr_width is not None
-            ), "Accumulator address not used in current configuration!"
-            assert (
-                len(accum_addr) == self.accum_addr_width
-            ), "Accumulator address width mismatch, expected {self.accum_addr_width}, got {len(accum_addr)}"
-            self.accum_addr_in <<= accum_addr
+        # if accum_addr is not None:
+        #     assert (
+        #         self.accum_addr_width is not None
+        #     ), "Accumulator address not used in current configuration!"
+        #     assert (
+        #         len(accum_addr) == self.accum_addr_width
+        #     ), "Accumulator address width mismatch, expected {self.accum_addr_width}, got {len(accum_addr)}"
+        #     self.accum_addr_in <<= accum_addr
 
-        if accum_mode is not None:
-            assert len(accum_mode) == 1, "Accumulator mode must be 1 bit wide"
-            if hasattr(self, "accum_mode_in"):
-                self.accum_mode_in <<= accum_mode
+        # if accum_mode is not None:
+        #     assert len(accum_mode) == 1, "Accumulator mode must be 1 bit wide"
+        #     if hasattr(self, "accum_mode_in"):
+        #         self.accum_mode_in <<= accum_mode
 
     def inspect_control_regs(self, sim: Simulation):
         values = {
@@ -439,9 +439,9 @@ class SystolicArrayDiP(BaseSystolicArray):
             values["mul_controls"] = self.inspect_register_list(
                 self.mul_enable_regs, sim
             )
-        if hasattr(self, "accum_addr_regs"):
-            values["addr_regs"] = self.inspect_register_list(self.accum_addr_regs, sim)
-            values["addr_out"] = sim.inspect(self.accum_addr_out.name)
+        # if hasattr(self, "accum_addr_regs"):
+        #     values["addr_regs"] = self.inspect_register_list(self.accum_addr_regs, sim)
+        #     values["addr_out"] = sim.inspect(self.accum_addr_out.name)
 
         return values
 

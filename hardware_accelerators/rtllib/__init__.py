@@ -4,7 +4,12 @@ from .multipliers import FloatMultiplierPipelined, float_multiplier
 from .systolic import SystolicArrayDiP
 from .accumulators import TiledAccumulatorMemoryBank
 from .buffer import BufferMemory, WeightFIFO
-from .accelerator import TiledAcceleratorConfig, TiledMatrixEngine
+from .accelerator import (
+    TiledAcceleratorConfig,
+    TiledMatrixEngine,
+    AcceleratorConfig,
+    Accelerator,
+)
 
 all = [
     "float_adder",
@@ -18,6 +23,8 @@ all = [
     "AccumulatorMemoryBank",
     "BufferMemory",
     "WeightFIFO",
+    "TiledAcceleratorConfig",
+    "TiledMatrixEngine",
     "AcceleratorConfig",
-    "MatrixEngine",
+    "Accelerator",
 ]
