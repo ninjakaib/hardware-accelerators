@@ -3,6 +3,92 @@ from typing import List, Tuple, Generator, Callable
 import matplotlib.pyplot as plt
 
 
+def print_arrays(*args, **kwargs):
+    # print the name of the array and its content with numpy print options to set precision to 3
+    for arr in args:
+        if isinstance(arr, np.ndarray):
+            print(f"Array of shape {arr.shape}:")
+            print(np.array2string(arr, precision=3, suppress_small=True))
+            print()
+    for name, arr in kwargs.items():
+        if isinstance(arr, np.ndarray):
+            print(f"{name} {arr.shape}:")
+            print(np.array2string(arr, precision=3, suppress_small=True))
+            print()
+
+
+def pad_and_reshape_vector(arr, size):
+    """
+    Zero pads a 1D numpy array to make its length a multiple of size,
+    then reshapes it to (-1, size).
+
+    Parameters:
+    -----------
+    arr : numpy.ndarray
+        1D input array
+    size : int
+        The desired width of the reshaped array
+
+    Returns:
+    --------
+    numpy.ndarray
+        Padded and reshaped array with shape (-1, size)
+    """
+    assert len(arr.shape) == 1, "Input array must be 1D"
+
+    # Calculate the padding needed
+    original_length = len(arr)
+    padding_needed = (size - (original_length % size)) % size
+
+    # Pad the array
+    padded_arr = np.pad(arr, (0, padding_needed), mode="constant", constant_values=0)
+
+    # Reshape to (-1, size)
+    return padded_arr.reshape(-1, size)
+
+
+def chunk_weight_matrix(matrix: np.ndarray, chunk_size: int) -> np.ndarray:
+    """Splits a weight matrix into square chunks with zero padding if needed.
+
+    Args:
+        matrix: Input weight matrix to be chunked
+        chunk_size: Size of each chunk (chunks will be chunk_size x chunk_size)
+
+    Returns:
+        Dictionary mapping chunk index to chunk matrix
+
+    The function will zero-pad the input matrix if its dimensions are not
+    divisible by chunk_size before splitting it into chunks.
+    """
+    rows, cols = matrix.shape
+
+    # Calculate padding needed for each dimension
+    pad_rows = (chunk_size - rows % chunk_size) % chunk_size
+    pad_cols = (chunk_size - cols % chunk_size) % chunk_size
+
+    # Pad matrix if needed
+    padded_matrix = np.pad(matrix, ((0, pad_rows), (0, pad_cols)))
+
+    # Calculate number of chunks in each dimension
+    num_row_chunks = (rows + pad_rows) // chunk_size
+    num_col_chunks = (cols + pad_cols) // chunk_size
+
+    # Preallocate 3D array for chunks
+    chunks = np.zeros((num_row_chunks * num_col_chunks, chunk_size, chunk_size))
+
+    # Split into chunks in column-major order
+    for j in range(num_col_chunks):
+        for i in range(num_row_chunks):
+            chunk_idx = i + j * num_row_chunks  # Column-major indexing
+            r_start = i * chunk_size
+            r_end = (i + 1) * chunk_size
+            c_start = j * chunk_size
+            c_end = (j + 1) * chunk_size
+            chunks[chunk_idx] = padded_matrix[r_start:r_end, c_start:c_end]
+
+    return chunks
+
+
 def chunk_matrices(
     matrix_a: np.ndarray, matrix_b: np.ndarray, chunk_size: int
 ) -> Generator[Tuple[Tuple[int, int], np.ndarray, np.ndarray], None, None]:

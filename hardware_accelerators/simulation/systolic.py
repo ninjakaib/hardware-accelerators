@@ -10,6 +10,7 @@ from ..rtllib.systolic import SystolicArraySimState
 from ..dtypes import *
 from ..rtllib import *
 from .utils import *
+from .matrix_utils import pad_and_reshape_vector
 
 
 # @dataclass
@@ -55,11 +56,12 @@ class SystolicArraySimulator:
         accum_type: Type[BaseFloat] = BF16,
         multiplier: Callable[
             [WireVector, WireVector, Type[BaseFloat]], WireVector
-        ] = lmul_fast,
+        ] = float_multiplier,
         adder: Callable[
             [WireVector, WireVector, Type[BaseFloat]], WireVector
         ] = float_adder,
         pipeline: bool = False,
+        accum_addr_width: int | None = None,
     ):
         """Initialize systolic array simulator
 
@@ -80,6 +82,7 @@ class SystolicArraySimulator:
         self.accwidth = accum_type.bitwidth()
         self.multiplier = multiplier
         self.adder = adder
+        self.addr_width = accum_addr_width
         self.history: List[SystolicArraySimState] = []
 
     def _setup(self):
@@ -95,10 +98,13 @@ class SystolicArraySimulator:
             multiplier=self.multiplier,
             adder=self.adder,
             pipeline=self.pipeline,
+            accum_addr_width=self.addr_width,
         )
 
         self.w_en = self.array.connect_weight_enable(Input(1, "w_en"))
         self.enable = self.array.connect_enable_input(Input(1, "enable"))
+        if self.addr_width is not None:
+            self.array.connect_inputs(accum_addr=Input(self.addr_width, "acc_addr"))
 
         self.w_ins = [Input(self.dwidth, f"weight_{i}") for i in range(self.size)]
         self.d_ins = [Input(self.dwidth, f"data_{i}") for i in range(self.size)]
@@ -114,12 +120,14 @@ class SystolicArraySimulator:
         self.sim_inputs = {
             w.name: 0 for w in [self.w_en, self.enable, *self.w_ins, *self.d_ins]
         }
+        if self.addr_width is not None:
+            self.sim_inputs["acc_addr"] = 0
 
     @classmethod
     def matrix_multiply(
         cls,
-        weights: np.ndarray,
         activations: np.ndarray,
+        weights: np.ndarray,
         dtype: Optional[Type[BaseFloat]] = None,
     ) -> np.ndarray:
         """Perform matrix multiplication using systolic array
@@ -144,9 +152,9 @@ class SystolicArraySimulator:
         dtype = dtype or BF16
         sim = cls(size=size, data_type=dtype)
 
-        return sim.simulate(weights, activations)
+        return sim.simulate(activations=activations, weights=weights)
 
-    def simulate(self, weights: np.ndarray, activations: np.ndarray) -> np.ndarray:
+    def simulate(self, activations: np.ndarray, weights: np.ndarray) -> np.ndarray:
         """Instance method to run simulation
 
         Args:
@@ -206,6 +214,62 @@ class SystolicArraySimulator:
         for _ in range(self.size):  # + int(self.pipeline)):
             self._step()
             results.insert(0, self.array.inspect_outputs(self.sim, False))
+
+        return np.array(results)
+
+    def simulate_vector(
+        self, activations: np.ndarray, weights: np.ndarray, addr: int | None = None
+    ) -> np.ndarray:
+        """Instance method to run simulation
+
+        Args:
+            weights: Weight matrix
+            activations: Activation matrix
+
+        Returns:
+            Tuple of (result matrix, simulation history)
+        """
+        # Convert and permutate matrices
+        weights = convert_array_dtype(permutate_weight_matrix(weights), self.dtype)
+        activations = convert_array_dtype(activations, self.dtype)
+        activation_matrix = pad_and_reshape_vector(activations, self.size)
+
+        self._setup()
+
+        # Load weights except top row
+        self.sim_inputs["w_en"] = 1
+        for row in range(self.size - 1):
+            for col in range(self.size):
+                self.sim_inputs[self.w_ins[col].name] = weights[-row - 1][col]
+            self._step()
+
+        # Load top row weights and first data row
+        self.sim_inputs["enable"] = 1
+        if addr is not None:
+            self.sim_inputs["acc_addr"] = addr
+        for col in range(self.size):
+            self.sim_inputs[self.w_ins[col].name] = weights[0][col]
+            self.sim_inputs[self.d_ins[col].name] = activation_matrix[0][col]
+        self._step()
+
+        # Disable all control signals
+        self._reset_inputs()
+
+        # Flush the results out
+        for _ in range(self.size):
+            self._step()
+
+        # Additional step to flush pipeline
+        if self.pipeline:
+            self._step()
+
+        # Collect results
+        # while self.sim.inspect(self.array.control_out.name):
+        #     results.insert(0, self.array.inspect_outputs(self.sim, False))
+        #     self._step()
+        # for _ in range(self.size):  # + int(self.pipeline)):
+        self._step()
+        results = self.array.inspect_outputs(self.sim, False)
 
         return np.array(results)
 

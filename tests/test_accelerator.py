@@ -1,12 +1,12 @@
 from hardware_accelerators import BF16, float_adder, lmul_fast, float_multiplier
-from hardware_accelerators.rtllib import AcceleratorConfig
-from hardware_accelerators.simulation import MatrixEngineSimulator
+from hardware_accelerators.rtllib import TiledAcceleratorConfig
+from hardware_accelerators.simulation import TiledMatrixEngineSimulator
 import numpy as np
 
 
 def test_accelerator_matmul():
     """Test the matmul function."""
-    config = AcceleratorConfig(
+    config = TiledAcceleratorConfig(
         array_size=3,
         data_type=BF16,
         weight_type=BF16,
@@ -18,7 +18,7 @@ def test_accelerator_matmul():
         accumulator_tiles=4,
     )
 
-    sim = MatrixEngineSimulator(config)
+    sim = TiledMatrixEngineSimulator(config)
 
     weights = np.identity(3)
     activations = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])

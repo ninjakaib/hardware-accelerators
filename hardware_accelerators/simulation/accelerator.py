@@ -14,11 +14,11 @@ from pyrtl import (
 
 from ..rtllib.multipliers import float_multiplier
 from ..dtypes import BaseFloat, BF16
-from ..rtllib.accumulators import AccumulatorMemoryBank
+from ..rtllib.accumulators import TiledAccumulatorMemoryBank
 from ..rtllib.adders import float_adder
 from ..rtllib.systolic import SystolicArrayDiP, SystolicArraySimState
 from ..rtllib.buffer import BufferMemory
-from ..rtllib import AcceleratorConfig, MatrixEngine
+from ..rtllib import TiledAcceleratorConfig, TiledMatrixEngine
 from .utils import permutate_weight_matrix, convert_array_dtype
 
 
@@ -88,15 +88,15 @@ class SimulationState:
         )
 
 
-class MatrixEngineSimulator:
-    def __init__(self, config: AcceleratorConfig):
+class TiledMatrixEngineSimulator:
+    def __init__(self, config: TiledAcceleratorConfig):
         self.config = config
         self.history: List[SimulationState] = []
         self._setup()
 
     def _setup(self):
         reset_working_block()
-        self.engine = MatrixEngine(self.config)
+        self.engine = TiledMatrixEngine(self.config)
         self._create_sim_inputs()
         self.sim = Simulation()
 
@@ -233,7 +233,7 @@ class MatrixEngineSimulator:
         assert (
             weights.shape[0] == data.shape[0]
         ), "Weights and data must be the same size"
-        config = AcceleratorConfig(
+        config = TiledAcceleratorConfig(
             array_size=weights.shape[0],
             data_type=BF16,
             weight_type=BF16,
@@ -402,3 +402,7 @@ class MatrixEngineSimulator:
                 )
 
             print("\n\n")
+
+
+class AcceleratorSimulator:
+    pass
