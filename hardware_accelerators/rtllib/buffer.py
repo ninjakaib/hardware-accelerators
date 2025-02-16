@@ -4,6 +4,7 @@ from ..dtypes import *
 from typing import List, Type
 from pyrtl import (
     MemBlock,
+    RomBlock,
     WireVector,
     Register,
     conditional_assignment,
@@ -266,4 +267,174 @@ class BufferMemory:
             weights_out=self.weights_out,
             data_valid=self.data_valid,
             weight_valid=self.weight_valid,
+        )
+
+
+class WeightFIFO:
+    """Memory buffer for streaming weights into systolic array registers.
+
+    - Configurable based on weight data type and systolic array size
+    - Controlled streaming of rows to systolic array
+    - Status signals for monitoring buffer operations
+
+    The buffer stores each row of a matrix as a single concatenated entry in memory,
+    with the bitwidth scaled by the array size. This enables efficient reading of full
+    rows during streaming operations.
+
+    Input Control Wires:
+        - weight_start_in (1 bit): Initiates weight streaming operation
+        - weight_select_in (addr_width bits): Selects which tile to read from
+
+    Output Status Wires:
+        - data_load_busy (1 bit): Indicates data streaming is in progress
+        - data_load_done (1 bit): Indicates data streaming has completed
+        - weight_load_busy (1 bit): Indicates weight streaming is in progress
+        - weight_load_done (1 bit): Indicates weight streaming has completed
+
+    Data Output Wires:
+        - datas_out: List of data output wires (data_type.bitwidth() each)
+        - weights_out: List of weight output wires (weight_type.bitwidth() each)
+
+    Usage Example:
+        buffer = BufferMemory(
+            array_size=4,
+            data_type=BF16,
+            weight_type=BF16
+        )
+
+        # Connect control signals
+        buffer.connect_inputs(
+            data_start=control.data_start,
+            data_select=control.data_select,
+            weight_start=control.weight_start,
+            weight_select=control.weight_select
+        )
+
+        # Access outputs
+        outputs = buffer.get_outputs()
+        systolic_array.connect_data_inputs(outputs.datas_out)
+        systolic_array.connect_weight_inputs(outputs.weights_out)
+    """
+
+    @dataclass
+    class WeightFifoOutputs:
+        """Container for buffer memory output wires.
+
+        Attributes:
+            weights_out: List of weight output wires, one per array column
+            weight_valid: Indicates valid weights on outputs
+        """
+
+        weights: List[WireVector]
+        """List of weight output wires, one per array column"""
+        active: WireVector
+        """Wire indicating valid weights on data output"""
+
+    def __init__(self, array_size: int, num_tiles: int, dtype: Type[BaseFloat]):
+        """Initialize the buffer memory with specified dimensions and data types.
+
+        Args:
+            array_size: Size N of the NxN systolic array this buffer will feed.
+                       Determines the number of parallel output wires and memory organization.
+
+            num_tiles: Number of weight tiles to store in the buffer
+
+            dtype: Float data type for weight values (e.g., BF16, Float8).
+                        Determines the bitwidth of weight storage and output wires.
+
+        Memory Organization:
+            - Each memory bank contains array_size entries
+            - Each entry stores one full row of the matrix
+            - Entry bitwidth = dtype.bitwidth() * array_size
+
+        The class automatically calculates:
+            - Address width based on array_size
+            - Memory entry width based on data types and array_size
+            - Required control register sizes
+        """
+        # Configuration parameters
+        self.array_size = array_size
+        self.num_tiles = num_tiles
+        self.tile_addr_width = (num_tiles - 1).bit_length()
+        self.addr_width = (num_tiles * array_size - 1).bit_length()
+        self.w_width = dtype.bitwidth()
+        self.mem_bitwidth = self.w_width * array_size
+
+        # Memory Bank
+        self.memory = MemBlock(bitwidth=self.mem_bitwidth, addrwidth=self.addr_width)
+        self.base_addr_rom = RomBlock(
+            bitwidth=self.addr_width,
+            addrwidth=self.tile_addr_width,
+            romdata=[i * array_size for i in range(self.num_tiles)],
+        )
+
+        # Control Inputs
+        self.start = WireVector(1)  # Start weight streaming
+        self.tile_addr = WireVector(self.tile_addr_width)  # Select weight memory tile
+
+        # State Registers
+        self.active = Register(1)  # Weight streaming in progress
+        self.current_row = Register((array_size - 1).bit_length())
+        self.internal_addr = Register(self.addr_width)
+
+        # Weight Outputs
+        self.weights_out = [WireVector(self.w_width) for _ in range(array_size)]
+
+        # Control Logic
+        self._implement_control_logic()
+
+    def _implement_control_logic(self):
+        """Implement the control and datapath logic."""
+
+        with conditional_assignment:
+            # Weight streaming control
+            with self.start & ~self.active:
+                self.active.next |= 1
+                self.internal_addr.next |= self.base_addr_rom[self.tile_addr]
+                self.current_row.next |= 0
+
+            with self.active:
+                for out, weight in zip(
+                    self.weights_out,
+                    chop(
+                        self.memory[self.internal_addr],
+                        *[self.w_width] * self.array_size,
+                    ),
+                ):
+                    out |= weight
+
+                with self.current_row == self.array_size - 1:
+                    self.active.next |= 0
+                    self.current_row.next |= 0
+                with otherwise:
+                    self.internal_addr.next |= self.internal_addr + 1
+                    self.current_row.next |= self.current_row + 1
+
+    def connect_inputs(self, start, tile_addr):
+        """Connect control signals for the buffer memory.
+
+        Args:
+            start: Start signal for weight streaming (1 bit)
+            tile_addr: Weight memory tile selection (tile_addr bits)
+        """
+        if start is not None:
+            assert len(start) == 1
+            self.start <<= start
+
+        if tile_addr is not None:
+            assert len(tile_addr) == self.tile_addr_width
+            self.tile_addr <<= tile_addr
+
+    @property
+    def outputs(self) -> WeightFifoOutputs:
+        """Get all output wires from the buffer memory.
+
+        Returns:
+            WeightFifoOutputs containing:
+                - weights: List of weight output wires [array_size]
+                - active: Indicates valid weights on outputs
+        """
+        return self.WeightFifoOutputs(
+            weights=self.weights_out,
+            active=self.active,
         )

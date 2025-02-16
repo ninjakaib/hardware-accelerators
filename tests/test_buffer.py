@@ -1,4 +1,8 @@
-from hardware_accelerators.simulation.buffer import BufferMemorySimulator
+from hardware_accelerators.simulation.buffer import (
+    BufferMemorySimulator,
+    WeightFIFOSimulator,
+)
+from hardware_accelerators.simulation.matrix_utils import chunk_weight_matrix
 import numpy as np
 
 
@@ -45,3 +49,13 @@ def test_buffer_memory_basic():
     np.testing.assert_allclose(actual_data, expected_data, rtol=0.01)
     np.testing.assert_allclose(actual_weights, expected_weights, rtol=0.01)
     print("All tests passed!")
+
+
+def test_fifo_memory_basic():
+    weights = np.random.randn(4, 8)
+    fifosim = WeightFIFOSimulator(array_size=2, num_tiles=8)
+    fifosim.load_weights(weights)
+    chunked_weights = chunk_weight_matrix(weights, fifosim.array_size)
+
+    for i, tile in enumerate(chunked_weights):
+        assert (np.isclose(tile, fifosim.read_tile(i), rtol=0.01)).all()
