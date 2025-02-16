@@ -1,12 +1,57 @@
 from hardware_accelerators import BF16, float_adder, lmul_fast, float_multiplier
-from hardware_accelerators.rtllib import AcceleratorConfig
-from hardware_accelerators.simulation import MatrixEngineSimulator
+from hardware_accelerators.rtllib import TiledAcceleratorConfig
+from hardware_accelerators.simulation import TiledMatrixEngineSimulator
 import numpy as np
 
+from hardware_accelerators.simulation.accelerator import AcceleratorSimulator
 
-def test_accelerator_matmul():
+
+def test_accelerator_basic():
+    simulator = AcceleratorSimulator.default_config(array_size=3, num_weight_tiles=2)
+
+    simulator.setup()
+
+    weights = np.ones((3, 3))
+    activations = np.array([[1, 2, 3], [-4, -5, -6], [7, 8, 9]])
+
+    simulator.load_weights(weights, 0)
+
+    simulator.execute_instruction(
+        data_vec=activations[0],
+        load_new_weights=True,
+        flush_pipeline=False,
+        activation_enable=True,
+        activation_func="relu",
+    )
+    simulator.execute_instruction(
+        data_vec=activations[1],
+        accum_addr=1,
+        flush_pipeline=False,
+        activation_enable=True,
+        activation_func="relu",
+    )
+    simulator.execute_instruction(
+        data_vec=activations[2],
+        accum_addr=2,
+        activation_enable=True,
+        activation_func="relu",
+        flush_pipeline=True,
+    )
+
+    results = np.zeros((activations.shape[0], weights.shape[1]))
+
+    for i in range(3):
+        results[i] = simulator._get_outputs()
+        simulator.execute_instruction(nop=True)
+
+    gt = np.maximum(0, (activations @ weights))
+
+    assert np.isclose(results, gt).all()
+
+
+def test_matrix_engine_matmul():
     """Test the matmul function."""
-    config = AcceleratorConfig(
+    config = TiledAcceleratorConfig(
         array_size=3,
         data_type=BF16,
         weight_type=BF16,
@@ -18,7 +63,7 @@ def test_accelerator_matmul():
         accumulator_tiles=4,
     )
 
-    sim = MatrixEngineSimulator(config)
+    sim = TiledMatrixEngineSimulator(config)
 
     weights = np.identity(3)
     activations = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])

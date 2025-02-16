@@ -176,7 +176,7 @@ class TiledAddressGenerator:
         self._read_start <<= start
 
 
-class AccumulatorMemoryBank:
+class TiledAccumulatorMemoryBank:
     """Integrated memory system for storing and accumulating systolic array outputs.
 
     Combines an address generator with parallel memory banks to provide a complete
@@ -250,7 +250,7 @@ class AccumulatorMemoryBank:
         ]
 
         # Output ports
-        self._data_out = [WireVector(self.data_width) for _ in range(array_size)]
+        self.data_out = [WireVector(self.data_width) for _ in range(array_size)]
         self.write_busy = self.addr_gen.write_busy
         self.write_done = self.addr_gen.write_done
         self.read_busy = self.addr_gen.read_busy
@@ -275,7 +275,7 @@ class AccumulatorMemoryBank:
         for i, mem in enumerate(self.memory_banks):
             with conditional_assignment:
                 with self.read_busy:
-                    self._data_out[i] |= mem[self.addr_gen.read_addr_out]
+                    self.data_out[i] |= mem[self.addr_gen.read_addr_out]
 
     def connect_inputs(
         self,
@@ -366,8 +366,143 @@ class AccumulatorMemoryBank:
         return {
             "tile_addr": self._read_tile_addr,
             "start": self._read_start,
-            "data": self._data_out,
+            "data": self.data_out,
         }
 
     def get_output(self, bank: int) -> WireVector:
-        return self._data_out[bank]
+        return self.data_out[bank]
+
+
+class Accumulator:
+    def __init__(
+        self,
+        addr_width: int,
+        array_size: int,
+        data_type: Type[BaseFloat],
+        adder: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector],
+    ):
+        """Initialize the memory bank system.
+
+        Args:
+            addr_width: Number of bits for addressing results. Determines
+                number of memory locations as 2^addr_width.
+            array_size: Number of parallel memory banks, matching systolic
+                array dimension.
+            data_type: Number format for stored data (e.g. BF16, Float8).
+                Determines memory word width.
+            adder: Function implementing addition for the specified data_type.
+                Used for accumulation mode.
+        """
+        self.array_size = array_size
+        self.addr_width = addr_width
+        self.data_width = data_type.bitwidth()
+        self.data_type = data_type
+        self.adder = adder
+
+        # Input ports
+        self.data_in = [WireVector(self.data_width) for _ in range(array_size)]
+
+        self.write_addr = WireVector(self.addr_width)
+        self.write_enable = WireVector(1)
+        self.write_mode = WireVector(1)
+
+        self.read_addr = WireVector(self.addr_width)
+        self.read_enable = WireVector(1)
+
+        # Create memory banks
+        self.memory_banks = [
+            MemBlock(
+                bitwidth=self.data_width,
+                addrwidth=self.addr_width,
+                name=f"bank_{i}",
+            )
+            for i in range(array_size)
+        ]
+
+        # Output ports
+        self.data_out = [WireVector(self.data_width) for _ in range(array_size)]
+
+        self._implement_memory_logic()
+
+    def _implement_memory_logic(self):
+        # Write logic
+        for i, mem in enumerate(self.memory_banks):
+            current_val = mem[self.write_addr]
+            sum_result = self.adder(self.data_in[i], current_val, self.data_type)
+
+            with conditional_assignment:
+                with self.write_enable:
+                    with self.write_mode:  # Accumulate mode
+                        mem[self.write_addr] |= sum_result
+                    with otherwise:  # Overwrite mode
+                        mem[self.write_addr] |= self.data_in[i]
+
+            with conditional_assignment:
+                with self.read_enable:
+                    self.data_out[i] |= mem[self.read_addr]
+
+    def connect_inputs(
+        self,
+        write_addr: WireVector | None = None,
+        write_mode: WireVector | None = None,
+        write_enable: WireVector | None = None,
+        read_addr: WireVector | None = None,
+        read_enable: WireVector | None = None,
+        data_in: list[WireVector] | None = None,
+    ) -> None:
+        """Connect all input control and data wires to the accumulator bank.
+
+        Args:
+            write_addr: Memory address to write to (addr_width bits)
+
+            write_enable: Data valid signal for write operation (1 bit)
+                High when input data is valid and should be written/accumulated
+
+            write_mode: Mode selection for write operation (1 bit)
+                0 = overwrite mode: new data replaces existing values
+                1 = accumulate mode: new data is added to existing values
+
+            read_addr: Address of memory to read from (addr_width bits)
+
+            read_enable: Start signal for read operation (1 bit), level triggered
+
+            data_in: List of data input wires (data_width bits each)
+                Input data from systolic array, one wire per column.
+                Length must match array_size.
+
+        Raises:
+            AssertionError: If input wire widths don't match expected widths or
+                        if data_in length doesn't match array_size.
+        """
+        if write_addr is not None:
+            assert len(write_addr) == self.addr_width
+            self.write_addr <<= write_addr
+
+        if write_mode is not None:
+            assert len(write_mode) == 1
+            self.write_mode <<= write_mode
+
+        if write_enable is not None:
+            assert len(write_enable) == 1
+            self.write_enable <<= write_enable
+
+        if read_addr is not None:
+            assert len(read_addr) == self.addr_width
+            self.read_addr <<= read_addr
+
+        if read_enable is not None:
+            assert len(read_enable) == 1
+            self.read_enable <<= read_enable
+
+        if data_in is not None:
+            assert (
+                len(data_in) == self.array_size
+            ), f"Expected {self.array_size} data inputs, got {len(data_in)}"
+            for i, wire in enumerate(data_in):
+                assert (
+                    len(wire) == self.data_width
+                ), f"Data input {i} width mismatch. Expected {self.data_width}, got {len(wire)}"
+                self.data_in[i] <<= wire
+
+    def get_output(self, bank: int) -> WireVector:
+        return self.data_out[bank]

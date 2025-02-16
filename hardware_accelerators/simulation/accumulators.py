@@ -4,7 +4,7 @@ import numpy as np
 from pyrtl import Input, Simulation, reset_working_block
 
 from ..dtypes import BF16, BaseFloat
-from ..rtllib.accumulators import AccumulatorMemoryBank
+from ..rtllib.accumulators import TiledAccumulatorMemoryBank
 from ..rtllib.adders import float_adder
 
 
@@ -57,7 +57,7 @@ class AccumulatorBankSimulator:
         ]
 
         # Create accumulator bank
-        self.acc_bank = AccumulatorMemoryBank(**self.config)
+        self.acc_bank = TiledAccumulatorMemoryBank(**self.config)
         self.acc_bank.connect_inputs(
             self._write_tile_addr,
             self._write_start,

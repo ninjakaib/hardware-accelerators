@@ -4,4 +4,4 @@ from .utils import convert_array_dtype, render_waveform
 from .systolic import SystolicArraySimulator
 from .accumulators import AccumulatorBankSimulator
 from .buffer import BufferMemorySimulator
-from .accelerator import MatrixEngineSimulator
+from .accelerator import AcceleratorSimulator, TiledMatrixEngineSimulator
