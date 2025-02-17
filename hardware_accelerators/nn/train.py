@@ -4,11 +4,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
-from tqdm.auto import tqdm  # progress bar for notebooks
+from tqdm.auto import tqdm
+
+from .util import get_pytorch_device  # progress bar for notebooks
 from .mlp import model_factory
 
 # from pytorch2tikz import Architecture
-import onnx
 
 
 # Training function for one epoch
@@ -52,13 +53,7 @@ def evaluate(model, device, data_loader, criterion):
 
 
 if __name__ == "main":
-    # Device configuration with MPS support on macOS
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
+    device = get_pytorch_device()
 
     # Hyperparameters
     input_size = 28 * 28  # MNIST images are 28x28

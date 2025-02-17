@@ -7,12 +7,12 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from hardware_accelerators.nn import model_factory
+from hardware_accelerators.nn import model_factory, get_pytorch_device
 
 # Load the trained model
-model_path = "mlp_mnist.pth"
+model_path = "models/mlp_mnist.pth"
 model = model_factory()
-model.load_state_dict(torch.load(model_path, map_location=torch.device("mps")))
+model.load_state_dict(torch.load(model_path, map_location=get_pytorch_device()))
 model.eval()
 
 
