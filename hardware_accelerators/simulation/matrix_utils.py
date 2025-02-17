@@ -1,6 +1,8 @@
 import numpy as np
-from typing import List, Tuple, Generator, Callable
+from typing import List, Tuple, Generator, Callable, Type
 import matplotlib.pyplot as plt
+
+from ..dtypes.base import BaseFloat
 
 
 def print_arrays(*args, **kwargs):
@@ -15,6 +17,82 @@ def print_arrays(*args, **kwargs):
             print(f"{name} {arr.shape}:")
             print(np.array2string(arr, precision=3, suppress_small=True))
             print()
+
+
+def convert_array_dtype(
+    arr: np.ndarray | List[List[int | float]], dtype: Type[BaseFloat]
+) -> np.ndarray:
+    """
+    Converts numerical values in an array to their binary float representations
+    for a given hardware number format.
+
+    The function converts each element to its binary integer representation according
+    to the specified floating point format (e.g., BF16, Float8). This is similar to
+    how values would be stored in hardware registers.
+
+    Args:
+        arr: Input array or nested list of numbers to convert. Will be converted
+            to numpy array if not already.
+        dtype: Hardware floating point format to convert values to (e.g., BF16, Float8).
+            Must be a subclass of BaseFloat.
+
+    Returns:
+        np.ndarray: Array of same shape as input but with values converted to their
+            binary integer representations in the specified format.
+
+    Example:
+        >>> arr = np.array([[1.5, -2.0], [0.5, 3.25]])
+        >>> binary = convert_array_dtype(arr, BF16)
+        # Returns array of binary integers representing these values in BF16 format
+    """
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    return np.vectorize(lambda x: dtype(x).binint)(arr)
+
+
+def permutate_weight_matrix(arr: np.ndarray) -> np.ndarray:
+    """
+    Permutates a weight matrix for loading into a DiP (Diagonal Input, Permuted weight-stationary)
+    systolic array configuration. Each column is cyclically shifted upward by an offset equal to
+    its column index.
+
+    This permutation ensures weights are properly aligned when they reach their target processing
+    elements after propagating through the array.
+
+    Args:
+        arr: Square input matrix to be permutated
+
+    Returns:
+        np.ndarray: Permutated matrix with same shape as input
+
+    Example:
+    ```
+        For a 3x3 matrix:
+        Input matrix:         Permutated output:
+        [a a a]              [a b c]
+        [b b b]      ->      [b c a]
+        [c c c]              [c a b]
+    ```
+        Column shifts:
+        - Col 0 (a,b,c): No shift
+        - Col 1 (b,c,a): Shifted up by 1 (wrapping around)
+        - Col 2 (c,a,b): Shifted up by 2 (wrapping around)
+    """
+    rows, cols = arr.shape
+    permutated = np.zeros((rows, cols))
+    for i in range(cols):
+        for j in range(rows):
+            permutated[j][i] = arr[(j + i) % rows][i]
+    return permutated
+
+
+def pack_binary_vector(vec, dtype: Type[BaseFloat]):
+    """Convert vector to concatenated binary representation"""
+    concatenated = 0
+    for i, d in enumerate(vec[::-1]):
+        binary = dtype(d).binint
+        concatenated += binary << (i * dtype.bitwidth())
+    return concatenated
 
 
 def pad_and_reshape_vector(arr, size):
