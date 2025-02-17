@@ -24,24 +24,12 @@ from ..rtllib import (
     AcceleratorConfig,
     Accelerator,
 )
-from .utils import permutate_weight_matrix, convert_array_dtype
+from .matrix_utils import (
+    pack_binary_vector,
+    permutate_weight_matrix,
+    convert_array_dtype,
+)
 from typing import TypedDict, Optional, Literal, NotRequired, Unpack
-
-
-# @dataclass
-# class SimulationState:
-#     """Complete system state at a simulation step"""
-#     step: int
-#     buffer_data: np.ndarray
-#     buffer_weights: np.ndarray
-#     systolic_weights: np.ndarray
-#     systolic_data: np.ndarray
-#     accumulators: np.ndarray
-#     accumulator_mem: np.ndarray
-#     outputs: np.ndarray
-
-#     def __repr__(self):
-#         return f"SimulationState(step={self.step})"
 
 
 @dataclass
@@ -512,29 +500,32 @@ class AcceleratorSimulator:
 
     def setup(self):
         """Initialize the simulation environment and hardware"""
-        reset_working_block()
-        self.accelerator = Accelerator(self.config)
+        if not hasattr(self, "accelerator"):
+            reset_working_block()
+            self.accelerator = Accelerator(self.config)
 
-        # Create simulation inputs with clear names
-        self.inputs = {
-            "data_enable": Input(1, "data_enable"),
-            "data_inputs": [
-                Input(self.config.data_type.bitwidth(), f"data_in_{i}")
-                for i in range(self.config.array_size)
-            ],
-            "weight_start": Input(1, "weight_start"),
-            "weight_tile_addr": Input(
-                self.config.weight_tile_addr_width, "weight_tile_addr"
-            ),
-            "accum_addr": Input(self.config.accum_addr_width, "accum_addr"),
-            "accum_mode": Input(1, "accum_mode"),
-            "act_start": Input(1, "act_start"),
-            "act_func": Input(1, "act_func"),
-        }
+            # Create simulation inputs with clear names
+            self.inputs = {
+                "data_enable": Input(1, "data_enable"),
+                "data_inputs": [
+                    Input(self.config.data_type.bitwidth(), f"data_in_{i}")
+                    for i in range(self.config.array_size)
+                ],
+                "weight_start": Input(1, "weight_start"),
+                "weight_tile_addr": Input(
+                    self.config.weight_tile_addr_width, "weight_tile_addr"
+                ),
+                "accum_addr": Input(self.config.accum_addr_width, "accum_addr"),
+                "accum_mode": Input(1, "accum_mode"),
+                "act_start": Input(1, "act_start"),
+                "act_func": Input(1, "act_func"),
+            }
 
-        # Connect inputs to accelerator
-        self.accelerator.connect_inputs(**self.inputs)
+            # Connect inputs to accelerator
+            self.accelerator.connect_inputs(**self.inputs)
+
         self.sim = Simulation()
+        self.history = []
 
     def execute_instruction(
         self,
@@ -583,9 +574,11 @@ class AcceleratorSimulator:
                 act_func=1 if activation_func == "relu" else 0,
             )
 
-        if flush_pipeline:
-            for _ in range(self.config.array_size + self.config.pipeline):
-                self.step()
+            if flush_pipeline:
+                for _ in range(self.config.array_size + self.config.pipeline):
+                    self.step()
+        else:
+            self.step()
 
     def step(
         self,
@@ -651,12 +644,13 @@ class AcceleratorSimulator:
             ]
         )
 
-    def load_weights(self, weights: np.ndarray, tile_addr: int):
+    def load_weights(self, weights: np.ndarray, tile_addr: int, permutate: bool = True):
         """Load a weight matrix into the specified FIFO tile.
 
         Args:
             weights: Array of shape (array_size, array_size) containing weight values
             tile_addr: Address of tile to load weights into
+            permutate: (default True) Whether to arrange the weights for the DiP systolic array
         """
         if weights.shape != (self.config.array_size, self.config.array_size):
             raise ValueError(
@@ -667,12 +661,11 @@ class AcceleratorSimulator:
         weight_mem = self.sim.inspect_mem(self.accelerator.fifo.memory)
         base_addr = tile_addr * self.config.array_size
 
-        for i, row in enumerate(weights):
-            packed_value = 0
-            for j, val in enumerate(row):
-                binary = self.config.weight_type(val).binint
-                packed_value |= binary << (j * self.config.weight_type.bitwidth())
-            weight_mem[base_addr + i] = packed_value
+        if permutate:
+            weights = permutate_weight_matrix(weights)
+
+        for i, row in enumerate(weights[::-1]):
+            weight_mem[base_addr + i] = pack_binary_vector(row, self.config.weight_type)
 
     def print_state(self, step: int | None = None) -> None:
         """Print the simulation state at the specified step.
