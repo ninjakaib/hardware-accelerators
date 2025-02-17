@@ -1,3 +1,4 @@
+from typing import Union
 from pyrtl.rtllib.libutils import twos_comp_repr
 
 
@@ -16,7 +17,7 @@ def get_lmul_lk_offset(m_bits):
     return l
 
 
-def get_combined_offset(e_bits, m_bits, twos_comp=False, fmt: str | None = None):
+def get_combined_offset(e_bits, m_bits, twos_comp=False, fmt: Union[str, None] = None):
     """
     Calculate the offset term for the LMUL (Large Multiply) algorithm for a given floating-point format.
 
