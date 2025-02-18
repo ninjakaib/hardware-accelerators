@@ -324,6 +324,7 @@ class AcceleratorSimulator:
         for i, row in enumerate(weights[::-1]):
             weight_mem[base_addr + i] = pack_binary_vector(row, self.config.weight_type)
 
+    # FIXME: calculate result dimension and slice output traces accordingly
     def simulate_linear_layer(
         self,
         inputs: np.ndarray,
