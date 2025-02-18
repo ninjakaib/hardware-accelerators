@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from .mlp import MLP
 
 
@@ -28,3 +29,8 @@ def load_model(model_path: str):
     model.to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     return model
+
+
+def softmax(x: np.ndarray):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
