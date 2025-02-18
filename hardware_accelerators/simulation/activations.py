@@ -3,7 +3,7 @@ import numpy as np
 import pyrtl
 from hardware_accelerators.dtypes import BaseFloat, BF16
 from hardware_accelerators.rtllib.activations import ReluUnit
-from .utils import convert_array_dtype
+from .matrix_utils import convert_array_dtype
 
 
 class ReluSimulator:

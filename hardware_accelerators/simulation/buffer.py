@@ -2,9 +2,7 @@ from typing import List, Type
 from pyrtl import Input, reset_working_block, Simulation
 import numpy as np
 
-from .utils import convert_array_dtype
-
-from .matrix_utils import chunk_weight_matrix
+from .matrix_utils import chunk_weight_matrix, convert_array_dtype
 from ..rtllib import WeightFIFO, BufferMemory
 from ..dtypes import *
 
