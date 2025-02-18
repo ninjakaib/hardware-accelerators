@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import numpy as np
 from typing import List, Tuple, Generator, Callable, Type
 import matplotlib.pyplot as plt
@@ -165,6 +166,109 @@ def chunk_weight_matrix(matrix: np.ndarray, chunk_size: int) -> np.ndarray:
             chunks[chunk_idx] = padded_matrix[r_start:r_end, c_start:c_end]
 
     return chunks
+
+
+@dataclass
+class GemvTile:
+    """Represents a tile for matrix-vector multiplication.
+
+    Attributes:
+        index: Index in output vector where result should be accumulated
+        vector: Chunk of input vector of shape (chunk_size,)
+        matrix: Chunk of matrix of shape (chunk_size, chunk_size)
+        last: True if this is the last chunk for the current dest_index,
+                          indicating no more accumulation needed for this output location
+    """
+
+    index: int
+    """Index in output vector where result should be accumulated"""
+    vector: np.ndarray
+    """Chunk of input vector of shape (chunk_size,)"""
+    matrix: np.ndarray
+    """Chunk of matrix of shape (chunk_size, chunk_size)"""
+    first: bool
+    """True if this is the first chunk for the current dest_index"""
+    last: bool
+    """True if this is the last chunk for the current dest_index"""
+
+    def __repr__(self) -> str:
+        # Calculate partial result
+        partial_result = self.vector @ self.matrix
+
+        # Format arrays with numpy's array2string
+        vec_str = np.array2string(self.vector, precision=4, suppress_small=True)
+        mat_str = np.array2string(self.matrix, precision=4, suppress_small=True)
+        result_str = np.array2string(partial_result, precision=4, suppress_small=True)
+
+        return (
+            f"GemvTile(\n"
+            f"    index: {self.index}\n"
+            f"    first: {self.first}\n"
+            f"    last: {self.last}\n"
+            f"    matrix:\n{mat_str}\n"
+            f"    vector:\n{vec_str}\n"
+            f"    partial_result:\n{result_str}\n)"
+        )
+
+
+def generate_gemv_tiles(
+    vector: np.ndarray, matrix: np.ndarray, chunk_size: int
+) -> Generator[GemvTile, None, None]:
+    """Generates tiles for a matrix-vector multiplication.
+
+    Args:
+        vector: Input vector to be multiplied
+        matrix: Input matrix to multiply the vector by
+        chunk_size: Size of each chunk
+
+    Yields:
+        GemvTile objects containing the chunked data and metadata for processing
+    """
+    rows, cols = matrix.shape
+    vector_len = len(vector)
+
+    # Verify dimensions match
+    assert cols == vector_len, "Matrix columns must match vector length"
+
+    # Calculate padding needed
+    pad_rows = (chunk_size - rows % chunk_size) % chunk_size
+    pad_cols = (chunk_size - cols % chunk_size) % chunk_size
+
+    # Pad matrix and vector
+    padded_matrix = np.pad(matrix, ((0, pad_rows), (0, pad_cols)))
+    padded_vector = np.pad(vector, (0, pad_cols))
+
+    # Calculate number of chunks
+    num_row_chunks = (rows + pad_rows) // chunk_size
+    num_col_chunks = (cols + pad_cols) // chunk_size
+
+    # Generate tiles in column-major order
+    for i in range(num_row_chunks):  # destination chunk index
+        for j in range(num_col_chunks):  # source chunk index
+            # Get the vector chunk - this stays constant for all matrix chunks
+            # that contribute to the same output elements
+            v_start = j * chunk_size
+            v_end = (j + 1) * chunk_size
+            vector_chunk = padded_vector[v_start:v_end]
+
+            # Get the corresponding matrix chunk
+            r_start = i * chunk_size
+            r_end = (i + 1) * chunk_size
+            c_start = j * chunk_size
+            c_end = (j + 1) * chunk_size
+            matrix_chunk = padded_matrix[r_start:r_end, c_start:c_end]
+
+            # Check if this is the last column chunk for current destination
+            is_last_col_chunk = j == num_col_chunks - 1
+            is_first_col_chunk = j == 0
+
+            yield GemvTile(
+                index=i,
+                vector=vector_chunk,
+                matrix=matrix_chunk,
+                last=is_last_col_chunk,
+                first=is_first_col_chunk,
+            )
 
 
 def chunk_matrices(
