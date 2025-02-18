@@ -121,8 +121,6 @@ class SystolicArraySimulator:
         self.sim_inputs = {
             w.name: 0 for w in [self.w_en, self.enable, *self.w_ins, *self.d_ins]
         }
-        if self.addr_width is not None:
-            self.sim_inputs["acc_addr"] = 0
 
     @classmethod
     def matrix_multiply(
