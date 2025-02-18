@@ -4,8 +4,9 @@ import numpy as np
 
 from pyrtl import (
     WireVector,
-    Simulation,
     Register,
+    Output,
+    Simulation,
     concat,
 )
 
@@ -260,6 +261,22 @@ class Accelerator:
         if act_func is not None:
             assert len(act_func) == 1, "Activation function select must be 1 bit wide"
             self.act_func_in <<= act_func
+
+    def connect_outputs(
+        self,
+        outs: list[WireVector] | list[Output],
+        valid: WireVector | Output | None = None,
+    ):
+        """Connect outputs to accelerator"""
+        assert len(outs) == self.config.array_size, (
+            f"Output width mismatch. "
+            f"Expected {self.config.array_size}, got {len(outs)}"
+        )
+        for i, out in enumerate(outs):
+            out <<= self.outputs[i]
+        if valid is not None:
+            assert len(valid) == 1, "Output valid signal must be a single bit wire"
+            valid <<= self.activation.outputs_valid
 
     def inspect_systolic_array_state(self, sim: Simulation):
         """Return current PE array state"""

@@ -27,6 +27,8 @@ class ReluUnit:
         # Input and output data
         self.data = [WireVector(dtype.bitwidth()) for _ in range(size)]
         self.outputs = [self.relu(x) for x in self.data]
+        self.outputs_valid = WireVector(1)
+        self.outputs_valid <<= self.inputs_valid
 
     def relu(self, x: WireVector):
         # Use enable_reg instead of enable wire
@@ -58,12 +60,19 @@ class ReluUnit:
             with otherwise:
                 self.enable_reg.next |= self.enable_reg
 
-    def connect_outputs(self, outputs: list[WireVector]):
+    def connect_outputs(
+        self,
+        outputs: list[WireVector] | list[Output],
+        valid: WireVector | Output | None = None,
+    ):
         assert (
             len(outputs) == self.size
         ), f"Activation module output size mismatch. Expected {self.size}, got {len(outputs)}"
-        for i in range(self.size):
-            outputs[i] <<= self.outputs[i]
+        for i, out in enumerate(outputs):
+            out <<= self.outputs[i]
+        if valid is not None:
+            assert len(valid) == 1, "Valid output must be a single bit wire"
+            valid <<= self.outputs_valid
 
     def inspect_outputs(self, sim: Simulation) -> list[float]:
         """Inspect current outputs of the ReLU unit.
