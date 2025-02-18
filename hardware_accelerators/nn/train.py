@@ -6,8 +6,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from .util import get_pytorch_device  # progress bar for notebooks
-from .mlp import model_factory
+from .util import model_factory, get_pytorch_device  # progress bar for notebooks
 
 # from pytorch2tikz import Architecture
 

@@ -1,9 +1,5 @@
 import torch.nn as nn
 
-INPUT_DIM = 28 * 28  # MNIST images are 28x28
-HIDDEN_SIZE = 128
-OUTPUT_DIM = 10
-
 
 # Define the MLP model with one hidden layer using ReLU
 class MLP(nn.Module):
@@ -20,7 +16,3 @@ class MLP(nn.Module):
         x = self.relu(x)
         out = self.fc2(x)
         return out
-
-
-def model_factory():
-    return MLP(INPUT_DIM, HIDDEN_SIZE, OUTPUT_DIM)
