@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Literal, Self, Type
+from matplotlib.pyplot import isinteractive
 import numpy as np
 import pyrtl
 from pyrtl import (
@@ -7,11 +8,14 @@ from pyrtl import (
     Output,
     Simulation,
     FastSimulation,
+    CompiledSimulation,
     Register,
     MemBlock,
     WireVector,
     reset_working_block,
 )
+
+from ..rtllib.accelerator import CompiledAccelerator
 
 from ..nn.util import softmax
 
@@ -437,6 +441,212 @@ class AcceleratorSimulator:
 
         print("\nOutputs:")
         print(np.array2string(state.outputs, precision=4, suppress_small=True))
+
+
+class CompiledStepInputs(TypedDict):
+    """Type hints for simulator step inputs with documentation for each control signal.
+
+    All fields are optional (NotRequired) and default to 0 if not specified.
+    """
+
+    data_enable: NotRequired[int]
+    """1-bit signal that enables data flow into the systolic array"""
+
+    weight_enable: NotRequired[int]
+    """1-bit signal that triggers loading of a new weight tile when pulsed high"""
+
+    weights: NotRequired[list[int]]
+    """Address selecting which weight tile to load from the FIFO"""
+
+    accum_addr: NotRequired[int]
+    """Address for the accumulator memory bank"""
+
+    accum_mode: NotRequired[int]
+    """1-bit mode select (0=overwrite, 1=accumulate with existing values)"""
+
+    act_start: NotRequired[int]
+    """1-bit signal to enable passing data through the activation unit"""
+
+    act_func: NotRequired[int]
+    """1-bit signal to select activation function (0=passthrough, 1=ReLU)"""
+
+    data: NotRequired[np.ndarray]
+    """Input data vector of length array_size. Will set data_enable=1 if provided"""
+
+
+class CompiledSimulator:
+    def __init__(self, config: AcceleratorConfig):
+        self.config = config
+        self.accelerator = CompiledAccelerator(config)
+        self.output_trace = []
+        self._setup()
+
+    def _setup(self):
+        # Create input and output wires
+        inputs = {
+            "data_enable": Input(1, "data_enable"),
+            "data_inputs": [
+                Input(self.config.data_type.bitwidth(), f"data_in_{i}")
+                for i in range(self.config.array_size)
+            ],
+            "weight_enable": Input(1, "weight_enable"),
+            "weights_in": [
+                Input(self.config.weight_type.bitwidth(), f"weight_in_{i}")
+                for i in range(self.config.array_size)
+            ],
+            "accum_addr": Input(self.config.accum_addr_width, "accum_addr"),
+            "accum_mode": Input(1, "accum_mode"),
+            "act_start": Input(1, "act_start"),
+            "act_func": Input(1, "act_func"),
+        }
+        self.accelerator.connect_inputs(**inputs)
+        self.output_wires = [
+            Output(self.config.accum_type.bitwidth(), f"out_{i}")
+            for i in range(self.config.array_size)
+        ]
+        self.accelerator.connect_outputs(self.output_wires, Output(1, "output_valid"))
+
+        # Create the simulation
+        self.sim = CompiledSimulation()
+
+    def get_sim_inputs(self, **kwargs) -> Dict[str, int]:
+        """Get default input values"""
+        defaults = {
+            "data_enable": 0,
+            "weight_enable": 0,
+            "accum_addr": 0,
+            "accum_mode": 0,
+            "act_start": 0,
+            "act_func": 0,
+            **{f"data_in_{i}": 0 for i in range(self.config.array_size)},
+            **{f"weight_in_{i}": 0 for i in range(self.config.array_size)},
+        }
+        for key, value in kwargs.items():
+            if key in defaults:
+                defaults[key] = value
+            else:
+                Warning(f"Invalid input key: {key}")
+        return defaults
+
+    def step(
+        self,
+        **kwargs,
+    ) -> None:
+        """Execute a simulation step with the given inputs.
+
+        Args:
+            data: Input data vector of length array_size. If provided, data_enable will be set to 1
+            **kwargs: Additional control signals
+        """
+        data_vec = kwargs.pop("data_vec", None)
+        weight_vec = kwargs.pop("weight_vec", None)
+        inputs = self.get_sim_inputs(**kwargs)
+
+        # Handle input vectors
+        if weight_vec is not None:
+            if len(weight_vec) != self.config.array_size:
+                raise ValueError(
+                    f"Weight vector length must be {self.config.array_size}"
+                )
+            inputs["weight_enable"] = 1
+            for i, value in enumerate(weight_vec):
+                inputs[f"weight_in_{i}"] = self.config.weight_type(value).binint
+        if data_vec is not None:
+            if len(data_vec) != self.config.array_size:
+                raise ValueError(f"Data vector length must be {self.config.array_size}")
+            inputs["data_enable"] = 1
+            for i, value in enumerate(data_vec):
+                inputs[f"data_in_{i}"] = self.config.data_type(value).binint
+
+        self.sim.step(inputs)
+        if self.sim.inspect("output_valid") == 1:
+            self.output_trace.append(self.inspect_outputs())
+
+    def execute_instruction(
+        self,
+        weights: np.ndarray,
+        data: np.ndarray,
+        accum_mode: int = 0,  # 0=overwrite, 1=accumulate
+        activation_enable: bool = False,  # 0=nothing, 1=enable
+        activation_func: Optional[Literal["relu"]] = None,
+        flush_pipeline: bool = True,
+    ) -> None:
+        """Execute one instruction with the given inputs. Will step more than one cycle
+
+        Args:
+            data: Input data vector of length array_size. If None, data_enable will be 0
+            accum_addr: Address in accumulator memory to read/write
+            accum_mode: 0 for overwrite, 1 for accumulate with existing values
+            activation_enable: Whether to enable the activation unit
+            activation_func: Activation function to use (passthrough or ReLU)
+            load_new_weights: Whether to load a new weight tile from FIFO memory
+            weight_tile_addr: Address of weight tile to load when weights=1
+            flush_pipeline: Whether to flush the systolic array after input data to allow for new data/weights on the next cycle. If False, the systolic array will be held in the same state for the next cycle allowing for multiple data inputs to be streamed in.
+            nop: No operation, step 1 cycle with no inputs
+        """
+
+        assert weights.shape == (
+            self.config.array_size,
+            self.config.array_size,
+        ), f"Weights must be {self.config.array_size}x{self.config.array_size}"
+        weights = permutate_weight_matrix(weights)
+
+        for i in range(self.config.array_size - 1):
+            self.step(weight_vec=weights[-1 - i])
+
+        if data is not None:
+            assert (
+                len(data.shape) == 2
+            ), "Data must be 2D array of shape (N, {self.config.array_size})"
+            assert (
+                data.shape[1] == self.config.array_size
+            ), f"Data must be {self.config.array_size} wide"
+            assert (
+                data.shape[0] <= 2**self.config.accum_addr_width
+            ), f"Not enough accumulator address bits to store all {data.shape[0]} data vectors"
+
+            # Start streaming data into systolic array at the same time as last weights
+            self.step(
+                data_vec=data[0],
+                weight_vec=weights[0],
+                accum_addr=0,
+                accum_mode=accum_mode,
+                act_start=activation_enable,
+                act_func=1 if activation_func == "relu" else 0,
+            )
+
+            for i in range(1, data.shape[0]):
+                self.step(
+                    data_vec=data[i],
+                    accum_addr=i,
+                    accum_mode=accum_mode,
+                    act_start=activation_enable,
+                    act_func=1 if activation_func == "relu" else 0,
+                )
+        # Flush pipeline
+        if flush_pipeline:
+            for _ in range(self.config.array_size + self.config.pipeline):
+                self.step()
+
+    def gemm(self, data: np.ndarray, weights: np.ndarray): ...
+
+    def load_weights(self, weights: np.ndarray):
+        if weights.shape != (self.config.array_size, self.config.array_size):
+            raise ValueError(
+                f"Weights must be {self.config.array_size}x{self.config.array_size}"
+            )
+
+    def inspect_outputs(self) -> np.ndarray:
+        """Get current output values converted to floating point"""
+        return np.array(
+            [
+                self.config.accum_type(binint=self.sim.inspect(out.name)).decimal_approx
+                for out in self.output_wires
+            ]
+        )
+
+    def reset_output_trace(self):
+        self.output_trace = []
 
 
 @dataclass

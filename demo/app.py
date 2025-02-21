@@ -232,6 +232,7 @@ with gr.Blocks(fill_height=False) as demo:
                 type="pil",  # Changed to PIL
                 transforms=(),
                 layers=False,
+                canvas_size=(400, 400),
             )
 
             with gr.Row():

@@ -287,7 +287,9 @@ def generate_gemv_tiles(
     vector_len = len(vector)
 
     # Verify dimensions match
-    assert cols == vector_len, "Matrix columns must match vector length"
+    assert (
+        cols == vector_len
+    ), f"Matrix columns must match vector length.\n{matrix.shape=} {vector.shape=}"
 
     # Calculate padding needed
     pad_rows = (chunk_size - rows % chunk_size) % chunk_size

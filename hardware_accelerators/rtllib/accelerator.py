@@ -303,6 +303,219 @@ class Accelerator:
         return np.array(tiles)
 
 
+class CompiledAccelerator:
+    def __init__(self, config: AcceleratorConfig):
+        self.config = config
+
+        # Instantiate hardware components
+        self.systolic_array = SystolicArrayDiP(
+            size=config.array_size,
+            data_type=config.data_type,
+            weight_type=config.weight_type,
+            accum_type=config.accum_type,
+            multiplier=config.pe_multiplier,
+            adder=config.pe_adder,
+            pipeline=config.pipeline,
+        )
+        self.accumulator = Accumulator(
+            addr_width=config.accum_addr_width,
+            array_size=config.array_size,
+            data_type=config.accum_type,
+            adder=config.accum_adder,
+        )
+        self.activation = ReluUnit(
+            size=config.array_size,
+            dtype=config.accum_type,
+        )
+        self.outputs = [
+            WireVector(config.accum_type.bitwidth()) for _ in range(config.array_size)
+        ]
+
+        # Connect components
+        self._connect_components()
+
+    def _create_control_wires(self):
+        """Create unnamed WireVectors for control signals"""
+        self.data_enable = WireVector(1)
+        self.data_ins = [
+            WireVector(self.config.data_type.bitwidth())
+            for _ in range(self.config.array_size)
+        ]
+
+        self.weight_enable = WireVector(1)
+        self.weights_in = [
+            WireVector(self.config.weight_type.bitwidth())
+            for _ in range(self.config.array_size)
+        ]
+
+        self.accum_addr_in = WireVector(self.config.accum_addr_width)
+        self.accum_mode_in = WireVector(1)
+
+        self.act_start_in = WireVector(1)  # Whether to pass data to activation unit
+        self.act_func_in = WireVector(1)  # Apply activation function or passthrough
+
+    def _create_pipeline_registers(self):
+        num_registers = self.config.array_size + 1 + int(self.config.pipeline)
+
+        self.accum_addr_regs = [
+            Register(self.config.accum_addr_width) for _ in range(num_registers)
+        ]
+        self.accum_addr_out = WireVector(self.config.accum_addr_width)
+        self.accum_addr_out <<= self.accum_addr_regs[-1]
+
+        self.accum_mode_regs = [Register(1) for _ in range(num_registers)]
+        self.accum_mode_out = WireVector(1)
+        self.accum_mode_out <<= self.accum_mode_regs[-1]
+
+        self.act_control_regs = [Register(2) for _ in range(num_registers)]
+        self.act_control_regs[0].next <<= concat(self.act_start_in, self.act_func_in)
+
+        self.accum_addr_regs[0].next <<= self.accum_addr_in
+        self.accum_mode_regs[0].next <<= self.accum_mode_in
+        for i in range(1, len(self.accum_addr_regs)):
+            self.accum_addr_regs[i].next <<= self.accum_addr_regs[i - 1]
+            self.accum_mode_regs[i].next <<= self.accum_mode_regs[i - 1]
+            self.act_control_regs[i].next <<= self.act_control_regs[i - 1]
+
+        self.act_addr = Register(self.config.accum_addr_width)
+        self.act_func = Register(1)
+        self.act_start = Register(1)
+
+        self.act_addr.next <<= self.accum_addr_out
+        self.act_func.next <<= self.act_control_regs[-1][0]
+        self.act_start.next <<= self.act_control_regs[-1][1]
+
+    def _connect_components(self):
+        """Internal component connections"""
+        self._create_control_wires()
+        self._create_pipeline_registers()
+
+        # Connect buffer to external inputs
+        self.systolic_array.connect_inputs(
+            data_inputs=self.data_ins,
+            enable_input=self.data_enable,
+            weight_inputs=self.weights_in,
+            weight_enable=self.weight_enable,
+        )
+
+        # Connect accumulator to systolic array
+        self.accumulator.connect_inputs(
+            data_in=self.systolic_array.results_out,
+            write_addr=self.accum_addr_out,
+            write_enable=self.systolic_array.control_out,
+            write_mode=self.accum_mode_out,
+            read_addr=self.act_addr,
+            read_enable=self.act_start,
+        )
+
+        # Connect activation function to accumulator outputs
+        self.activation.connect_inputs(
+            inputs=self.accumulator.data_out,
+            start=self.act_start,
+            enable=self.act_func,
+            valid=self.accumulator.read_enable,
+        )
+        self.activation.connect_outputs(self.outputs)
+
+    def connect_inputs(
+        self,
+        data_enable: WireVector | None = None,
+        data_inputs: list[WireVector] | None = None,
+        weight_enable: WireVector | None = None,
+        weights_in: list[WireVector] | None = None,
+        accum_addr: WireVector | None = None,
+        accum_mode: WireVector | None = None,
+        act_start: WireVector | None = None,
+        act_func: WireVector | None = None,
+    ) -> None:
+        """Connect input control wires to the accelerator.
+
+        This method allows external control signals to be connected to the accelerator's
+        internal control wires. All parameters are optional - only connected wires will
+        be updated.
+
+        Args:
+            data_enable: 1-bit signal that enables data flow into the systolic array
+            data_inputs: List of input data wires for the systolic array. Must match array_size
+            weight_enable: 1-bit signal enable writing new weights to systolic array registers
+            weights_in: List of input weight wires for the systolic array. Must match array_size
+            accum_addr: Address for the accumulator memory bank. Width must match accum_addr_width
+            accum_mode: 1-bit mode select (0=overwrite, 1=accumulate with existing values)
+            act_start: 1-bit signal to enable passing data through the activation unit
+            act_func: 1-bit signal to select activation function (0=passthrough, 1=ReLU)
+
+        Raises:
+            AssertionError: If input wire widths don't match expected widths or if data_inputs
+                        length doesn't match array_size.
+        """
+        if data_enable is not None:
+            assert len(data_enable) == 1, "Data enable signal must be 1 bit wide"
+            self.data_enable <<= data_enable
+
+        if data_inputs is not None:
+            assert len(data_inputs) == self.config.array_size, (
+                f"Number of data inputs must match array size. "
+                f"Expected {self.config.array_size}, got {len(data_inputs)}"
+            )
+            for i, wire in enumerate(data_inputs):
+                assert len(wire) == self.config.data_type.bitwidth(), (
+                    f"Data input width mismatch. "
+                    f"Expected {self.config.data_type.bitwidth()}, got {len(wire)}"
+                )
+                self.data_ins[i] <<= wire
+
+        if weight_enable is not None:
+            assert len(weight_enable) == 1, "Weight start signal must be 1 bit wide"
+            self.weight_enable <<= weight_enable
+
+        if weights_in is not None:
+            assert len(weights_in) == self.config.array_size, (
+                f"Weights input list length must match array size. "
+                f"Expected {self.config.array_size}, got {len(weights_in)}"
+            )
+            for i, wire in enumerate(weights_in):
+                assert len(wire) == self.config.weight_type.bitwidth(), (
+                    f"Weight input wire width mismatch. "
+                    f"Expected {self.config.weight_type.bitwidth()}, got {len(wire)}"
+                )
+                self.weights_in[i] <<= wire
+
+        if accum_addr is not None:
+            assert len(accum_addr) == self.config.accum_addr_width, (
+                f"Accumulator address width mismatch. "
+                f"Expected {self.config.accum_addr_width}, got {len(accum_addr)}"
+            )
+            self.accum_addr_in <<= accum_addr
+
+        if accum_mode is not None:
+            assert len(accum_mode) == 1, "Accumulator mode must be 1 bit wide"
+            self.accum_mode_in <<= accum_mode
+
+        if act_start is not None:
+            assert len(act_start) == 1, "Activation start signal must be 1 bit wide"
+            self.act_start_in <<= act_start
+
+        if act_func is not None:
+            assert len(act_func) == 1, "Activation function select must be 1 bit wide"
+            self.act_func_in <<= act_func
+
+    def connect_outputs(
+        self,
+        outs: list[WireVector] | list[Output],
+        valid: WireVector | Output | None = None,
+    ):
+        """Connect outputs to accelerator"""
+        assert len(outs) == self.config.array_size, (
+            f"Output width mismatch. "
+            f"Expected {self.config.array_size}, got {len(outs)}"
+        )
+        for i, out in enumerate(outs):
+            out <<= self.outputs[i]
+        if valid is not None:
+            assert len(valid) == 1, "Output valid signal must be a single bit wire"
+            valid <<= self.activation.outputs_valid
+
+
 @dataclass
 class TiledAcceleratorConfig:
     """Configuration class for a systolic array accelerator.
