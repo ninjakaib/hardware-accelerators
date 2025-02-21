@@ -30,6 +30,7 @@ from ..rtllib import (
     Accelerator,
 )
 from .matrix_utils import (
+    bias_trick,
     generate_gemv_tiles,
     pack_binary_vector,
     permutate_weight_matrix,
@@ -180,6 +181,9 @@ class AcceleratorSimulator:
 
         self.output_trace = []
         self.history = []
+
+    def reset_output_trace(self):
+        self.output_trace = []
 
     def execute_instruction(
         self,
@@ -333,17 +337,13 @@ class AcceleratorSimulator:
         activation_func=None,
     ) -> np.ndarray:
 
-        weights_bias = np.concatenate([weights, bias.reshape(-1, 1)], axis=1)
-        activations = np.concatenate([inputs.flatten(), np.ones(1)])
+        # Add bias to first layer weights and 1 to activations
+        W_aug, x_aug = bias_trick(weights, bias, inputs)
 
-        print(activations.shape, weights_bias.shape)
-
-        tile_generator = generate_gemv_tiles(
-            activations, weights_bias, self.config.array_size
-        )
+        tile_generator = generate_gemv_tiles(x_aug, W_aug, self.config.array_size)
 
         for tile in tile_generator:
-            self.load_weights(weights=tile.matrix, tile_addr=0)
+            self.load_weights(weights=tile.matrix.T, tile_addr=0)
             self.execute_instruction(
                 load_new_weights=True,
                 weight_tile_addr=0,
@@ -356,8 +356,11 @@ class AcceleratorSimulator:
             )
 
         self.execute_instruction(nop=True)
+        self.execute_instruction(nop=True)
+        self.execute_instruction(nop=True)
+        self.execute_instruction(nop=True)
         result = np.array(self.output_trace).flatten()
-        self.output_trace = []
+        self.reset_output_trace()
         return result
 
     def simulate_pytorch_model(self, model: MLP, inputs: np.ndarray) -> np.ndarray:
@@ -380,10 +383,14 @@ class AcceleratorSimulator:
         print(f"fc2_weight: {fc2_weight.shape}")
         print(f"fc2_bias: {fc2_bias.shape}")
         print(f"inputs: {inputs.shape}")
+
+        self.reset_output_trace()
+
         fc1_out = self.simulate_linear_layer(
             inputs=inputs, weights=fc1_weight, bias=fc1_bias, activation_func="relu"
         )
         print(f"fc1_out: {fc1_out.shape}")
+
         logits = self.simulate_linear_layer(
             inputs=fc1_out, weights=fc2_weight, bias=fc2_bias
         )

@@ -60,7 +60,7 @@ class AcceleratorConfig:
     @property
     def weight_tile_addr_width(self):
         """Get the width of the weight tile address bus in bits"""
-        return (self.num_weight_tiles - 1).bit_length() | 1
+        return (self.num_weight_tiles - 1).bit_length()
 
 
 class Accelerator:

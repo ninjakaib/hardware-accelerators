@@ -168,6 +168,61 @@ def chunk_weight_matrix(matrix: np.ndarray, chunk_size: int) -> np.ndarray:
     return chunks
 
 
+def bias_trick(weights: np.ndarray, bias: np.ndarray, x: np.ndarray) -> tuple:
+    """Applies bias trick to combine weights and bias into augmented matrices.
+
+    Args:
+        weights: Weight matrix (output_dim, input_dim)
+        bias: Bias vector (output_dim,)
+        x: Input matrix (n_samples, input_dim) or vector (input_dim,)
+
+    Returns:
+        tuple: (augmented_weights, augmented_input) where:
+            - augmented_weights: (output_dim, input_dim + 1)
+            - augmented_input: (n_samples, input_dim + 1) or (input_dim + 1,)
+    """
+    aug_weights = np.c_[weights, bias]
+
+    # Handle both vector and matrix inputs
+    if x.ndim == 1:
+        aug_input = np.append(x, 1)
+    else:
+        aug_input = np.c_[x, np.ones(x.shape[0])]
+
+    return aug_weights, aug_input
+
+
+def count_total_gemv_tiles(layer_dims: list[tuple[int, int]], chunk_size: int) -> int:
+    """Calculate total number of tiled GEMV operations for a sequence of FC layers.
+
+    Args:
+        layer_dims: List of tuples (d_in, d_out) for each layer's weight dimensions
+        chunk_size: Size of tiles for GEMV operations
+
+    Returns:
+        Total number of tiled GEMV operations across all layers
+    """
+    total_tiles = 0
+
+    for d_in, d_out in layer_dims:
+        # Add 1 to d_in for bias term
+        d_in_with_bias = d_in + 1
+
+        # Calculate padding needed
+        pad_rows = (chunk_size - d_out % chunk_size) % chunk_size
+        pad_cols = (chunk_size - d_in_with_bias % chunk_size) % chunk_size
+
+        # Calculate number of chunks in each dimension
+        num_row_chunks = (d_out + pad_rows) // chunk_size
+        num_col_chunks = (d_in_with_bias + pad_cols) // chunk_size
+
+        # Each matrix-vector multiplication requires num_row_chunks * num_col_chunks tiles
+        layer_tiles = num_row_chunks * num_col_chunks
+        total_tiles += layer_tiles
+
+    return total_tiles
+
+
 @dataclass
 class GemvTile:
     """Represents a tile for matrix-vector multiplication.
@@ -191,14 +246,18 @@ class GemvTile:
     last: bool
     """True if this is the last chunk for the current dest_index"""
 
-    def __repr__(self) -> str:
-        # Calculate partial result
-        partial_result = self.vector @ self.matrix
+    @property
+    def partial_result(self) -> np.ndarray:
+        """Calculate the partial result of the matrix-vector multiplication."""
+        return self.vector @ self.matrix
 
+    def __repr__(self) -> str:
         # Format arrays with numpy's array2string
         vec_str = np.array2string(self.vector, precision=4, suppress_small=True)
         mat_str = np.array2string(self.matrix, precision=4, suppress_small=True)
-        result_str = np.array2string(partial_result, precision=4, suppress_small=True)
+        result_str = np.array2string(
+            self.partial_result, precision=4, suppress_small=True
+        )
 
         return (
             f"GemvTile(\n"
