@@ -332,6 +332,81 @@ def generate_gemv_tiles(
             )
 
 
+@dataclass
+class BatchGemmTile:
+    """Represents a tile for batch matrix multiplication.
+
+    Attributes:
+        output_row_idx: Starting row index in output matrix where results should be accumulated
+        weight_tile: Square tile from weight matrix of shape (chunk_size, chunk_size)
+        batch_tile: Batch of input vectors of shape (chunk_size, batch_size)
+        first: True if this is the first tile for the current output rows
+        last: True if this is the last tile for the current output rows
+    """
+
+    output_row_idx: int
+    weight_tile: np.ndarray
+    batch_tile: np.ndarray
+    first: bool
+    last: bool
+
+
+def generate_batch_gemm_tiles(
+    weights: np.ndarray, batch_inputs: np.ndarray, chunk_size: int
+) -> Generator[BatchGemmTile, None, None]:
+    """Generates tiles for batch matrix multiplication optimized for systolic array processing.
+
+    Args:
+        weights: Weight matrix of shape (output_dim, input_dim)
+        batch_inputs: Input batch of shape (input_dim, batch_size)
+        chunk_size: Size of systolic array (NxN)
+
+    Yields:
+        BatchGemmTile objects containing chunked weights and corresponding batch inputs
+    """
+    out_dim, in_dim = weights.shape
+    in_dim2, batch_size = batch_inputs.shape
+    assert in_dim == in_dim2, "Weight and input dimensions must match"
+
+    # Calculate padding needed for weights
+    pad_out = (chunk_size - out_dim % chunk_size) % chunk_size
+    pad_in = (chunk_size - in_dim % chunk_size) % chunk_size
+
+    # Pad weights and inputs
+    padded_weights = np.pad(weights, ((0, pad_out), (0, pad_in)))
+    padded_inputs = np.pad(batch_inputs, ((0, pad_in), (0, 0)))
+
+    # Calculate number of chunks
+    num_out_chunks = (out_dim + pad_out) // chunk_size
+    num_in_chunks = (in_dim + pad_in) // chunk_size
+
+    # Generate tiles
+    for i in range(num_out_chunks):  # Output dimension chunks
+        for j in range(num_in_chunks):  # Input dimension chunks
+            # Extract weight tile
+            w_row_start = i * chunk_size
+            w_row_end = (i + 1) * chunk_size
+            w_col_start = j * chunk_size
+            w_col_end = (j + 1) * chunk_size
+            weight_tile = padded_weights[w_row_start:w_row_end, w_col_start:w_col_end]
+
+            # Extract corresponding batch input tile
+            batch_start = j * chunk_size
+            batch_end = (j + 1) * chunk_size
+            batch_tile = padded_inputs[batch_start:batch_end, :]
+
+            is_last_input_chunk = j == num_in_chunks - 1
+            is_first_input_chunk = j == 0
+
+            yield BatchGemmTile(
+                output_row_idx=i,
+                weight_tile=weight_tile,
+                batch_tile=batch_tile,
+                first=is_first_input_chunk,
+                last=is_last_input_chunk,
+            )
+
+
 def chunk_matrices(
     matrix_a: np.ndarray, matrix_b: np.ndarray, chunk_size: int
 ) -> Generator[Tuple[Tuple[int, int], np.ndarray, np.ndarray], None, None]:

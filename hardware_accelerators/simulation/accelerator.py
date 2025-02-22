@@ -35,6 +35,7 @@ from ..rtllib import (
 )
 from .matrix_utils import (
     bias_trick,
+    generate_batch_gemm_tiles,
     generate_gemv_tiles,
     pack_binary_vector,
     permutate_weight_matrix,
@@ -566,6 +567,7 @@ class CompiledSimulator:
         self,
         weights: np.ndarray,
         data: np.ndarray,
+        accum_addr: int = 0,
         accum_mode: int = 0,  # 0=overwrite, 1=accumulate
         activation_enable: bool = False,  # 0=nothing, 1=enable
         activation_func: Optional[Literal["relu"]] = None,
@@ -575,7 +577,7 @@ class CompiledSimulator:
 
         Args:
             data: Input data vector of length array_size. If None, data_enable will be 0
-            accum_addr: Address in accumulator memory to read/write
+            accum_addr: Address in accumulator memory to start writing to. Auto increments with vector length
             accum_mode: 0 for overwrite, 1 for accumulate with existing values
             activation_enable: Whether to enable the activation unit
             activation_func: Activation function to use (passthrough or ReLU)
@@ -609,7 +611,7 @@ class CompiledSimulator:
             self.step(
                 data_vec=data[0],
                 weight_vec=weights[0],
-                accum_addr=0,
+                accum_addr=accum_addr,
                 accum_mode=accum_mode,
                 act_start=activation_enable,
                 act_func=1 if activation_func == "relu" else 0,
@@ -618,7 +620,7 @@ class CompiledSimulator:
             for i in range(1, data.shape[0]):
                 self.step(
                     data_vec=data[i],
-                    accum_addr=i,
+                    accum_addr=accum_addr + i,
                     accum_mode=accum_mode,
                     act_start=activation_enable,
                     act_func=1 if activation_func == "relu" else 0,
@@ -630,11 +632,156 @@ class CompiledSimulator:
 
     def gemm(self, data: np.ndarray, weights: np.ndarray): ...
 
-    def load_weights(self, weights: np.ndarray):
-        if weights.shape != (self.config.array_size, self.config.array_size):
-            raise ValueError(
-                f"Weights must be {self.config.array_size}x{self.config.array_size}"
+    def run_mlp(self, model: MLP, inputs: np.ndarray):
+        """
+        Run a MLP model on the accelerator. Predicts a single input (batch size of 1).
+
+        Args:
+            model: The MLP model to run.
+            inputs: The input to the model (1d numpy array).
+
+        Returns:
+            np.ndarray: Predicted class probabilities
+        """
+        self.reset_output_trace()
+
+        # Extract layer weights and biases
+        weights_1 = model.fc1.weight.numpy(force=True)
+        bias_1 = model.fc1.bias.numpy(force=True)
+        weights_2 = model.fc2.weight.numpy(force=True)
+        bias_2 = model.fc2.bias.numpy(force=True)
+
+        # Add bias to first layer weights and 1 to activations
+        W_aug, x_aug = bias_trick(weights_1, bias_1, inputs.flatten())
+
+        for tile in generate_gemv_tiles(x_aug, W_aug, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.matrix.T,
+                data=tile.vector.reshape(1, -1),
+                accum_addr=tile.index,
+                accum_mode=not tile.first,
+                activation_func="relu",
+                activation_enable=tile.last,
+                flush_pipeline=True,
             )
+
+        self.step()
+        self.step()
+
+        x1 = np.array(self.output_trace).flatten()
+        self.reset_output_trace()
+
+        W2_aug, x1_aug = bias_trick(weights_2, bias_2, x1)
+
+        for tile in generate_gemv_tiles(x1_aug, W2_aug, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.matrix.T,
+                data=tile.vector.reshape(1, -1),
+                accum_addr=tile.index,
+                accum_mode=not tile.first,
+                activation_func="relu",
+                activation_enable=tile.last,
+                flush_pipeline=True,
+            )
+
+        self.step()
+        self.step()
+
+        logits = np.array(self.output_trace).flatten()
+        logprobs = softmax(logits)
+        return logprobs
+
+    # def run_mlp_batch(self, model: MLP, batch: np.ndarray) -> np.ndarray:
+    #     """Run MLP inference on a batch of inputs.
+
+    #     Args:
+    #         model: The MLP model to run
+    #         batch: Input batch of shape (batch_size, input_dim)
+
+    #     Returns:
+    #         Batch predictions of shape (batch_size, num_classes)
+    #     """
+    #     self.reset_output_trace()
+
+    #     # Extract weights and biases
+    #     weights_1 = model.fc1.weight.numpy(force=True)  # shape: (hidden_dim, input_dim)
+    #     bias_1 = model.fc1.bias.numpy(force=True)
+    #     weights_2 = model.fc2.weight.numpy(
+    #         force=True
+    #     )  # shape: (output_dim, hidden_dim)
+    #     bias_2 = model.fc2.bias.numpy(force=True)
+
+    #     # First layer
+    #     # Add bias to weights and append 1 to input for bias trick
+    #     W1_aug, x_aug = bias_trick(weights_1, bias_1, batch)
+
+    #     # Initialize array to collect hidden layer outputs
+    #     hidden_out = np.zeros((weights_1.shape[0], batch.shape[0]))
+    #     print("hidden_out.shape", hidden_out.shape)
+
+    #     # Process first layer tiles
+    #     for tile in generate_batch_gemm_tiles(W1_aug, x_aug.T, self.config.array_size):
+    #         # Execute instruction handles sending each batch vector to consecutive addresses
+    #         self.execute_instruction(
+    #             weights=tile.weight_tile.T,  # Transpose for systolic array dataflow
+    #             data=tile.batch_tile.T,  # Transpose to get batch_size x chunk_size
+    #             accum_addr=0,  # Start at 0 for each new tile
+    #             accum_mode=not tile.first,
+    #             activation_func="relu",
+    #             activation_enable=tile.last,
+    #             flush_pipeline=True,
+    #         )
+
+    #         # After processing each tile, collect the results
+    #         if tile.last:
+    #             # Get the results for this output tile
+    #             results = np.array(self.output_trace)
+    #             # Calculate where this tile belongs in the final output
+    #             row_start = tile.output_row_idx * self.config.array_size
+    #             row_end = min(row_start + self.config.array_size, hidden_out.shape[0])
+    #             # Store results in the correct position
+    #             hidden_out[row_start:row_end, :] = results.reshape(-1, batch.shape[0])[
+    #                 : row_end - row_start, :
+    #             ]
+    #             self.reset_output_trace()
+
+    #     # Second layer
+    #     # Process with bias trick again
+    #     W2_aug, h_aug = bias_trick(weights_2, bias_2, hidden_out.T)
+
+    #     print("Hidden layer 2:")
+    #     print("W2_aug shape:", W2_aug.shape)
+    #     print("h_aug shape:", h_aug.shape)
+
+    #     # Initialize array to collect final outputs
+    #     final_out = np.zeros((weights_2.shape[0], batch.shape[0]))
+
+    #     # Process second layer tiles
+    #     for tile in generate_batch_gemm_tiles(W2_aug, h_aug.T, self.config.array_size):
+    #         self.execute_instruction(
+    #             weights=tile.weight_tile.T,
+    #             data=tile.batch_tile.T,
+    #             accum_addr=0,  # Start at 0 for each new tile
+    #             accum_mode=not tile.first,
+    #             activation_enable=tile.last,
+    #             flush_pipeline=True,
+    #         )
+
+    #         # After processing each tile, collect the results
+    #         if tile.last:
+    #             self.step()
+    #             self.step()
+    #             results = np.array(self.output_trace)
+    #             row_start = tile.output_row_idx * self.config.array_size
+    #             row_end = min(row_start + self.config.array_size, final_out.shape[0])
+    #             final_out[row_start:row_end, :] = results.reshape(-1, batch.shape[0])[
+    #                 : row_end - row_start, :
+    #             ]
+    #             self.reset_output_trace()
+
+    #     # Reshape to (batch_size, num_classes) and apply softmax
+    #     final_out = final_out.T
+    #     return np.apply_along_axis(softmax, 1, final_out)
 
     def inspect_outputs(self) -> np.ndarray:
         """Get current output values converted to floating point"""
@@ -647,6 +794,97 @@ class CompiledSimulator:
 
     def reset_output_trace(self):
         self.output_trace = []
+
+    def run_mlp_batch(self, model: MLP, batch: np.ndarray) -> np.ndarray:
+        """Run MLP inference on a batch of inputs."""
+        self.reset_output_trace()
+        batch_size = batch.shape[0]
+
+        # Extract weights and biases
+        weights_1 = model.fc1.weight.numpy(force=True)
+        bias_1 = model.fc1.bias.numpy(force=True)
+        weights_2 = model.fc2.weight.numpy(force=True)
+        bias_2 = model.fc2.bias.numpy(force=True)
+
+        print("\nInput shapes:")
+        print(f"batch: {batch.shape}")
+        print(f"weights_1: {weights_1.shape}")
+        print(f"bias_1: {bias_1.shape}")
+        print(f"weights_2: {weights_2.shape}")
+        print(f"bias_2: {bias_2.shape}")
+
+        # First layer
+        W1_aug, x_aug = bias_trick(weights_1, bias_1, batch)
+        print("\nAfter first bias trick:")
+        print(f"W1_aug shape: {W1_aug.shape}")
+        print(f"x_aug shape: {x_aug.shape}")
+
+        # List to collect output chunks for first layer
+        hidden_chunks = []
+
+        # Process first layer tiles
+        for tile in generate_batch_gemm_tiles(W1_aug, x_aug.T, self.config.array_size):
+            print(f"First layer batch tile shape: {tile.batch_tile.T.shape}")
+            self.execute_instruction(
+                weights=tile.weight_tile.T,
+                data=tile.batch_tile.T,
+                accum_addr=0,
+                accum_mode=not tile.first,
+                activation_func="relu",
+                activation_enable=tile.last,
+                flush_pipeline=True,
+            )
+
+            if tile.last:
+                self.step()
+                self.step()
+                results = np.array(self.output_trace)
+                print(f"\nFirst layer chunk shape: {results.shape}")
+                hidden_chunks.append(results)
+                self.reset_output_trace()
+
+        # Concatenate chunks and slice
+        hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : weights_1.shape[0]]
+        print(f"\nHidden layer output shape: {hidden_out.shape}")
+
+        # Second layer
+        W2_aug, h_aug = bias_trick(weights_2, bias_2, hidden_out)
+        print("\nAfter second bias trick:")
+        print(f"W2_aug shape: {W2_aug.shape}")
+        print(f"h_aug shape: {h_aug.shape}")
+
+        # List to collect output chunks for second layer
+        output_chunks = []
+
+        # Process second layer tiles
+        for tile in generate_batch_gemm_tiles(W2_aug, h_aug.T, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.weight_tile.T,
+                data=tile.batch_tile.T,
+                accum_addr=0,
+                accum_mode=not tile.first,
+                activation_enable=tile.last,
+                flush_pipeline=True,
+            )
+
+            if tile.last:
+                self.step()
+                self.step()
+                results = np.array(self.output_trace)
+                print(f"\nSecond layer chunk shape: {results.shape}")
+                print(f"Second layer chunk content:\n{results}")
+                output_chunks.append(results)
+                self.reset_output_trace()
+
+        print("\nNumber of output chunks:", len(output_chunks))
+        for i, chunk in enumerate(output_chunks):
+            print(f"Chunk {i} shape: {chunk.shape}")
+
+        # Concatenate chunks and slice
+        final_out = np.concatenate(output_chunks, axis=1)[:, : weights_2.shape[0]]
+        print(f"\nFinal output shape: {final_out.shape}")
+
+        return np.apply_along_axis(softmax, 1, final_out)
 
 
 @dataclass
