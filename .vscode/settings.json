@@ -65,7 +65,7 @@
         }
     },
     "jupyter.notebookFileRoot": "${workspaceFolder}",
-    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.typeCheckingMode": "basic",
     "python.testing.pytestArgs": [
         "tests"
     ],
