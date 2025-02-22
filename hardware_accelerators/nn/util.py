@@ -23,8 +23,9 @@ def model_factory():
     return MLP(INPUT_DIM, HIDDEN_SIZE, OUTPUT_DIM)
 
 
-def load_model(model_path: str):
-    device = get_pytorch_device()
+def load_model(model_path: str, device: torch.device | None = None):
+    if device is None:
+        device = get_pytorch_device()
     model = model_factory()
     model.to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
