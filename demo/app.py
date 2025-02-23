@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import tqdm
+import pyrtl
 
 sys.path.append(".")
 from hardware_accelerators.nn.util import softmax
@@ -28,7 +29,10 @@ from hardware_accelerators.rtllib import (
     lmul_fast,
     float_multiplier,
 )
-from hardware_accelerators.simulation import AcceleratorSimulator
+from hardware_accelerators.simulation import CompiledSimulator, AcceleratorSimulator
+
+
+# ------------ CONSTANTS ------------ #
 
 # Load the trained model
 model_path = "models/mlp_mnist.pth"
@@ -69,22 +73,8 @@ mult_map = {
     "l-mul": lmul_fast,
 }
 
-# DEFAULT_ACCELERATOR_CONFIG = AcceleratorConfig(
-#     num_weight_tiles=4,
-#     weight_type=BF16,
-#     data_type=BF16,
-#     array_size=4,
-#     pe_multiplier=float_multiplier,
-#     pe_adder=float_adder,
-#     accum_adder=float_adder,
-#     accum_addr_width=8,
-#     accum_type=BF16,
-#     pipeline=False,
-# )
 
-# ACCELERATOR_SIM = AcceleratorSimulator(
-#     config=DEFAULT_ACCELERATOR_CONFIG,
-# )
+# ------------ Event Listener Functions ------------ #
 
 
 def image_to_tensor(sketchpad: EditorValue):
@@ -140,9 +130,9 @@ def simulator_predict(sketchpad: EditorValue, config: AcceleratorConfig):
     # else:
     #     sim = AcceleratorSimulator(config=config)
 
-    sim = AcceleratorSimulator(config=config)
+    sim = CompiledSimulator(config=config)
     image = image_to_tensor(sketchpad).detach().numpy().flatten()
-    probabilities = sim.simulate_pytorch_model(model, image)
+    probabilities = sim.run_mlp(model, image)
     result = {cls: float(prob) for cls, prob in zip(classes, probabilities)}
     return result
 
@@ -152,11 +142,14 @@ def sim_predict_progress(
     config: AcceleratorConfig,
     gr_progress=gr.Progress(track_tqdm=True),
 ):
-    simulator = AcceleratorSimulator(config=config)
-    simulator.setup()
+    pyrtl.reset_working_block()
+    simulator = CompiledSimulator(config=config)
     chunk_size = config.array_size
 
     x = image_to_tensor(sketchpad).detach().numpy().flatten()
+    probabilities = simulator.run_mlp(model, x)
+    return {cls: float(prob) for cls, prob in zip(classes, probabilities)}
+
     weights_1 = model.fc1.weight.numpy(force=True)
     bias_1 = model.fc1.bias.numpy(force=True)
     weights_2 = model.fc2.weight.numpy(force=True)
