@@ -53,6 +53,7 @@ class Float16(BaseFloat):
 
         # Handle subnormal numbers
         if exp <= -14:
+            # Shift mantissa right and adjust
             shift = -14 - exp
             temp /= 2**shift
             exp = -14
@@ -75,8 +76,10 @@ class Float16(BaseFloat):
 
     def _binary_to_decimal(self, binary: str) -> float:
         """Convert binary string in IEEE 754 format to decimal"""
+        # Clean up binary string
         binary = "".join(c for c in binary if c in "01")
 
+        # Extract components
         sign = -1 if binary[0] == "1" else 1
         exp = binary[1:6]
         mantissa = binary[6:]
