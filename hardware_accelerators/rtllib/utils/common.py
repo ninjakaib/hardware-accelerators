@@ -1,5 +1,5 @@
 from typing import Tuple
-from ...dtypes import BaseFloat, Float8
+from ...dtypes import BaseFloat, Float8, Float16
 import pyrtl
 from pyrtl import Const, WireVector
 
@@ -69,6 +69,28 @@ def convert_float_format(
     if input_dtype == Float8:
         # Special handling for Float8
         is_nan = pyrtl.and_all_bits(input_wire[:7])
+
+        with pyrtl.conditional_assignment:
+            # If input is zero (all exp bits are 0)
+            with exp == 0:
+                new_exp |= 0
+                new_mantissa |= 0
+            # If input is nan (all bits are 1)
+            with is_nan:
+                new_exp |= 2 ** output_dtype.exponent_bits() - 1
+                new_mantissa |= 2 ** output_dtype.mantissa_bits() - 1
+            # Normal numbers - adjust bias
+            with pyrtl.otherwise:
+                new_exp |= exp + bias_diff
+                new_mantissa |= pyrtl.concat(
+                    mantissa,
+                    pyrtl.Const(
+                        0, output_dtype.mantissa_bits() - input_dtype.mantissa_bits()
+                    ),
+                )
+
+    elif input_dtype == Float16:
+        is_nan = pyrtl.and_all_bits(input_wire[:15])
 
         with pyrtl.conditional_assignment:
             # If input is zero (all exp bits are 0)
