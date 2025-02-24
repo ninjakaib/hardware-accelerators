@@ -4,7 +4,7 @@ import numpy as np
 import pyrtl
 import pytest
 
-from hardware_accelerators.dtypes import BF16, BaseFloat, Float8, Float16
+from hardware_accelerators.dtypes import BF16, BaseFloat, Float8, Float16, Float32
 from hardware_accelerators.rtllib import float_multiplier
 
 
@@ -131,6 +131,46 @@ def generate_test_cases():
     # Add Float16 cases with appropriate tolerance
     for a, b, expected in f16_cases:
         test_cases.append((a, b, Float16, 0.001))
+
+    # Float16 test cases
+    f32_cases = [
+        # Basic cases
+        (0.0, 0.0, 0.0),
+        (1.0, 1.0, 1.0),
+        (-1.0, -1.0, 1.0),
+        (1.0, -1.0, -1.0),
+        # Small numbers
+        (0.0001, 10000.0, 1.0),
+        (0.125, 8.0, 1.0),
+        (0.333, 3.0, 0.999),
+        # Large numbers
+        (1000.0, 2.0, 2000.0),
+        (123.456, 2.0, 246.912),
+        (-500.0, -1.5, 750.0),
+        # Mixed signs
+        (100.0, -2.0, -200.0),
+        (-75.0, 0.5, -37.5),
+        (1.5, -2.0, -3.0),
+        # Numbers requiring rounding
+        (1.33333, 2.0, 2.66666),
+        (3.14159, 2.0, 6.28318),
+        (1.23456, 4.0, 4.93824),
+        # Additional cases
+        (0.5, 0.5, 0.25),
+        (2.0, 0.5, 1.0),
+        (0.1, 10.0, 1.0),
+        (0.2, 5.0, 1.0),
+        (0.3, 3.333, 0.9999),
+        (0.4, 2.5, 1.0),
+        (0.6, 1.6667, 1.00002),
+        (0.7, 1.4286, 0.99982),
+        (0.8, 1.25, 1.0),
+        (0.9, 1.1111, 0.99999),
+    ]
+
+    # Add Float32 cases with appropriate tolerance
+    for a, b, expected in f32_cases:
+        test_cases.append((a, b, Float32, 0.001))
 
     return test_cases
 

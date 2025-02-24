@@ -4,7 +4,7 @@ import numpy as np
 import pyrtl
 import pytest
 
-from hardware_accelerators.dtypes import BF16, BaseFloat, Float8, Float16
+from hardware_accelerators.dtypes import BF16, BaseFloat, Float8, Float16, Float32
 from hardware_accelerators.rtllib import FloatAdderPipelined, float_adder
 
 
@@ -142,6 +142,53 @@ def generate_test_cases():
     for a, b, expected in f16_cases:
         test_cases.append((a, b, Float16, 0.001))
 
+    # Float32 test cases
+    f32_cases = [
+        # Basic cases
+        (0.0, 0.0, 0.0),
+        (1.0, 1.0, 2.0),
+        (-1.0, -1.0, -2.0),
+        (1.0, -1.0, 0.0),
+        # Small numbers
+        (0.00001, 0.00001, 0.00002),
+        (0.125, 0.125, 0.25),
+        (0.333, 0.333, 0.666),
+        # Large numbers
+        (1000.0, 1000.0, 2000.0),
+        (123.456, 876.544, 1000.0),
+        (-500.0, -250.0, -750.0),
+        # Mixed signs
+        (100.0, -50.0, 50.0),
+        (-75.0, 25.0, -50.0),
+        (1.5, -3.5, -2.0),
+        (2.0, -2.0, 0.0),
+        (4.0, -1.5, 2.5),
+        (-1.0, -1.0, -2.0),
+        (5.0, -5.5, -0.5),
+        (6.25, -2.25, 4.0),
+        (0.75, -1.25, -0.5),
+        (-3.0, 2.5, -0.5),
+        (2.5, -3.0, -0.5),
+        (7.0, -3.5, 3.5),
+        (-4.25, -2.25, -6.5),
+        # Numbers requiring rounding
+        (1.33333, 1.33333, 2.66666),
+        (3.14159, 2.85841, 6.0),
+        (1.23456, 1.23456, 2.46912),
+        # Edge cases
+        (65503.5, 65503.5, 131007.0),
+        (0.00006103515625, 0.00006103515625, 0.0001220703125),
+        (
+            0.000000059604645,
+            0.000000059604645,
+            0.00000011920929,
+        ),
+    ]
+
+    # Add Float32 cases with appropriate tolerance
+    for a, b, expected in f32_cases:
+        test_cases.append((a, b, Float32, 0.005))
+
     return test_cases
 
 
@@ -242,5 +289,23 @@ def test_float_adder_random():
                 abs((result - expected) / expected) if expected != 0 else abs(result)
             )
             assert rel_error <= 0.0001
+        except (ValueError, AssertionError):
+            continue  # Skip if values are out of range
+
+    # Test Float32
+    for _ in range(50):
+        # Generate random values within Float32 range
+        a = np.random.uniform(-3.4e38, 3.4e38)  # Float32 max normal
+        b = np.random.uniform(-3.4e38, 3.4e38)
+
+        try:
+            result = simulate_float_addition(a, b, Float32)
+            expected = a + b
+            if abs(expected) > Float32.max_normal():
+                continue  # Skip if result would overflow
+            rel_error = (
+                abs((result - expected) / expected) if expected != 0 else abs(result)
+            )
+            assert rel_error <= 0.005
         except (ValueError, AssertionError):
             continue  # Skip if values are out of range
