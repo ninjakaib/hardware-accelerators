@@ -1,10 +1,10 @@
 import pytest
 import numpy as np
-from hardware_accelerators.dtypes import BF16, Float8
+from hardware_accelerators.dtypes import BF16, Float8, Float16
 from hardware_accelerators.simulation.activations import ReluSimulator
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_basic(dtype):
     """Test basic ReLU functionality"""
     sim = ReluSimulator(dtype)
@@ -15,7 +15,7 @@ def test_relu_basic(dtype):
     assert np.isclose(sim.activate(np.array([0.0])), [0.0])
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_vector(dtype):
     """Test ReLU with vector inputs"""
     sim = ReluSimulator(dtype)
@@ -27,7 +27,7 @@ def test_relu_vector(dtype):
     assert np.allclose(result, expected, rtol=0.01)
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_matrix(dtype):
     """Test ReLU with matrix inputs"""
     sim = ReluSimulator(dtype)
@@ -39,7 +39,7 @@ def test_relu_matrix(dtype):
     assert np.allclose(result, expected, rtol=0.01)
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_enable_timing(dtype):
     """Test that enable signal properly latches"""
     sim = ReluSimulator(dtype)
@@ -56,7 +56,7 @@ def test_relu_enable_timing(dtype):
     assert np.allclose(result2, input_matrix)
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_passthrough(dtype):
     """Test passthrough mode (enable=False)"""
     sim = ReluSimulator(dtype)
@@ -66,7 +66,7 @@ def test_relu_passthrough(dtype):
     assert np.allclose(result, input_data, rtol=0.01)
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_edge_cases(dtype):
     """Test edge cases"""
     sim = ReluSimulator(dtype)
@@ -82,7 +82,7 @@ def test_relu_edge_cases(dtype):
     assert np.isclose(result[0], large_num, rtol=0.01)
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_random_matrix(dtype):
     """Test with random matrix"""
     sim = ReluSimulator(dtype)
@@ -113,7 +113,7 @@ def test_relu_shape_preservation():
         assert result.shape == shape
 
 
-@pytest.mark.parametrize("dtype", [BF16, Float8])
+@pytest.mark.parametrize("dtype", [BF16, Float8, Float16])
 def test_relu_special_values(dtype):
     """Test special values handling"""
     sim = ReluSimulator(dtype)
