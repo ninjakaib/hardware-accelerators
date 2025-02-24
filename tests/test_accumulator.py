@@ -3,7 +3,7 @@ from typing import Dict, List
 import numpy as np
 import pytest
 
-from hardware_accelerators.dtypes import BF16, Float8, Float16
+from hardware_accelerators.dtypes import BF16, Float8, Float16, Float32
 from hardware_accelerators.simulation.accumulators import AccumulatorBankSimulator
 
 
@@ -64,6 +64,14 @@ def fp16_simulator():
     """3x3 simulator using FP16 instead of BF16 or Float8"""
     return AccumulatorBankSimulator(
         array_size=3, num_tiles=4, data_type=Float16
+    ).setup()
+
+
+@pytest.fixture
+def fp32_simulator():
+    """3x3 simulator using FP32 instead of BF16 or Float8"""
+    return AccumulatorBankSimulator(
+        array_size=3, num_tiles=4, data_type=Float32
     ).setup()
 
 
@@ -262,6 +270,20 @@ class TestAccumulatorBankSimulator:
 
         # Result should show reduced precision
         result = fp16_simulator.read_tile(0)
+
+        # Use larger tolerance for FP16
+        assert_tile_equal(result, test_data * 2, 0, rtol=1e-3)
+
+    def test_fp32_precision(self, fp32_simulator):
+        """Test behavior with reduced precision FP16"""
+        test_data = get_test_data(3)
+
+        # Write and accumulate
+        fp32_simulator.write_tile(0, test_data)
+        fp32_simulator.write_tile(0, test_data, accumulate=True)
+
+        # Result should show reduced precision
+        result = fp32_simulator.read_tile(0)
 
         # Use larger tolerance for FP16
         assert_tile_equal(result, test_data * 2, 0, rtol=1e-3)

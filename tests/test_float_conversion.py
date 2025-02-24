@@ -1,7 +1,7 @@
 import math
 import pytest
 import pyrtl
-from hardware_accelerators import Float8, BF16, Float16
+from hardware_accelerators import Float8, BF16, Float16, Float32
 from hardware_accelerators.rtllib.utils.common import convert_float_format
 
 
@@ -43,9 +43,9 @@ class TestFloatFormatConversion:
         with pytest.raises(ValueError):
             convert_float_format(wrong_width_wire, Float8, BF16)
 
-        # Test downcasting (should raise error)
-        with pytest.raises(ValueError):
-            convert_float_format(pyrtl.Input(16), BF16, Float8)
+        # # Test downcasting (should raise error)
+        # with pytest.raises(ValueError):
+        #     convert_float_format(pyrtl.Input(16), BF16, Float8)
 
     @pytest.mark.parametrize(
         "value",
@@ -238,6 +238,92 @@ class TestFloatFormatConversion:
         for i in range(-4, 5):  # Test range around 1.0
             value = 2.0**i
             result = self.simulate_conversion(value, Float16, BF16)
+
+            # Check that the value is approximately preserved
+            assert abs(float(result) - value) < 1e-3
+
+            # Check ordering is preserved
+            if prev_result is not None:
+                assert float(result) > float(prev_result)
+            prev_result = result
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            1.0,
+            -1.0,
+            0.5,
+            -0.5,
+            0.0,
+            2.0,
+            -2.0,
+        ],
+    )
+    def test_float32_to_bf16_normal_values(self, value):
+        """Test conversion from Float32 to BF16 for normal values"""
+        result = self.simulate_conversion(value, Float32, BF16)
+        # Allow small relative error due to precision differences
+        assert abs(float(result) - value) < 1e-3
+
+    def test_float32_to_bf16_special_values(self):
+        """Test conversion of special values from Float32 to BF16"""
+        # Test zero
+        result = self.simulate_conversion(0.0, Float32, BF16)
+        assert float(result) == 0.0
+
+        # Test max value
+        max_f32 = Float32.max_value()
+        result = self.simulate_conversion(float(max_f32), Float32, BF16)
+        assert math.isclose(
+            float(result), float(max_f32), rel_tol=1e-2
+        ), f"Expected {float(max_f32)}, got {float(result)}"
+
+        # Test min normal
+        min_f32 = Float32.min_value()
+        result = self.simulate_conversion(float(min_f32), Float32, BF16)
+        assert float(result) == float(min_f32)
+
+        # Test min subnormal
+        min_sub_f32 = Float32.min_subnormal()
+        result = self.simulate_conversion(float(min_sub_f32), Float32, BF16)
+        assert float(result) == 0.0  # Subnormal should be flushed to zero in BF16
+
+    def test_float32_to_float32_same_format_conversion(self):
+        """Test conversion between Float32 formats (should return input directly)"""
+        input_wire = pyrtl.Input(32)
+        output_wire = convert_float_format(input_wire, Float32, Float32)
+        assert input_wire is output_wire  # Should return same wire reference
+
+    def test_float32_subnormal_conversion(self):
+        """Test conversion of subnormal numbers for Float32"""
+        min_normal_f32 = Float32.min_value()
+        subnormal_f32 = Float32(float(min_normal_f32) * 0.5)  # Should be subnormal
+
+        result = self.simulate_conversion(float(subnormal_f32), Float32, BF16)
+        # The converted value should preserve the magnitude
+        assert abs(float(result)) == 0
+
+    def test_float32_rounding_behavior(self):
+        """Test rounding behavior for Float32 to BF16 conversions"""
+
+        f32 = Float32(binary="0.00000001.11111111111111111111111")
+        result = self.simulate_conversion(float(f32), Float32, BF16)
+        assert abs(float(result) - float(f32)) < 1e-5
+
+        f32 = Float32(binary="0.00000000.00000000000000000000001")
+        result = self.simulate_conversion(float(f32), Float32, BF16)
+        assert abs(float(result) - float(f32)) < 1e-6
+
+        f32 = Float32(binary="1.11111111.11111111111111111111111")
+        result = self.simulate_conversion(float(f32), Float32, BF16)
+        assert result != result  # NaN check
+
+    def test_gradual_values_float32(self):
+        """Test conversion of gradually increasing/decreasing values for Float32"""
+        prev_result = None
+        for i in range(-4, 5):  # Test range around 1.0
+            value = 2.0**i
+            result = self.simulate_conversion(value, Float32, BF16)
 
             # Check that the value is approximately preserved
             assert abs(float(result) - value) < 1e-3
