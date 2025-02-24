@@ -104,12 +104,13 @@ def convert_float_format(
             # Normal numbers - adjust bias
             with pyrtl.otherwise:
                 new_exp |= exp + bias_diff
-                new_mantissa |= pyrtl.concat(
-                    mantissa,
-                    pyrtl.Const(
-                        0, output_dtype.mantissa_bits() - input_dtype.mantissa_bits()
-                    ),
+                truncate_bits = (
+                    input_dtype.mantissa_bits() - output_dtype.mantissa_bits()
                 )
+                truncated_mantissa = mantissa[
+                    truncate_bits:
+                ]  # Slice [3:10] for conversion to 7-bit mantissa
+                new_mantissa |= truncated_mantissa
 
     else:
         with pyrtl.conditional_assignment:
