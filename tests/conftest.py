@@ -1,7 +1,7 @@
 # tests/conftest.py
 import pytest
 
-from hardware_accelerators import BF16, Float8
+from hardware_accelerators import BF16, Float8, Float16
 
 
 # Add any shared fixtures here
