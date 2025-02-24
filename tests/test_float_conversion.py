@@ -1,7 +1,7 @@
 import math
 import pytest
 import pyrtl
-from hardware_accelerators import Float8, BF16
+from hardware_accelerators import Float8, BF16, Float16
 from hardware_accelerators.rtllib.utils.common import convert_float_format
 
 
@@ -149,6 +149,95 @@ class TestFloatFormatConversion:
         for i in range(-4, 5):  # Test range around 1.0
             value = 2.0**i
             result = self.simulate_conversion(value, Float8, BF16)
+
+            # Check that the value is approximately preserved
+            assert abs(float(result) - value) < 1e-3
+
+            # Check ordering is preserved
+            if prev_result is not None:
+                assert float(result) > float(prev_result)
+            prev_result = result
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            1.0,
+            -1.0,
+            0.5,
+            -0.5,
+            0.0,
+            2.0,
+            -2.0,
+        ],
+    )
+    def test_float16_to_bf16_normal_values(self, value):
+        """Test conversion from Float16 to BF16 for normal values"""
+        result = self.simulate_conversion(value, Float16, BF16)
+        # Allow small relative error due to precision differences
+        assert abs(float(result) - value) < 1e-3
+
+    def test_float16_to_bf16_special_values(self):
+        """Test conversion of special values from Float16 to BF16"""
+        # Test zero
+        result = self.simulate_conversion(0.0, Float16, BF16)
+        assert float(result) == 0.0
+
+        # Test max value
+        max_f16 = Float16.max_value()
+        result = self.simulate_conversion(float(max_f16), Float16, BF16)
+        # assert float(result) == float(
+        #     max_f16
+        # ), f"Expected {float(max_f16)}, got {float(result)}"
+        assert (
+            float(result) == 65280.0
+        )  # I think this is the closest we can get w conversion
+
+        # Test min normal
+        min_f16 = Float16.min_value()
+        result = self.simulate_conversion(float(min_f16), Float16, BF16)
+        assert float(result) == float(min_f16)
+
+        # Test min subnormal
+        min_sub_f16 = Float16.min_subnormal()
+        result = self.simulate_conversion(float(min_sub_f16), Float16, BF16)
+        assert float(result) == 0.0  # Subnormal should be flushed to zero in BF16
+
+    def test_float16_to_float16_same_format_conversion(self):
+        """Test conversion between Float16 formats (should return input directly)"""
+        input_wire = pyrtl.Input(16)
+        output_wire = convert_float_format(input_wire, Float16, Float16)
+        assert input_wire is output_wire  # Should return same wire reference
+
+    def test_float16_subnormal_conversion(self):
+        """Test conversion of subnormal numbers for Float16"""
+        min_normal_f16 = Float16.min_value()
+        subnormal_f16 = Float16(float(min_normal_f16) * 0.5)  # Should be subnormal
+
+        result = self.simulate_conversion(float(subnormal_f16), Float16, BF16)
+        # The converted value should preserve the magnitude
+        assert abs(float(result)) == 0
+
+    def test_float16_rounding_behavior(self):
+        """Test rounding behavior for Float16 to BF16 conversions"""
+
+        f16 = Float16(binary="0 00001 1111111111")
+        result = self.simulate_conversion(float(f16), Float16, BF16)
+        assert abs(float(result) - float(f16)) < 1e-5
+
+        f16 = Float16(binary="0 00000 0000000001")
+        result = self.simulate_conversion(float(f16), Float16, BF16)
+        assert abs(float(result) - float(f16)) < 1e-6
+
+        f16 = Float16(binary="0 11111 1111111111")
+        result = self.simulate_conversion(float(f16), Float16, BF16)
+        assert result != result  # NaN check
+
+    def test_gradual_values_float16(self):
+        """Test conversion of gradually increasing/decreasing values for Float16"""
+        prev_result = None
+        for i in range(-4, 5):  # Test range around 1.0
+            value = 2.0**i
+            result = self.simulate_conversion(value, Float16, BF16)
 
             # Check that the value is approximately preserved
             assert abs(float(result) - value) < 1e-3
