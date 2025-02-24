@@ -168,6 +168,8 @@ class BaseFloat(ABC):
 
         if self.bitwidth() == 8:  # Float8
             return f"{clean_binary[0]}.{clean_binary[1:5]}.{clean_binary[5:]}"
+        elif self.bitwidth() == 32:  # Float32
+            return f"{clean_binary[0]}.{clean_binary[1:9]}.{clean_binary[9:]}"
         elif self.bitwidth() == 16:
             if self.__class__.__name__ == "Float16":  # Float16
                 return f"{clean_binary[0]}.{clean_binary[1:6]}.{clean_binary[6:]}"
