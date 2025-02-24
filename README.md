@@ -4,7 +4,7 @@
 
 ## UCSD DSC180B Capstone Project | Winter 2025
 
-[![Website](https://img.shields.io/badge/View_Project_Website-blue?style=for-the-badge&logo=github)](https://ninjakaib.github.io/hardware-accelerators/)
+[![Website](https://img.shields.io/badge/View_Project_Website-blue?style=for-the-badge&logo=github)](https://nakschou.github.io/hardware-accelerators-site/)
 [![Download Report](https://img.shields.io/badge/📄_Download_Report-red?style=for-the-badge&logo=adobe-acrobat-reader)](https://github.com/ninjakaib/hardware-accelerators/raw/main/reports/main.pdf)
 
 [![GitHub deployments](https://img.shields.io/github/deployments/ninjakaib/hardware-accelerators/github-pages?label=pages)](https://github.com/ninjakaib/hardware-accelerators/deployments/github-pages)
