@@ -126,9 +126,7 @@ def convert_float_format(
                 truncate_bits = (
                     input_dtype.mantissa_bits() - output_dtype.mantissa_bits()
                 )
-                truncated_mantissa = mantissa[
-                    truncate_bits:
-                ]  # Slice [3:10] for conversion to 7-bit mantissa
+                truncated_mantissa = mantissa[truncate_bits:]
                 new_mantissa |= truncated_mantissa
 
     else:
