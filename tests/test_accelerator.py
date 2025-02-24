@@ -41,7 +41,7 @@ def test_accelerator_basic():
     results = np.zeros((activations.shape[0], weights.shape[1]))
 
     for i in range(3):
-        results[i] = simulator._get_outputs()
+        results[i] = simulator.inspect_outputs()
         simulator.execute_instruction(nop=True)
 
     gt = np.maximum(0, (activations @ weights))

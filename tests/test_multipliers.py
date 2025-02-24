@@ -149,6 +149,13 @@ def test_float_multiplier_random():
         a = np.random.uniform(-1e19, 1e19)
         b = np.random.uniform(-1e19, 1e19)
 
+        # result = simulate_float_multiplication(a, b, BF16)
+        # expected = a * b
+        # if abs(expected) > BF16.max_normal():
+        #     continue  # Skip if result would overflow
+        # rel_error = (
+        #     abs((result - expected) / expected) if expected != 0 else abs(result)
+        # )
         try:
             result = simulate_float_multiplication(a, b, BF16)
             expected = a * b

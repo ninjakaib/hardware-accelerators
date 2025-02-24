@@ -49,7 +49,7 @@ class ProcessingElement:
 
         # Input wires
         self.data_in = WireVector(data_width)
-        self.weight_in = WireVector(data_width)
+        self.weight_in = WireVector(weight_width)
         self.accum_in = WireVector(acc_width)
 
         # Control signals
@@ -59,7 +59,7 @@ class ProcessingElement:
 
         # Registers
         self.data_reg = Register(data_width)
-        self.weight_reg = Register(data_width)
+        self.weight_reg = Register(weight_width)
         self.accum_reg = Register(acc_width)
 
         # Convert inputs to multiplier if necessary

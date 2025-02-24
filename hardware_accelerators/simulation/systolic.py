@@ -10,7 +10,11 @@ from ..rtllib.systolic import SystolicArraySimState
 from ..dtypes import *
 from ..rtllib import *
 from .utils import *
-from .matrix_utils import pad_and_reshape_vector
+from .matrix_utils import (
+    pad_and_reshape_vector,
+    convert_array_dtype,
+    permutate_weight_matrix,
+)
 
 
 # @dataclass
@@ -98,13 +102,10 @@ class SystolicArraySimulator:
             multiplier=self.multiplier,
             adder=self.adder,
             pipeline=self.pipeline,
-            accum_addr_width=self.addr_width,
         )
 
         self.w_en = self.array.connect_weight_enable(Input(1, "w_en"))
         self.enable = self.array.connect_enable_input(Input(1, "enable"))
-        if self.addr_width is not None:
-            self.array.connect_inputs(accum_addr=Input(self.addr_width, "acc_addr"))
 
         self.w_ins = [Input(self.dwidth, f"weight_{i}") for i in range(self.size)]
         self.d_ins = [Input(self.dwidth, f"data_{i}") for i in range(self.size)]
@@ -120,8 +121,6 @@ class SystolicArraySimulator:
         self.sim_inputs = {
             w.name: 0 for w in [self.w_en, self.enable, *self.w_ins, *self.d_ins]
         }
-        if self.addr_width is not None:
-            self.sim_inputs["acc_addr"] = 0
 
     @classmethod
     def matrix_multiply(

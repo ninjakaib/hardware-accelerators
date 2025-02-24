@@ -77,13 +77,14 @@ class BaseSystolicArray(ABC):
         self.weight_type = weight_type
         self.accum_type = accum_type
         data_width = data_type.bitwidth()
+        weight_width = weight_type.bitwidth()
         accum_width = accum_type.bitwidth()
         self.multiplier = multiplier
         self.adder = adder
 
         # Input wires
         self.data_in = [WireVector(data_width) for _ in range(size)]
-        self.weights_in = [WireVector(data_width) for _ in range(size)]
+        self.weights_in = [WireVector(weight_width) for _ in range(size)]
         self.results_out = [WireVector(accum_width) for _ in range(size)]
 
         # Control wires
@@ -396,7 +397,7 @@ class SystolicArrayDiP(BaseSystolicArray):
             ), f"Expected {self.size} weight inputs, got {len(weight_inputs)}"
             for col, weight_input in enumerate(weight_inputs):
                 assert (
-                    len(weight_input) == self.data_type.bitwidth()
+                    len(weight_input) == self.weight_type.bitwidth()
                 ), f"Weight input {col} width mismatch. Expected {self.data_type.bitwidth()}, got {len(weight_input)}"
                 self.connect_weight_input(col, weight_input)
 
