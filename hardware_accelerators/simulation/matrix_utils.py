@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import numpy as np
 from typing import List, Tuple, Generator, Callable, Type
 import matplotlib.pyplot as plt
+from torch import Tensor
 
 from ..dtypes.base import BaseFloat
 
@@ -13,10 +14,26 @@ def print_arrays(*args, **kwargs):
             print(f"Array of shape {arr.shape}:")
             print(np.array2string(arr, precision=3, suppress_small=True))
             print()
+        elif isinstance(arr, Tensor):
+            print(f"Tensor of shape {arr.shape}:")
+            print(
+                np.array2string(
+                    arr.float().numpy(force=True), precision=3, suppress_small=True
+                )
+            )
+            print()
     for name, arr in kwargs.items():
         if isinstance(arr, np.ndarray):
             print(f"{name} {arr.shape}:")
             print(np.array2string(arr, precision=3, suppress_small=True))
+            print()
+        elif isinstance(arr, Tensor):
+            print(f"{name} {arr.shape}:")
+            print(
+                np.array2string(
+                    arr.float().numpy(force=True), precision=3, suppress_small=True
+                )
+            )
             print()
 
 
@@ -405,6 +422,31 @@ def generate_batch_gemm_tiles(
                 first=is_first_input_chunk,
                 last=is_last_input_chunk,
             )
+
+
+def count_batch_gemm_tiles(output_dim: int, input_dim: int, chunk_size: int) -> int:
+    """Calculate total number of tiled batch GEMM operations.
+
+    Args:
+        output_dim: Number of output dimensions (rows in weight matrix)
+        input_dim: Number of input dimensions (columns in weight matrix)
+        chunk_size: Size of tiles for GEMM operations (NxN)
+
+    Returns:
+        Total number of tiled GEMM operations
+    """
+    # Calculate padding needed
+    pad_out = (chunk_size - output_dim % chunk_size) % chunk_size
+    pad_in = (chunk_size - input_dim % chunk_size) % chunk_size
+
+    # Calculate number of chunks in each dimension
+    num_out_chunks = (output_dim + pad_out) // chunk_size
+    num_in_chunks = (input_dim + pad_in) // chunk_size
+
+    # Total tiles is the product of chunks in each dimension
+    total_tiles = num_out_chunks * num_in_chunks
+
+    return total_tiles
 
 
 def chunk_matrices(

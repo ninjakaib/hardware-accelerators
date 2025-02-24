@@ -7,6 +7,7 @@ from pyrtl import (
     Register,
     Output,
     Simulation,
+    CompiledSimulation,
     concat,
 )
 
@@ -514,6 +515,26 @@ class CompiledAccelerator:
         if valid is not None:
             assert len(valid) == 1, "Output valid signal must be a single bit wire"
             valid <<= self.activation.outputs_valid
+
+    def inspect_accumulator_state(self, sim: CompiledSimulation) -> np.ndarray:
+        """Return all accumulator tiles as 3D array.
+
+        Args:
+            sim: PyRTL simulation instance
+
+        Returns:
+            2D numpy array of shape (2**accum_addr_width, array_size) containing
+            all accumulator tile data converted to floating point values.
+            Each tile contains array_size rows with array_size columns.
+        """
+        tiles = []
+        for addr in range(2**self.config.accum_addr_width):
+            row = [
+                float(self.config.accum_type(binint=sim.inspect_mem(bank).get(addr, 0)))
+                for bank in self.accumulator.memory_banks
+            ]
+            tiles.append(row)
+        return np.array(tiles)
 
 
 @dataclass
