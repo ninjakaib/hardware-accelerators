@@ -15,7 +15,7 @@ from pyrtl import (
 from .buffer import BufferMemory, WeightFIFO
 from .systolic import SystolicArrayDiP
 from .accumulators import Accumulator, TiledAccumulatorMemoryBank
-from .activations import ReluUnit
+from .activations import ReluState, ReluUnit
 from ..dtypes import BaseFloat
 
 
@@ -130,23 +130,33 @@ class Accelerator:
         self.accum_mode_out = WireVector(1)
         self.accum_mode_out <<= self.accum_mode_regs[-1]
 
-        self.act_control_regs = [Register(2) for _ in range(num_registers)]
-        self.act_control_regs[0].next <<= concat(self.act_start_in, self.act_func_in)
+        self.act_start_regs = [Register(1) for _ in range(num_registers)]
+        self.act_enable_regs = [Register(1) for _ in range(num_registers)]
+        self.act_start_regs[0].next <<= self.act_start_in
+        self.act_enable_regs[0].next <<= self.act_func_in
+
+        # self.act_control_regs = [Register(2) for _ in range(num_registers)]
+        # self.act_control_regs[0].next <<= concat(self.act_start_in, self.act_func_in)
 
         self.accum_addr_regs[0].next <<= self.accum_addr_in
         self.accum_mode_regs[0].next <<= self.accum_mode_in
         for i in range(1, len(self.accum_addr_regs)):
             self.accum_addr_regs[i].next <<= self.accum_addr_regs[i - 1]
             self.accum_mode_regs[i].next <<= self.accum_mode_regs[i - 1]
-            self.act_control_regs[i].next <<= self.act_control_regs[i - 1]
+            # self.act_control_regs[i].next <<= self.act_control_regs[i - 1]
+            if i < len(self.act_start_regs):
+                self.act_enable_regs[i].next <<= self.act_enable_regs[i - 1]
+                self.act_start_regs[i].next <<= self.act_start_regs[i - 1]
 
         self.act_addr = Register(self.config.accum_addr_width)
         self.act_func = Register(1)
         self.act_start = Register(1)
 
         self.act_addr.next <<= self.accum_addr_out
-        self.act_func.next <<= self.act_control_regs[-1][0]
-        self.act_start.next <<= self.act_control_regs[-1][1]
+        # self.act_func.next <<= self.act_control_regs[-1][0]
+        # self.act_start.next <<= self.act_control_regs[-1][1]
+        self.act_func.next <<= self.act_enable_regs[-1]
+        self.act_start.next <<= self.act_start_regs[-1]
 
     def _connect_components(self):
         """Internal component connections"""
@@ -302,6 +312,10 @@ class Accelerator:
             ]
             tiles.append(row)
         return np.array(tiles)
+
+    def inspect_activation_state(self, sim: Simulation) -> ReluState:
+        """Return current activation unit state"""
+        return self.activation.inspect_state(sim)
 
 
 class CompiledAccelerator:

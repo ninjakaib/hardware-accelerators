@@ -350,7 +350,8 @@ def detect_final_sign(
         with pyrtl.otherwise:
             # If exponents are equal (exp_diff == 0), use mantissa comparison
             # Otherwise, use sign of number with larger exponent
-            with exp_diff[: e_bits - 1] == 0:
+            # with exp_diff[: e_bits - 1] == 0:
+            with exp_diff[:e_bits] == 0:
                 final_sign |= is_neg ^ sign_a
             with exp_diff[e_bits]:  # exp_diff is negative, meaning exp_b > exp_a
                 final_sign |= sign_b
