@@ -55,3 +55,7 @@ def repr_mantissa_product(x):
 
 def repr_num(x):
     return format(x, "0b") + f" ({x})"
+
+
+def repr_bool(x):
+    return "True" if x else "False"

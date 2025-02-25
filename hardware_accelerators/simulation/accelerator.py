@@ -15,6 +15,8 @@ from pyrtl import (
     reset_working_block,
 )
 
+from ..rtllib.activations import ReluState
+
 from ..rtllib.accelerator import CompiledAccelerator
 
 from ..nn.util import softmax
@@ -52,7 +54,7 @@ class AcceleratorSimState:
     systolic_state: SystolicArraySimState
     # fifo_state: Dict[str, np.ndarray]
     accum_state: np.ndarray
-    outputs: np.ndarray
+    activations: ReluState
 
     def __repr__(self) -> str:
         """Pretty print the simulation state at this step"""
@@ -78,7 +80,7 @@ class AcceleratorSimState:
             # f"  Data FIFO:\n{np.array2string(self.fifo_state['data_fifo'], precision=4, suppress_small=True)}\n"
             f"\nAccumulator State:\n{subsep}\n"
             f"{np.array2string(self.accum_state, precision=4, suppress_small=True)}\n"
-            f"\nOutputs:\n{np.array2string(self.outputs, precision=4, suppress_small=True)}\n"
+            f"\n{self.activations}\n"
             f"{sep}\n"
         )
 
@@ -129,7 +131,9 @@ class AcceleratorSimulator:
         self.setup()
 
     @classmethod
-    def default_config(cls, array_size: int, num_weight_tiles: int) -> Self:
+    def default_config(
+        cls, array_size: int, num_weight_tiles: int, fast: bool = True
+    ) -> Self:
         """Create a default configuration for the accelerator"""
         return cls(
             AcceleratorConfig(
@@ -143,7 +147,8 @@ class AcceleratorSimulator:
                 pe_multiplier=float_multiplier,
                 pipeline=False,
                 accum_addr_width=array_size,
-            )
+            ),
+            fast=fast,
         )
 
     def setup(self):
@@ -279,7 +284,7 @@ class AcceleratorSimulator:
                 inputs=inputs,
                 systolic_state=self.accelerator.inspect_systolic_array_state(self.sim),  # type: ignore
                 accum_state=self.accelerator.inspect_accumulator_state(self.sim),  # type: ignore
-                outputs=self.inspect_outputs(),
+                activations=self.accelerator.inspect_activation_state(self.sim),  # type: ignore
             )
         )
 
