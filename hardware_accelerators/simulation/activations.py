@@ -1,6 +1,7 @@
 from typing import Type, Union, Optional
 import numpy as np
 import pyrtl
+from traitlets import default
 from hardware_accelerators.dtypes import BaseFloat, BF16
 from hardware_accelerators.rtllib.activations import ReluUnit
 from .matrix_utils import convert_array_dtype
@@ -47,6 +48,20 @@ class ReluSimulator:
 
         # Create simulations
         self.sim = pyrtl.Simulation()
+        self.output_trace = []
+
+    def step(self, **inputs):
+        """Step the simulation by one cycle"""
+        default_inputs = {
+            "enable": 1,
+            "start": 1,
+            "valid": 1,
+            **{f"in_{i}": 0 for i in range(len(self.inputs))},
+        }
+        default_inputs.update(inputs)
+        self.sim.step(default_inputs)
+        if self.sim.inspect(self.relu.outputs_valid.name):
+            self.output_trace.append(self.relu.inspect_outputs(self.sim))
 
     def activate(self, data: np.ndarray, enable: bool = True) -> np.ndarray:
         """Apply ReLU activation to input data
@@ -79,7 +94,7 @@ class ReluSimulator:
         sim_inputs = {"enable": 1 if enable else 0, "start": 1, "valid": 0}
         for i in range(row_size):
             sim_inputs[f"in_{i}"] = 0
-        self.sim.step(sim_inputs)
+        self.step(**sim_inputs)
 
         # Process data row by row
         sim_inputs["start"] = 0  # Clear start signal after first cycle
@@ -91,13 +106,11 @@ class ReluSimulator:
                 sim_inputs[f"in_{i}"] = val
 
             # Run simulation step
-            self.sim.step(sim_inputs)
+            self.step(**sim_inputs)
 
-            # Collect outputs
-            results.append(self.relu.inspect_outputs(self.sim))
-
+        self.step()
         # Convert results back to numpy array
-        results = np.array(results)
+        results = np.array(self.output_trace)
 
         # If input was 1D, return 1D result
         if len(data.shape) == 1:
