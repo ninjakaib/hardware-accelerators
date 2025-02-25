@@ -1,5 +1,5 @@
 from typing import Tuple
-from ...dtypes import BaseFloat, Float8
+from ...dtypes import BaseFloat, Float8, Float16, Float32
 import pyrtl
 from pyrtl import Const, WireVector
 
@@ -36,17 +36,13 @@ def convert_float_format(
             f"Input wire width {len(input_wire)} does not match format width {input_dtype.bitwidth()}"
         )
 
-    # Check for valid upcasting
-    if output_dtype.bitwidth() < input_dtype.bitwidth():
-        raise ValueError("Cannot downcast to smaller format")
+    # # Check for valid upcasting
+    # if output_dtype.bitwidth() < input_dtype.bitwidth():
+    #     raise ValueError("Cannot downcast to smaller format")
 
     # If same format, return input wire directly
     if input_dtype == output_dtype:
         return input_wire
-
-    # # Special handling for Float8 due to its unique special cases
-    # if input_dtype == Float8:
-    #     return upcast_float8(input_wire, output_dtype)
 
     # Extract components from input using the input format's specs
     sign = input_wire[input_dtype.bitwidth() - 1]
@@ -88,6 +84,50 @@ def convert_float_format(
                         0, output_dtype.mantissa_bits() - input_dtype.mantissa_bits()
                     ),
                 )
+
+    elif input_dtype == Float16:
+        is_nan = pyrtl.and_all_bits(input_wire[:15])
+
+        with pyrtl.conditional_assignment:
+            # If input is zero (all exp bits are 0)
+            with exp == 0:
+                new_exp |= 0
+                new_mantissa |= 0
+            # If input is nan (all bits are 1)
+            with is_nan:
+                new_exp |= 2 ** output_dtype.exponent_bits() - 1
+                new_mantissa |= 2 ** output_dtype.mantissa_bits() - 1
+            # Normal numbers - adjust bias
+            with pyrtl.otherwise:
+                new_exp |= exp + bias_diff
+                truncate_bits = (
+                    input_dtype.mantissa_bits() - output_dtype.mantissa_bits()
+                )
+                truncated_mantissa = mantissa[
+                    truncate_bits:
+                ]  # Slice [3:10] for conversion to 7-bit mantissa
+                new_mantissa |= truncated_mantissa
+
+    elif input_dtype == Float32:
+        is_nan = pyrtl.and_all_bits(input_wire[:31])
+
+        with pyrtl.conditional_assignment:
+            # If input is zero (all exp bits are 0)
+            with exp == 0:
+                new_exp |= 0
+                new_mantissa |= 0
+            # If input is nan (all bits are 1)
+            with is_nan:
+                new_exp |= 2 ** output_dtype.exponent_bits() - 1
+                new_mantissa |= 2 ** output_dtype.mantissa_bits() - 1
+            # Normal numbers - adjust bias
+            with pyrtl.otherwise:
+                new_exp |= exp + bias_diff
+                truncate_bits = (
+                    input_dtype.mantissa_bits() - output_dtype.mantissa_bits()
+                )
+                truncated_mantissa = mantissa[truncate_bits:]
+                new_mantissa |= truncated_mantissa
 
     else:
         with pyrtl.conditional_assignment:

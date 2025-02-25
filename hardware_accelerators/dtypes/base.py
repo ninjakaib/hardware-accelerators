@@ -160,7 +160,6 @@ class BaseFloat(ABC):
 
     def _format_binary_string(self, binary=None) -> str:
         """Format binary string with dots for readability"""
-        # Clean the input string first
         if binary is None:
             binary = self.binary
         clean_binary = "".join(c for c in binary if c in "01")
@@ -169,8 +168,13 @@ class BaseFloat(ABC):
 
         if self.bitwidth() == 8:  # Float8
             return f"{clean_binary[0]}.{clean_binary[1:5]}.{clean_binary[5:]}"
-        elif self.bitwidth() == 16:  # BF16
-            return clean_binary  # BF16 doesn't use dot formatting
+        elif self.bitwidth() == 32:  # Float32
+            return f"{clean_binary[0]}.{clean_binary[1:9]}.{clean_binary[9:]}"
+        elif self.bitwidth() == 16:
+            if self.__class__.__name__ == "Float16":  # Float16
+                return f"{clean_binary[0]}.{clean_binary[1:6]}.{clean_binary[6:]}"
+            else:  # BF16
+                return clean_binary
         else:
             return clean_binary
 

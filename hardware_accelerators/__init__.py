@@ -1,4 +1,4 @@
-from .dtypes import BF16, Float8
+from .dtypes import BF16, Float8, Float16, Float32
 from .rtllib import (
     FloatAdderPipelined,
     FloatMultiplierPipelined,
@@ -12,6 +12,8 @@ from .rtllib import (
 __all__ = [
     "Float8",
     "BF16",
+    "Float16",
+    "Float32",
     "float_adder",
     "FloatAdderPipelined",
     "float_multiplier",

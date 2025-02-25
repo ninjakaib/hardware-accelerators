@@ -260,6 +260,22 @@ def adder_leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
         len(value) == m_bits + 1
     ), f"Input must be {m_bits + 1} bits wide, got {len(value)}"
 
+    if m_bits == 10:  # FP16
+        pairs = pyrtl.chop(value[1:], *[2 for _ in range(5)])
+        encoded_pairs = [enc2(pair) for pair in pairs]
+        first_merge = [
+            clzi(encoded_pairs[0], encoded_pairs[1], 2),
+            clzi(encoded_pairs[2], encoded_pairs[3], 2),
+        ]
+        remaining = encoded_pairs[4]
+
+        second_merge = clzi(first_merge[0], first_merge[1], 3)
+        remaining = pyrtl.concat(Const(0, bitwidth=2), remaining)
+
+        final_result = WireVector(4)
+        final_result <<= clzi(second_merge, remaining, 4)
+        return final_result
+
     # First level: encode pairs of bits (4 pairs total for 8 bits)
     # Results in a list with 4 2-bit WireVectors, indexed from MSB [0] to LSB [-1]
     pairs = pyrtl.chop(value, *[2 for _ in range((m_bits + 1) // 2)])
@@ -279,6 +295,30 @@ def adder_leading_zero_counter(value: WireVector, m_bits: int) -> WireVector:
     elif m_bits == 3:  # float8
         final_result = WireVector(4)  # , "lzc_result")
         final_result <<= clzi(encoded_pairs[0], encoded_pairs[1], 2)
+        return final_result
+
+    elif m_bits == 23:  # FP32
+        # Second level: Merge adjacent pairs into 6 groups
+        first_merge = [
+            clzi(encoded_pairs[0], encoded_pairs[1], 2),
+            clzi(encoded_pairs[2], encoded_pairs[3], 2),
+            clzi(encoded_pairs[4], encoded_pairs[5], 2),
+            clzi(encoded_pairs[6], encoded_pairs[7], 2),
+            clzi(encoded_pairs[8], encoded_pairs[9], 2),
+            clzi(encoded_pairs[10], encoded_pairs[11], 2),
+        ]
+
+        second_merge = [
+            clzi(first_merge[0], first_merge[1], 3),
+            clzi(first_merge[2], first_merge[3], 3),
+            clzi(first_merge[4], first_merge[5], 3),
+        ]
+
+        third_merge = clzi(second_merge[0], second_merge[1], 4)
+        remaining = pyrtl.concat(Const(0, bitwidth=1), second_merge[2])
+
+        final_result = WireVector(6)
+        final_result <<= clzi(third_merge, remaining, 5)
         return final_result
 
     else:
