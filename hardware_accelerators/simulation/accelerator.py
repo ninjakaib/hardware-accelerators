@@ -679,8 +679,9 @@ class CompiledSimulator:
 
         self.step()
         self.step()
+        self.step()
 
-        x1 = np.array(self.output_trace).flatten()
+        x1 = np.array(self.output_trace).flatten()[: W_aug.shape[0]]
         self.reset_output_trace()
 
         W2_aug, x1_aug = bias_trick(weights_2, bias_2, x1)
@@ -696,6 +697,7 @@ class CompiledSimulator:
                 flush_pipeline=True,
             )
 
+        self.step()
         self.step()
         self.step()
 

@@ -11,6 +11,10 @@ from pyrtl import (
     concat,
 )
 
+from .adders import float_adder
+
+from ..dtypes.bfloat16 import BF16
+
 
 from .buffer import BufferMemory, WeightFIFO
 from .systolic import SystolicArrayDiP
@@ -19,7 +23,7 @@ from .activations import ReluState, ReluUnit
 from ..dtypes import BaseFloat
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class AcceleratorConfig:
     """Configuration class for a systolic array accelerator.
 
@@ -318,32 +322,51 @@ class Accelerator:
         return self.activation.inspect_state(sim)
 
 
+@dataclass
+class CompiledAcceleratorConfig:
+    """Configuration for a compiled accelerator."""
+
+    array_size: int
+    activation_type: Type[BaseFloat]
+    weight_type: Type[BaseFloat]
+    multiplier: Callable[[WireVector, WireVector, Type[BaseFloat]], WireVector]
+    accum_addr_width: int = 12  # 4096 accumulator slots
+    pipeline: bool = False
+
+    @property
+    def name(self):
+        dtype_name = lambda d: d.bitwidth() if d != BF16 else "b16"
+        lmul = "lmul" if "lmul" in self.multiplier.__name__.lower() else ""
+        return f"w{dtype_name(self.weight_type)}a{dtype_name(self.activation_type)}s{self.array_size}{lmul}"
+
+
 class CompiledAccelerator:
-    def __init__(self, config: AcceleratorConfig):
+    def __init__(self, config: CompiledAcceleratorConfig):
         self.config = config
 
         # Instantiate hardware components
         self.systolic_array = SystolicArrayDiP(
             size=config.array_size,
-            data_type=config.data_type,
+            data_type=config.activation_type,
             weight_type=config.weight_type,
-            accum_type=config.accum_type,
-            multiplier=config.pe_multiplier,
-            adder=config.pe_adder,
+            accum_type=config.activation_type,
+            multiplier=config.multiplier,
+            adder=float_adder,
             pipeline=config.pipeline,
         )
         self.accumulator = Accumulator(
-            addr_width=config.accum_addr_width,
+            addr_width=12,
             array_size=config.array_size,
-            data_type=config.accum_type,
-            adder=config.accum_adder,
+            data_type=config.activation_type,
+            adder=float_adder,
         )
         self.activation = ReluUnit(
             size=config.array_size,
-            dtype=config.accum_type,
+            dtype=config.activation_type,
         )
         self.outputs = [
-            WireVector(config.accum_type.bitwidth()) for _ in range(config.array_size)
+            WireVector(config.activation_type.bitwidth())
+            for _ in range(config.array_size)
         ]
 
         # Connect components
@@ -353,7 +376,7 @@ class CompiledAccelerator:
         """Create unnamed WireVectors for control signals"""
         self.data_enable = WireVector(1)
         self.data_ins = [
-            WireVector(self.config.data_type.bitwidth())
+            WireVector(self.config.activation_type.bitwidth())
             for _ in range(self.config.array_size)
         ]
 
@@ -473,9 +496,9 @@ class CompiledAccelerator:
                 f"Expected {self.config.array_size}, got {len(data_inputs)}"
             )
             for i, wire in enumerate(data_inputs):
-                assert len(wire) == self.config.data_type.bitwidth(), (
+                assert len(wire) == self.config.activation_type.bitwidth(), (
                     f"Data input width mismatch. "
-                    f"Expected {self.config.data_type.bitwidth()}, got {len(wire)}"
+                    f"Expected {self.config.activation_type.bitwidth()}, got {len(wire)}"
                 )
                 self.data_ins[i] <<= wire
 
@@ -544,7 +567,11 @@ class CompiledAccelerator:
         tiles = []
         for addr in range(2**self.config.accum_addr_width):
             row = [
-                float(self.config.accum_type(binint=sim.inspect_mem(bank).get(addr, 0)))
+                float(
+                    self.config.activation_type(
+                        binint=sim.inspect_mem(bank).get(addr, 0)
+                    )
+                )
                 for bank in self.accumulator.memory_banks
             ]
             tiles.append(row)
