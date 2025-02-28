@@ -4,7 +4,7 @@ import ctypes
 import _ctypes
 import platform
 import shutil
-from typing import Optional, Dict, List, Union, Any
+from typing import Literal, Optional, Dict, List, Union, Any
 
 import numpy as np
 from pyrtl import (
@@ -15,6 +15,18 @@ from pyrtl import (
     Block,
     Input,
     Output,
+)
+
+from ..nn.util import softmax
+
+from ..nn.mlp import MLP
+
+from .matrix_utils import (
+    bias_trick,
+    count_batch_gemm_tiles,
+    generate_batch_gemm_tiles,
+    generate_gemv_tiles,
+    permutate_weight_matrix,
 )
 
 from ..rtllib.accelerator import (
@@ -191,6 +203,7 @@ class CompiledAcceleratorSimulator:
         # Load the config
         config_path = self._get_config_path(sim_dir)
         if os.path.exists(config_path):
+            print(f"Loading existing config from {config_path}")
             with open(config_path, "rb") as f:
                 self.config = pickle.load(f)
         else:
@@ -277,8 +290,7 @@ class CompiledAcceleratorSimulator:
             # Create a new simulation
             self.sim = ReusableCompiledSimulation()
 
-    # The rest of your methods remain the same
-    def get_sim_inputs(self, **kwargs):
+    def get_sim_inputs(self, **kwargs) -> Dict[str, int]:
         """Get default input values"""
         defaults = {
             "data_enable": 0,
@@ -297,8 +309,16 @@ class CompiledAcceleratorSimulator:
                 Warning(f"Invalid input key: {key}")
         return defaults
 
-    def step(self, **kwargs):
-        """Execute a simulation step with the given inputs."""
+    def step(
+        self,
+        **kwargs,
+    ) -> None:
+        """Execute a simulation step with the given inputs.
+
+        Args:
+            data: Input data vector of length array_size. If provided, data_enable will be set to 1
+            **kwargs: Additional control signals
+        """
         data_vec = kwargs.pop("data_vec", None)
         weight_vec = kwargs.pop("weight_vec", None)
         inputs = self.get_sim_inputs(**kwargs)
@@ -317,35 +337,254 @@ class CompiledAcceleratorSimulator:
                 raise ValueError(f"Data vector length must be {self.config.array_size}")
             inputs["data_enable"] = 1
             for i, value in enumerate(data_vec):
-                inputs[f"data_in_{i}"] = self.config.data_type(value).binint
+                inputs[f"data_in_{i}"] = self.config.activation_type(value).binint
 
         self.sim.step(inputs)
         if self.sim.inspect("output_valid") == 1:
             self.output_trace.append(self.inspect_outputs())
 
-    def inspect_outputs(self):
+    def execute_instruction(
+        self,
+        weights: np.ndarray,
+        data: np.ndarray,
+        accum_addr: int = 0,
+        accum_mode: int = 0,  # 0=overwrite, 1=accumulate
+        activation_enable: bool = False,  # 0=nothing, 1=enable
+        activation_func: Optional[Literal["relu"]] = None,
+        flush_pipeline: bool = True,
+    ) -> None:
+        """Execute one instruction with the given inputs. Will step more than one cycle
+
+        Args:
+            data: Input data vector of length array_size. If None, data_enable will be 0
+            accum_addr: Address in accumulator memory to start writing to. Auto increments with vector length
+            accum_mode: 0 for overwrite, 1 for accumulate with existing values
+            activation_enable: Whether to enable the activation unit
+            activation_func: Activation function to use (passthrough or ReLU)
+            load_new_weights: Whether to load a new weight tile from FIFO memory
+            weight_tile_addr: Address of weight tile to load when weights=1
+            flush_pipeline: Whether to flush the systolic array after input data to allow for new data/weights on the next cycle. If False, the systolic array will be held in the same state for the next cycle allowing for multiple data inputs to be streamed in.
+            nop: No operation, step 1 cycle with no inputs
+        """
+
+        assert weights.shape == (
+            self.config.array_size,
+            self.config.array_size,
+        ), f"Weights must be {self.config.array_size}x{self.config.array_size}"
+        weights = permutate_weight_matrix(weights)
+
+        for i in range(self.config.array_size - 1):
+            self.step(weight_vec=weights[-1 - i])
+
+        if data is not None:
+            assert (
+                len(data.shape) == 2
+            ), "Data must be 2D array of shape (N, {self.config.array_size})"
+            assert (
+                data.shape[1] == self.config.array_size
+            ), f"Data must be {self.config.array_size} wide"
+            assert (
+                data.shape[0] <= 2**self.config.accum_addr_width
+            ), f"Not enough accumulator address bits to store all {data.shape[0]} data vectors"
+
+            # Start streaming data into systolic array at the same time as last weights
+            self.step(
+                data_vec=data[0],
+                weight_vec=weights[0],
+                accum_addr=accum_addr,
+                accum_mode=accum_mode,
+                act_start=activation_enable,
+                act_func=1 if activation_func == "relu" else 0,
+            )
+
+            for i in range(1, data.shape[0]):
+                self.step(
+                    data_vec=data[i],
+                    accum_addr=accum_addr + i,
+                    accum_mode=accum_mode,
+                    act_start=activation_enable,
+                    act_func=1 if activation_func == "relu" else 0,
+                )
+        # Flush pipeline
+        if flush_pipeline:
+            for _ in range(self.config.array_size + self.config.pipeline):
+                self.step()
+
+    def gemm(self, data: np.ndarray, weights: np.ndarray): ...
+
+    def run_mlp(self, model: MLP, inputs: np.ndarray):
+        """
+        Run a MLP model on the accelerator. Predicts a single input (batch size of 1).
+
+        Args:
+            model: The MLP model to run.
+            inputs: The input to the model (1d numpy array).
+
+        Returns:
+            np.ndarray: Predicted class probabilities
+        """
+        self.reset_output_trace()
+
+        # Extract layer weights and biases
+        weights_1 = model.fc1.weight.numpy(force=True)
+        bias_1 = model.fc1.bias.numpy(force=True)
+        weights_2 = model.fc2.weight.numpy(force=True)
+        bias_2 = model.fc2.bias.numpy(force=True)
+
+        # Add bias to first layer weights and 1 to activations
+        W_aug, x_aug = bias_trick(weights_1, bias_1, inputs.flatten())
+
+        for tile in generate_gemv_tiles(x_aug, W_aug, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.matrix.T,
+                data=tile.vector.reshape(1, -1),
+                accum_addr=tile.index,
+                accum_mode=not tile.first,
+                activation_func="relu",
+                activation_enable=tile.last,
+                flush_pipeline=True,
+            )
+
+        self.step()
+        self.step()
+        self.step()
+
+        x1 = np.array(self.output_trace).flatten()[: W_aug.shape[0]]
+        self.reset_output_trace()
+
+        W2_aug, x1_aug = bias_trick(weights_2, bias_2, x1)
+
+        for tile in generate_gemv_tiles(x1_aug, W2_aug, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.matrix.T,
+                data=tile.vector.reshape(1, -1),
+                accum_addr=tile.index,
+                accum_mode=not tile.first,
+                activation_func="relu",
+                activation_enable=tile.last,
+                flush_pipeline=True,
+            )
+
+        self.step()
+        self.step()
+        self.step()
+
+        logits = np.array(self.output_trace).flatten()
+        logprobs = softmax(logits)
+        return logprobs
+
+    def inspect_outputs(self) -> np.ndarray:
         """Get current output values converted to floating point"""
         return np.array(
             [
                 self.config.activation_type(
-                    binint=self.sim.inspect(out.name)
+                    binint=self.sim.inspect(f"out_{i}")
                 ).decimal_approx
-                for out in self.output_wires
+                for i in range(self.config.array_size)
             ]
         )
 
     def reset_output_trace(self):
         self.output_trace = []
 
-    def inspect_accumulator_mem(self):
-        if hasattr(self, "accelerator"):
-            return self.accelerator.inspect_accumulator_state(self.sim)
-        else:
-            # When loaded from binary, we can still inspect memory through the sim
-            return self.sim.inspect_mem(
-                next(
-                    mem
-                    for mem in self.sim.block.logic_subset("m@")
-                    if mem.op_param[1].name == "accumulator"
-                )
+    def run_mlp_batch(self, model: MLP, batch: np.ndarray) -> np.ndarray:
+        """Run MLP inference on a batch of inputs."""
+        self.reset_output_trace()
+
+        # Extract weights and biases
+        weights_1 = model.fc1.weight.numpy(force=True)
+        bias_1 = model.fc1.bias.numpy(force=True)
+        weights_2 = model.fc2.weight.numpy(force=True)
+        bias_2 = model.fc2.bias.numpy(force=True)
+        batch_size = batch.shape[0]
+
+        tiles_done = 0
+        tile_estimate = count_batch_gemm_tiles(
+            128, 785, self.config.array_size
+        ) + count_batch_gemm_tiles(10, 129, self.config.array_size)
+
+        # print("\nInput shapes:")
+        # print(f"batch: {batch.shape}")
+        # print(f"weights_1: {weights_1.shape}")
+        # print(f"bias_1: {bias_1.shape}")
+        # print(f"weights_2: {weights_2.shape}")
+        # print(f"bias_2: {bias_2.shape}")
+
+        # First layer
+        W1_aug, x_aug = bias_trick(weights_1, bias_1, batch)
+        # print("\nAfter first bias trick:")
+        # print(f"W1_aug shape: {W1_aug.shape}")
+        # print(f"x_aug shape: {x_aug.shape}")
+
+        # List to collect output chunks for first layer
+        hidden_chunks = []
+
+        # Process first layer tiles
+        for tile in generate_batch_gemm_tiles(W1_aug, x_aug.T, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.weight_tile.T,
+                data=tile.batch_tile.T,
+                accum_addr=0,
+                accum_mode=not tile.first,
+                activation_func="relu",
+                activation_enable=tile.last,
+                flush_pipeline=True,
             )
+
+            if tile.last:
+                self.step()
+                self.step()
+                results = np.array(self.output_trace)
+                # print(f"\nFirst layer chunk shape: {results.shape}")
+                hidden_chunks.append(results)
+                self.reset_output_trace()
+
+            tiles_done += 1
+            print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
+
+        # Concatenate chunks and slice
+        hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : weights_1.shape[0]]
+        # print(f"\nHidden layer output shape: {hidden_out.shape}")
+
+        # Second layer
+        W2_aug, h_aug = bias_trick(weights_2, bias_2, hidden_out)
+        # print("\nAfter second bias trick:")
+        # print(f"W2_aug shape: {W2_aug.shape}")
+        # print(f"h_aug shape: {h_aug.shape}")
+
+        # List to collect output chunks for second layer
+        output_chunks = []
+
+        # Process second layer tiles
+        for tile in generate_batch_gemm_tiles(W2_aug, h_aug.T, self.config.array_size):
+            self.execute_instruction(
+                weights=tile.weight_tile.T,
+                data=tile.batch_tile.T,
+                accum_addr=0,
+                accum_mode=not tile.first,
+                activation_enable=tile.last,
+                flush_pipeline=True,
+            )
+
+            if tile.last:
+                self.step()
+                self.step()
+                results = np.array(self.output_trace)
+                # print(f"\nSecond layer chunk shape: {results.shape}")
+                # print(f"Second layer chunk content:\n{results}")
+                output_chunks.append(results)
+                self.reset_output_trace()
+            print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
+
+        # print("\nNumber of output chunks:", len(output_chunks))
+        # for i, chunk in enumerate(output_chunks):
+        #     print(f"Chunk {i} shape: {chunk.shape}")
+
+        # Concatenate chunks and slice
+        final_out = np.concatenate(output_chunks, axis=1)[:, : weights_2.shape[0]]
+        print(f"\nFinal output shape: {final_out.shape}")
+
+        return np.apply_along_axis(softmax, 1, final_out)
+
+    def inspect_accumulator_mem(self):
+        return self.accelerator.inspect_accumulator_state(self.sim)
