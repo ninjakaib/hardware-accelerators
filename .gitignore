@@ -1,4 +1,5 @@
 model_data/
+hardware_accelerators/bin/
 data/
 tpu/
 .DS_Store

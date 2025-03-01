@@ -30,7 +30,6 @@ from .matrix_utils import (
 )
 
 from ..rtllib.accelerator import (
-    AcceleratorConfig,
     CompiledAccelerator,
     CompiledAcceleratorConfig,
 )
@@ -168,7 +167,8 @@ class CompiledAcceleratorSimulator:
     """Simulator for the accelerator that uses compiled simulation for speed."""
 
     # Define a standard location for storing binaries
-    BINARY_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib")
+    # BINARY_DIR = "lib"
+    BINARY_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bin")
 
     def __init__(self, config_or_path: CompiledAcceleratorConfig | str):
         """Initialize the simulator either with a config or from a saved binary.
