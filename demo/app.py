@@ -29,6 +29,7 @@ from hardware_accelerators.rtllib import (
     lmul_fast,
     float_multiplier,
 )
+from hardware_accelerators.simulation.compile import CompiledAcceleratorSimulator
 from hardware_accelerators.simulation import CompiledSimulator, AcceleratorSimulator
 
 
@@ -122,19 +123,6 @@ def update_accelerator_config(
         accum_type=dtype_map[activations_dtype],
         pipeline=False,
     )
-
-
-def simulator_predict(sketchpad: EditorValue, config: AcceleratorConfig):
-    # if config == DEFAULT_ACCELERATOR_CONFIG:
-    #     sim = ACCELERATOR_SIM
-    # else:
-    #     sim = AcceleratorSimulator(config=config)
-
-    sim = CompiledSimulator(config=config)
-    image = image_to_tensor(sketchpad).detach().numpy().flatten()
-    probabilities = sim.run_mlp(model, image)
-    result = {cls: float(prob) for cls, prob in zip(classes, probabilities)}
-    return result
 
 
 def sim_predict_progress(
