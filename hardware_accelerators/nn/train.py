@@ -8,8 +8,6 @@ from tqdm.auto import tqdm
 
 from .util import model_factory, get_pytorch_device  # progress bar for notebooks
 
-# from pytorch2tikz import Architecture
-
 
 # Training function for one epoch
 def train(model, device, train_loader, optimizer, criterion, epoch, num_epochs):
