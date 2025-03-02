@@ -5,7 +5,7 @@ import pyrtl
 from tqdm import tqdm
 from functools import partial
 
-from .simulation.compile import CompiledAcceleratorSimulator
+from .simulation import CompiledAcceleratorSimulator
 
 from .rtllib import float_multiplier, lmul_fast, float_adder
 from .rtllib.accelerator import (

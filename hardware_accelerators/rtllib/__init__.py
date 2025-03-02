@@ -9,6 +9,8 @@ from .accelerator import (
     TiledMatrixEngine,
     AcceleratorConfig,
     Accelerator,
+    CompiledAcceleratorConfig,
+    CompiledAccelerator,
 )
 
 all = [
@@ -27,4 +29,6 @@ all = [
     "TiledMatrixEngine",
     "AcceleratorConfig",
     "Accelerator",
+    "CompiledAcceleratorConfig",
+    "CompiledAccelerator",
 ]

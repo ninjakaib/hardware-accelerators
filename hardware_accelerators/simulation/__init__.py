@@ -5,7 +5,7 @@ from .systolic import SystolicArraySimulator
 from .accumulators import AccumulatorBankSimulator
 from .buffer import BufferMemorySimulator
 from .accelerator import (
-    CompiledSimulator,
+    CompiledAcceleratorSimulator,
     AcceleratorSimulator,
     TiledMatrixEngineSimulator,
 )

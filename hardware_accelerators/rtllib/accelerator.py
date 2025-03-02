@@ -333,11 +333,34 @@ class CompiledAcceleratorConfig:
     accum_addr_width: int = 12  # 4096 accumulator slots
     pipeline: bool = False
 
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        # Ensure activation dtype has bitwidth >= weight dtype
+        if self.activation_type.bitwidth() < self.weight_type.bitwidth():
+            raise ValueError(
+                f"Activation dtype bitwidth ({self.activation_type.bitwidth()}) must be greater than or equal to "
+                f"weight dtype bitwidth ({self.weight_type.bitwidth()})"
+            )
+
     @property
     def name(self):
         dtype_name = lambda d: d.bitwidth() if d != BF16 else "b16"
         lmul = "lmul" if "lmul" in self.multiplier.__name__.lower() else ""
         return f"w{dtype_name(self.weight_type)}a{dtype_name(self.activation_type)}s{self.array_size}{lmul}"
+
+    def __repr__(self) -> str:
+        multiplier_name = (
+            "l-mul" if "lmul" in self.multiplier.__name__.lower() else "IEEE 754"
+        )
+        return f"""CompiledAcceleratorConfig(
+        array_size: {self.array_size}
+        activation_type: {self.activation_type.__name__}
+        weight_type: {self.weight_type.__name__}
+        multiplier: {multiplier_name}
+        accum_addr_width: {self.accum_addr_width}
+        pipeline: {self.pipeline}
+        name: {self.name}
+    )"""
 
 
 class CompiledAccelerator:
