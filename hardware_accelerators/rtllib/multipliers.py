@@ -13,6 +13,7 @@ def float_multiplier(
     float_a: WireVector,
     float_b: WireVector,
     dtype: Type[BaseFloat],
+    fast: bool = True,
 ) -> WireVector:
     e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
 
@@ -30,13 +31,13 @@ def float_multiplier(
 
     # Compute the multiplication normally.
     sign_out, exp_sum, mant_product = multiplier_stage_2(
-        sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b, m_bits
+        sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b, m_bits, fast
     )
     leading_zeros, unbiased_exp = multiplier_stage_3(
-        exp_sum, mant_product, e_bits, m_bits
+        exp_sum, mant_product, e_bits, m_bits, fast
     )
     final_exponent, final_mantissa = multiplier_stage_4(
-        unbiased_exp, leading_zeros, mant_product, m_bits, e_bits
+        unbiased_exp, leading_zeros, mant_product, m_bits, e_bits, fast
     )
     computed_result = pyrtl.concat(sign_out, final_exponent, final_mantissa)
 
@@ -53,59 +54,7 @@ def float_multiplier_simple(
     float_b: WireVector,
     dtype: Type[BaseFloat],
 ) -> WireVector:
-    def multiplier_stage_2_simple(
-        sign_a: WireVector,
-        sign_b: WireVector,
-        exp_a: WireVector,
-        exp_b: WireVector,
-        mantissa_a: WireVector,
-        mantissa_b: WireVector,
-        m_bits: int,
-    ):
-        # calculate sign using xor
-        sign_out = WireVector(1)  # , name="sign_out")
-        sign_out <<= sign_a ^ sign_b
-        # use adders.cla_adder
-        exp_sum = WireVector(len(exp_a) + 1)  # , name="exp_sum")
-        exp_sum <<= exp_a + exp_b
-        # csa tree multiplier
-        mantissa_product = WireVector(2 * m_bits + 2)  # , name="mantissa_product")
-        mantissa_product <<= mantissa_a * mantissa_b
-        # return xor for signs and sum of exponents and product of mantissas
-        return sign_out, exp_sum, mantissa_product
-
-    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
-
-    sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b = extract_float_components(
-        float_a, float_b, e_bits, m_bits
-    )
-
-    # Create a constant zero for exponent comparison.
-    zero_exp = pyrtl.Const(0, bitwidth=e_bits)
-
-    # If either exponent is zero, treat the corresponding input as zero.
-    is_a_zero = exp_a == zero_exp
-    is_b_zero = exp_b == zero_exp
-    is_any_zero = is_a_zero | is_b_zero
-
-    # Compute the multiplication normally.
-    sign_out, exp_sum, mant_product = multiplier_stage_2_simple(
-        sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b, m_bits
-    )
-    leading_zeros, unbiased_exp = multiplier_stage_3(
-        exp_sum, mant_product, e_bits, m_bits
-    )
-    final_exponent, final_mantissa = multiplier_stage_4(
-        unbiased_exp, leading_zeros, mant_product, m_bits, e_bits
-    )
-    computed_result = pyrtl.concat(sign_out, final_exponent, final_mantissa)
-
-    # If either input is zero, return a zero constant; otherwise return the computed result.
-    result = pyrtl.select(
-        is_any_zero, pyrtl.Const(0, bitwidth=dtype.bitwidth()), computed_result
-    )
-
-    return result
+    return float_multiplier(float_a, float_b, dtype, fast=False)
 
 
 class FloatMultiplierPipelined(SimplePipeline):
@@ -114,7 +63,9 @@ class FloatMultiplierPipelined(SimplePipeline):
         float_a: WireVector,
         float_b: WireVector,
         dtype: Type[BaseFloat],
+        fast: bool,
     ):
+        self.fast = fast
         self.e_bits = dtype.exponent_bits()
         self.m_bits = dtype.mantissa_bits()
         self._float_a = float_a
@@ -143,13 +94,14 @@ class FloatMultiplierPipelined(SimplePipeline):
             self.mantissa_a,
             self.mantissa_b,
             self.m_bits,
+            self.fast,
         )
 
     def stage_3(self):
         self.sign_out = self.sign_out
         self.mant_product = self.mant_product
         self.leading_zeros, self.unbiased_exp = multiplier_stage_3(
-            self.exp_sum, self.mant_product, self.e_bits, self.m_bits
+            self.exp_sum, self.mant_product, self.e_bits, self.m_bits, self.fast
         )
 
     def stage_4(self):
@@ -159,5 +111,6 @@ class FloatMultiplierPipelined(SimplePipeline):
             self.mant_product,
             self.m_bits,
             self.e_bits,
+            self.fast,
         )
         self._result <<= pyrtl.concat(self.sign_out, final_exponent, final_mantissa)
