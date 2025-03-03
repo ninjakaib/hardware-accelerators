@@ -93,6 +93,32 @@ For more details about our Q1 work, see our [technical report](reports/main.pdf)
 
 ---
 
+## Hardware Simulation & Caching
+
+The simulator uses just-in-time compilation with intelligent caching to accelerate hardware simulations. This system automatically:
+
+1. Generates optimized C code for your hardware configuration
+2. Compiles to native binaries for your platform
+3. Caches compiled artifacts for future reuse
+
+### Key Features
+
+- **Automatic Cache Management**  
+  Binaries are stored in platform-appropriate locations:
+  - Linux: `~/.cache/hardware_accelerators`
+  - macOS: `~/Library/Caches/HardwareAccelerators`
+  - Windows: `%LOCALAPPDATA%\hardware_accelerators\Cache`
+- **Environment Configuration**  
+  Control cache location via:
+
+  ```bash
+  export HWA_SIM_CACHE=/path/to/custom/cache
+  ```
+
+  or using a `.env` file in your project root.
+
+---
+
 ## Project structure
 
 - `./hardware_accelerators` will contain all source code (PyRTL, Verilog, etc.)
