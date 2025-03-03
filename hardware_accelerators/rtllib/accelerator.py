@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Callable, Type, Dict
 import numpy as np
+import hashlib
+import json
 
 from pyrtl import (
     WireVector,
@@ -322,7 +324,7 @@ class Accelerator:
         return self.activation.inspect_state(sim)
 
 
-@dataclass
+@dataclass  # (frozen=True)
 class CompiledAcceleratorConfig:
     """Configuration for a compiled accelerator."""
 
@@ -345,22 +347,58 @@ class CompiledAcceleratorConfig:
     @property
     def name(self):
         dtype_name = lambda d: d.bitwidth() if d != BF16 else "b16"
-        lmul = "lmul" if "lmul" in self.multiplier.__name__.lower() else ""
-        return f"w{dtype_name(self.weight_type)}a{dtype_name(self.activation_type)}s{self.array_size}{lmul}"
+        lmul = "-lmul" if "lmul" in self.multiplier.__name__.lower() else ""
+        mem = f"-m{self.accum_addr_width}" if self.accum_addr_width != 12 else ""
+        return (
+            f"w{dtype_name(self.weight_type)}"
+            f"a{dtype_name(self.activation_type)}"
+            f"-{self.array_size}x{self.array_size}"
+            f"{lmul}"
+            f"{'-p' if self.pipeline else ''}"
+            f"{mem}"
+        )
 
     def __repr__(self) -> str:
-        multiplier_name = (
-            "l-mul" if "lmul" in self.multiplier.__name__.lower() else "IEEE 754"
+        return (
+            "CompiledAcceleratorConfig(\n"
+            f"\tarray_size={self.array_size}\n"
+            f"\tactivation_type={self.activation_type.__name__}\n"
+            f"\tweight_type={self.weight_type.__name__}\n"
+            f"\tmultiplier={self.multiplier.__name__}\n"
+            f"\taccum_addr_width={self.accum_addr_width}\n"
+            f"\tpipeline={self.pipeline}\n"
+            # f'\tname="{self.name}"\n'
+            ")"
         )
-        return f"""CompiledAcceleratorConfig(
-        array_size: {self.array_size}
-        activation_type: {self.activation_type.__name__}
-        weight_type: {self.weight_type.__name__}
-        multiplier: {multiplier_name}
-        accum_addr_width: {self.accum_addr_width}
-        pipeline: {self.pipeline}
-        name: {self.name}
-    )"""
+
+    def __hash__(self) -> int:
+        """Generate a consistent hash value for this configuration.
+
+        Returns:
+            An integer hash value.
+        """
+        # Create a dictionary of the key configuration parameters
+        config_dict = {
+            "array_size": self.array_size,
+            "activation_type": f"{self.activation_type.__module__}.{self.activation_type.__name__}",
+            "weight_type": f"{self.weight_type.__module__}.{self.weight_type.__name__}",
+            "multiplier": self.multiplier.__name__,
+            "accum_addr_width": self.accum_addr_width,
+            "pipeline": self.pipeline,
+        }
+
+        # Generate a hash from the sorted JSON representation
+        hash_str = hashlib.sha256(
+            json.dumps(config_dict, sort_keys=True).encode()
+        ).hexdigest()
+
+        # Convert the first 16 characters of the hex string to an integer
+        return int(hash_str[:16], 16)
+
+    @property
+    def id(self):
+        """Get a unique hexadecimal identifier for this configuration."""
+        return hex(self.__hash__())[2:]
 
 
 class CompiledAccelerator:

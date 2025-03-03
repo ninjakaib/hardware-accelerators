@@ -13,7 +13,7 @@ from .accelerator import (
     CompiledAccelerator,
 )
 
-all = [
+__all__ = [
     "float_adder",
     "FloatAdderPipelined",
     "float_multiplier",
@@ -22,7 +22,7 @@ all = [
     "lmul_fast",
     "LmulPipelined",
     "SystolicArrayDiP",
-    "AccumulatorMemoryBank",
+    "TiledAccumulatorMemoryBank",
     "BufferMemory",
     "WeightFIFO",
     "TiledAcceleratorConfig",

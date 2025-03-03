@@ -1,5 +1,9 @@
 from dataclasses import dataclass
 import os
+from pathlib import Path
+import hashlib
+import json
+from platformdirs import user_cache_dir
 import pickle
 from typing import Any, Dict, List, Literal, Self, Type
 import numpy as np
@@ -22,7 +26,8 @@ from ..nn.util import softmax
 
 from ..nn.mlp import MLP
 
-from ..rtllib.multipliers import float_multiplier
+# from ..rtllib.multipliers import float_multiplier
+from ..rtllib import float_multiplier
 from ..dtypes import BaseFloat, BF16
 from ..rtllib.adders import float_adder
 from ..rtllib.systolic import SystolicArraySimState
@@ -480,15 +485,12 @@ class CompiledStepInputs(TypedDict):
 class CompiledAcceleratorSimulator:
     """Simulator for the accelerator that uses compiled simulation for speed."""
 
-    # Define a standard location for storing binaries
-    # BINARY_DIR = "lib"
-    BINARY_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bin")
-
     def __init__(
         self,
-        config_or_path: CompiledAcceleratorConfig | str,
+        config: CompiledAcceleratorConfig,  # Now only accepts config
         model: MLP | None = None,
         recompile: bool = False,
+        cache_dir: str | Path | None = None,
     ):
         """Initialize the simulator either with a config or from a saved binary.
 
@@ -496,28 +498,92 @@ class CompiledAcceleratorSimulator:
             config_or_path (Union[CompiledAcceleratorConfig, str]): Either an AcceleratorConfig object or a path to a saved binary
             model (Optional[MLP]): Neural network model to load into the accelerator. Defaults to None.
             recompile (bool): Whether to force recompilation of the binary even if path is provided. Defaults to False.
+            cache_dir (Optional[Union[str, Path]]): Directory to save/load compiled binaries.
 
         Notes:
-            If a path is provided and recompile=False, loads the simulator state from the saved binary.
-            If a config is provided or recompile=True, sets up the simulator with the given configuration.
+            If cache_dir is provided and recompile=False, loads the simulator state from the saved binary.
+            If a config is provided or recompile=True, builds new simulator with the given configuration.
             If a model is provided, automatically loads it into the accelerator.
         """
-        # Create binary directory if it doesn't exist
-        os.makedirs(self.BINARY_DIR, exist_ok=True)
-
+        self.cache_dir = self._resolve_cache_dir(cache_dir)
+        self.config = config
+        self.model_loaded = False
         self.output_trace = []
 
-        if isinstance(config_or_path, str):
-            # Load from saved binary
-            self._load_from_binary(config_or_path)
-        else:
-            # Initialize with config
-            self.config = config_or_path
-            self._setup_with_config(recompile)
+        # Look for existing compiled binaries
+        config_id = self.config.id
+        found_binary = self._find_existing_binary(config_id) if not recompile else None
 
-        self.model_loaded = False
+        if found_binary:
+            self._load_from_binary(found_binary)
+        else:
+            self._compile_and_cache(config_id)
+
         if model is not None:
             self.load_model(model)
+
+    def _resolve_cache_dir(self, user_dir: str | Path | None) -> Path:
+        """Resolve cache directory with priority: argument > env var > default"""
+        if user_dir:
+            return Path(user_dir).expanduser().resolve()
+
+        # Check both system env and .env file
+        if env_value := os.getenv("HWA_SIM_CACHE"):
+            return Path(env_value).expanduser().resolve()
+
+        return Path(user_cache_dir("hardware_accelerators", ensure_exists=True))
+
+    def _find_existing_binary(self, config_id: str) -> Path | None:
+        """Search for existing binary in all potential cache locations."""
+        search_dirs = [
+            self.cache_dir,
+            Path(os.environ.get("HWA_SIM_CACHE", "")).expanduser().resolve(),
+            Path(user_cache_dir("hardware_accelerators")),
+        ]
+
+        for directory in search_dirs:
+            candidate = directory / config_id / "pyrtlsim.so"
+            if candidate.exists():
+                return candidate.parent
+        return None
+
+    def _compile_and_cache(self, config_id: str):
+        """Compile new binary and save to appropriate cache directory."""
+        self.construct_hardware()
+        self.sim = ReusableCompiledSimulation()
+
+        save_dir = self.cache_dir / config_id
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        self.sim.save_compiled_lib(save_dir)
+
+        # Save the config
+        with open(save_dir / "config.pkl", "wb") as f:
+            pickle.dump(self.config, f)
+        # Save a readable version
+        with open(save_dir / f"{self.config.name}.txt", "w") as f:
+            f.write(str(self.config))
+
+        print(f"Saved compiled binary for config {self.config.name} to {save_dir}")
+
+    def _load_from_binary(self, path: Path):
+        """Load from validated cache path."""
+        print(f"Loading existing binary for config {self.config.name} from {path}")
+
+        lib_path = path / "pyrtlsim.so"
+        config_path = path / "config.pkl"
+
+        if not lib_path.exists():
+            raise PyrtlError(f"Library not found: {lib_path}")
+        if not config_path.exists():
+            raise PyrtlError(f"Config not found: {config_path}")
+
+        self.config = pickle.loads(config_path.read_bytes())
+        self.sim = ReusableCompiledSimulation(lib_path=str(lib_path))
+        self._output_wires = []
+        for wire in self.sim.block.wirevector_subset(Output):
+            if wire.name.startswith("out_"):
+                self._output_wires.append(wire)
 
     def load_model(self, model: MLP):
         # Extract weights and biases
@@ -536,65 +602,6 @@ class CompiledAcceleratorSimulator:
         self.hidden_dim = weights_1.shape[0]
         self.output_dim = weights_2.shape[0]
         self.model_loaded = True
-
-    def _get_binary_path(self, config: CompiledAcceleratorConfig):
-        """Get the path where binaries for this config should be stored."""
-        # Create a unique identifier based on config parameters
-        return os.path.join(self.BINARY_DIR, config.name)
-
-    def _get_config_path(self, sim_dir):
-        """Get the path where the config for this binary should be stored."""
-        return os.path.join(self.BINARY_DIR, sim_dir, "config.pkl")
-
-    def _load_from_binary(self, sim_dir):
-        """Load simulator from a saved binary directory."""
-        # Load the config
-        config_path = self._get_config_path(sim_dir)
-        if os.path.exists(config_path):
-            print(f"Loading existing config from {config_path}")
-            with open(config_path, "rb") as f:
-                self.config = pickle.load(f)
-        else:
-            raise PyrtlError(f"Config file not found: {config_path}")
-
-        # Create the simulation from the binary
-        lib_path = os.path.join(self.BINARY_DIR, sim_dir, "pyrtlsim.so")
-        self.sim = ReusableCompiledSimulation(lib_path=lib_path)
-
-        # Extract output wires from the simulation's block
-        # This assumes output wires follow the naming convention 'out_X'
-        self.output_wires = []
-        for wire in self.sim.block.wirevector_subset(Output):
-            if wire.name.startswith("out_"):
-                self.output_wires.append(wire)
-
-    def _check_matching_binary(self):
-        """Check if a binary for the current config already exists. If the folder exists and the config matches the current config, return True. Otherwise, return False."""
-        pass
-
-    def _setup_with_config(self, recompile: bool):
-        """Set up the hardware and simulation with the provided config."""
-        # Check if we have a cached compiled library
-        sim_dir = self._get_binary_path(self.config)
-        lib_path = os.path.join(sim_dir, "pyrtlsim.so")
-
-        if os.path.exists(lib_path) and not recompile:
-            # Use the precompiled library
-            print(f"Using precompiled library: {lib_path}")
-            self.sim = ReusableCompiledSimulation(lib_path=lib_path)
-        else:
-            # Create and save a new compiled simulation
-            self.construct_hardware()
-            self.sim = ReusableCompiledSimulation()
-
-            # Save the binary and state
-            save_dir = self.sim.save_compiled_lib(
-                directory=self.BINARY_DIR, name=os.path.basename(sim_dir)
-            )
-
-            # Save the config
-            with open(self._get_config_path(save_dir), "wb") as f:
-                pickle.dump(self.config, f)
 
     def construct_hardware(self):
         """Construct the hardware for the accelerator."""
@@ -618,11 +625,11 @@ class CompiledAcceleratorSimulator:
             "act_func": Input(1, "act_func"),
         }
         self.accelerator.connect_inputs(**inputs)
-        self.output_wires = [
+        self._output_wires = [
             Output(self.config.activation_type.bitwidth(), f"out_{i}")
             for i in range(self.config.array_size)
         ]
-        self.accelerator.connect_outputs(self.output_wires, Output(1, "output_valid"))
+        self.accelerator.connect_outputs(self._output_wires, Output(1, "output_valid"))
 
     def reset_sim(self):
         """Reset the simulation"""

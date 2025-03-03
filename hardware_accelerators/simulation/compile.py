@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import pickle
 import ctypes
 import _ctypes
@@ -52,30 +53,32 @@ class ReusableCompiledSimulation(CompiledSimulation):
             # Load from precompiled library - skip compilation
             self._load_from_binary(lib_path)
 
-    def _load_from_binary(self, lib_path: str):
+    def _load_from_binary(self, lib_path: str | Path):
         """Load simulation from a precompiled binary and state file.
 
         Args:
             lib_path: Path to either the .so file or the directory containing it.
         """
+        lib_path = Path(lib_path)
+
         # Check if lib_path is a directory or a file
-        if os.path.isdir(lib_path):
+        if lib_path.is_dir():
             # It's a directory, look for pyrtlsim.so inside it
-            so_path = os.path.join(lib_path, "pyrtlsim.so")
-            state_path = os.path.join(lib_path, "state.pkl")
+            so_path = lib_path / "pyrtlsim.so"
+            state_path = lib_path / "state.pkl"
         else:
             # It's a file path, assume it's the .so file
             so_path = lib_path
             # Check if state file is in the same directory with generic name
-            state_path = os.path.join(os.path.dirname(lib_path), "state.pkl")
-            if not os.path.exists(state_path):
+            state_path = lib_path.parent / "state.pkl"
+            if not state_path.exists():
                 # Try the old naming convention
-                state_path = os.path.splitext(lib_path)[0] + ".state"
+                state_path = lib_path.with_suffix(".state")
 
         # Verify files exist
-        if not os.path.exists(so_path):
+        if not so_path.exists():
             raise PyrtlError(f"Library file not found: {so_path}")
-        if not os.path.exists(state_path):
+        if not state_path.exists():
             raise PyrtlError(f"State file not found: {state_path}")
 
         # Load the saved state
@@ -111,34 +114,22 @@ class ReusableCompiledSimulation(CompiledSimulation):
         # Initialize memories
         self._initialize_mems()
 
-    def save_compiled_lib(self, directory=None, name="default"):
+    def save_compiled_lib(self, save_dir: Path):
         """Save the compiled library and state to a permanent location.
 
         Args:
-            directory: Base directory to save the files to. If None, uses 'simulations/'.
-            name: Name of the subfolder to store the files (default: 'default')
+            save_dir: Base directory to save the files to.
 
         Returns:
             Path to the directory where files were saved
         """
-        if directory is None:
-            directory = "simulations"
+        save_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create the specific directory for this simulation
-        save_dir = os.path.join(directory, name)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        # Ensure the DLL has been created
         if self._dll is None or self._dir is None:
             raise PyrtlError("No compiled library exists to save")
 
-        # File paths with generic names
-        lib_path = os.path.join(save_dir, "pyrtlsim.so")
-        state_path = os.path.join(save_dir, "state.pkl")
-
-        # Copy the library
-        shutil.copy2(os.path.join(self._dir, "pyrtlsim.so"), lib_path)
+        # Copy library
+        shutil.copy2(Path(self._dir) / "pyrtlsim.so", save_dir / "pyrtlsim.so")
 
         # Save state
         state = {
@@ -157,7 +148,7 @@ class ReusableCompiledSimulation(CompiledSimulation):
             "probe_mapping": getattr(self, "_probe_mapping", {}),
         }
 
-        with open(state_path, "wb") as f:
+        with open(save_dir / "state.pkl", "wb") as f:
             pickle.dump(state, f)
 
         return save_dir
