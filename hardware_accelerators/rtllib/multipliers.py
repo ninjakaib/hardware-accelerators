@@ -65,13 +65,13 @@ class FloatMultiplierPipelined(SimplePipeline):
         dtype: Type[BaseFloat],
         fast: bool,
     ):
-        self.fast = fast
+        self._fast = fast
         self.e_bits = dtype.exponent_bits()
         self.m_bits = dtype.mantissa_bits()
         self._float_a = float_a
         self._float_b = float_b
         self._result = pyrtl.WireVector(dtype.bitwidth())  # , "result")
-        super(FloatMultiplierPipelined, self).__init__()
+        super().__init__()
 
     def stage_1(self):
         (
@@ -94,14 +94,14 @@ class FloatMultiplierPipelined(SimplePipeline):
             self.mantissa_a,
             self.mantissa_b,
             self.m_bits,
-            self.fast,
+            self._fast,
         )
 
     def stage_3(self):
         self.sign_out = self.sign_out
         self.mant_product = self.mant_product
         self.leading_zeros, self.unbiased_exp = multiplier_stage_3(
-            self.exp_sum, self.mant_product, self.e_bits, self.m_bits, self.fast
+            self.exp_sum, self.mant_product, self.e_bits, self.m_bits, self._fast
         )
 
     def stage_4(self):
@@ -111,6 +111,6 @@ class FloatMultiplierPipelined(SimplePipeline):
             self.mant_product,
             self.m_bits,
             self.e_bits,
-            self.fast,
+            self._fast,
         )
         self._result <<= pyrtl.concat(self.sign_out, final_exponent, final_mantissa)
