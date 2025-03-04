@@ -131,7 +131,7 @@ def analyze_with_yosys(block, liberty_file, data_type_name):
     try:
         # Use the yosys_area_delay function from PyRTL analysis
         area, delay = analysis.yosys_area_delay(library=liberty_file, block=block)
-        print(f"Area: {area}")
+        print(f"Area: {area} cell area units")
         print(f"Delay: {delay} ns")
         return area, delay
     except Exception as e:
@@ -203,7 +203,7 @@ def main():
     for circuit_type, circuit_results in results.items():
         print(f"\n{circuit_type.upper()}:")
         for dtype_name, metrics in circuit_results.items():
-            print(f"  {dtype_name}: Area = {metrics['area']}, Delay = {metrics['delay']} ns")
+            print(f"  {dtype_name}: Area = {metrics['area']} cell area units, Delay = {metrics['delay']} ns")
     
     return results
 
