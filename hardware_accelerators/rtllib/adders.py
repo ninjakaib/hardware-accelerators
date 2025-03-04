@@ -17,6 +17,7 @@ def float_adder(
     float_a: WireVector,
     float_b: WireVector,
     dtype: Type[BaseFloat],
+    fast: bool = False,
 ) -> WireVector:
 
     e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
@@ -26,7 +27,7 @@ def float_adder(
     )
 
     sign_xor, exp_larger, signed_shift, mant_smaller, mant_larger = adder_stage_2(
-        sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b, e_bits, m_bits
+        sign_a, sign_b, exp_a, exp_b, mantissa_a, mantissa_b, e_bits, m_bits, fast
     )
 
     abs_shift = WireVector(e_bits)  # , "abs_shift")
@@ -37,7 +38,7 @@ def float_adder(
     )
 
     mantissa_sum, is_neg, lzc = adder_stage_4(
-        aligned_mant_msb, mant_larger, sign_xor, m_bits
+        aligned_mant_msb, mant_larger, sign_xor, m_bits, fast
     )
 
     final_sign, final_exp, norm_mantissa = adder_stage_5(
@@ -72,6 +73,7 @@ class FloatAdderPipelined(SimplePipeline):
         float_b: WireVector,
         w_en: WireVector,
         dtype: Type[BaseFloat],
+        fast: bool = False,
     ):
         """
         Initialize a pipelined BFloat16 adder with write enable control.
@@ -134,17 +136,17 @@ class FloatAdderPipelined(SimplePipeline):
             write enable is not 1 bit
         """
         assert (
-            len(float_a) == len(float_b) == 16
+            len(float_a) == len(float_b) == dtype.bitwidth()
         ), f"float inputs must be {dtype.bitwidth()} bits"
         assert len(w_en) == 1, "write enable signal must be 1 bit"
-
+        self._fast = fast
         self.e_bits, self.m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
         # Define inputs and outputs
         self._float_a, self._float_b = float_a, float_b
         self._write_enable = w_en
-        # self._result = pyrtl.Register(self.e_bits + self.m_bits + 1, 'result')
+        # self._result = pyrtl.Register(self.e_bits + self.m_bits + 1, "result")
         self._result_out = pyrtl.WireVector(dtype.bitwidth())  # , "_result")
-        super(FloatAdderPipelined, self).__init__()
+        super().__init__()
 
     @property
     def result(self):
@@ -183,6 +185,7 @@ class FloatAdderPipelined(SimplePipeline):
             self.mant_b,
             self.e_bits,
             self.m_bits,
+            self._fast,
         )
 
     def stage2(self):
@@ -219,7 +222,11 @@ class FloatAdderPipelined(SimplePipeline):
 
         # Perform mantissa addition and leading zero detection
         self.mant_sum, self.is_neg, self.lzc = adder_stage_4(
-            self.aligned_mant_msb, self.mant_larger, self.sign_xor, self.m_bits
+            self.aligned_mant_msb,
+            self.mant_larger,
+            self.sign_xor,
+            self.m_bits,
+            self._fast,
         )
 
     def stage4(self):

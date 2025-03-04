@@ -1,7 +1,10 @@
 from typing import Tuple
 
 import pyrtl
+import pyrtl.rtllib
+from pyrtl.rtllib.adders import kogge_stone, carrysave_adder, cla_adder
 from pyrtl import Const, WireVector
+import pyrtl.rtllib.adders
 
 from .common import generate_sgr, clzi, enc2
 
@@ -19,6 +22,7 @@ def adder_stage_2(
     mant_b: WireVector,
     e_bits: int,
     m_bits: int,
+    fast: bool = False,
 ):
     assert len(sign_a) == len(sign_b) == 1
     assert len(exp_a) == len(exp_b) == e_bits
@@ -33,10 +37,18 @@ def adder_stage_2(
 
     sign_xor <<= sign_a ^ sign_b
 
-    exp_diff <<= exp_a - exp_b  # This can be negative, indicating which is larger
+    if fast:
+        exp_diff <<= carrysave_adder(
+            exp_a, ~exp_b, pyrtl.Const(1), final_adder=kogge_stone
+        )
+        is_neg = ~exp_diff[e_bits]
+    else:
+        exp_diff <<= exp_a - exp_b  # This can be negative, indicating which is larger
+        is_neg = exp_diff[e_bits]
+
     exp_larger <<= pyrtl.mux(exp_diff[e_bits], exp_a, exp_b)
     signed_shift <<= pyrtl.mux(
-        exp_diff[e_bits],
+        is_neg,
         exp_diff[:e_bits],
         pyrtl.concat(exp_diff[e_bits], (~exp_diff[:e_bits] + 1)[:e_bits]),
     )
@@ -67,6 +79,7 @@ def adder_stage_4(
     mant_unchanged: WireVector,
     sign_xor: WireVector,
     m_bits: int,
+    fast: bool = False,
 ):
     """
     Add/sub the mantissas based on input signs and count the leading zeros in the result
@@ -84,7 +97,7 @@ def adder_stage_4(
     """
 
     mantissa_sum, is_neg = add_sub_mantissas(
-        mant_aligned, mant_unchanged, sign_xor, m_bits
+        mant_aligned, mant_unchanged, sign_xor, m_bits, fast
     )
     lzc = leading_zero_detector_module(mantissa_sum, m_bits)
     return mantissa_sum, is_neg, lzc
@@ -207,6 +220,7 @@ def add_sub_mantissas(
     mant_unchanged: WireVector,
     sign_xor: WireVector,
     m_bits: int,
+    fast: bool = False,
 ) -> tuple[WireVector, WireVector]:
     """
     Perform addition or subtraction on mantissas based on signs
@@ -225,15 +239,24 @@ def add_sub_mantissas(
     assert len(sign_xor) == 1
 
     raw_result = WireVector(m_bits + 3)  # , "raw_result")
-    with pyrtl.conditional_assignment:
-        with sign_xor:
-            raw_result |= mant_unchanged.zero_extended(
-                m_bits + 2
-            ) - mant_aligned.zero_extended(m_bits + 2)
-        with pyrtl.otherwise:
-            raw_result |= mant_unchanged.zero_extended(
-                m_bits + 2
-            ) + mant_aligned.zero_extended(m_bits + 2)
+    if fast:
+        _mant_unchanged = mant_unchanged.zero_extended(m_bits + 2)
+        _mant_aligned = WireVector(len(_mant_unchanged))
+        with pyrtl.conditional_assignment:
+            with sign_xor:
+                _mant_aligned |= (~mant_aligned + 1).sign_extended(m_bits + 2)
+
+        raw_result <<= kogge_stone(_mant_unchanged, _mant_aligned)
+    else:
+        with pyrtl.conditional_assignment:
+            with sign_xor:
+                raw_result |= mant_unchanged.zero_extended(
+                    m_bits + 2
+                ) - mant_aligned.zero_extended(m_bits + 2)
+            with pyrtl.otherwise:
+                raw_result |= mant_unchanged.zero_extended(
+                    m_bits + 2
+                ) + mant_aligned.zero_extended(m_bits + 2)
 
     # Detect if result is negative
     is_negative = WireVector(1)  # , "is_negative")
