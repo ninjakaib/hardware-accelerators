@@ -4,7 +4,8 @@ import pyrtl
 class SimplePipeline(object):
     """Pipeline builder with auto generation of pipeline registers."""
 
-    def __init__(self):
+    def __init__(self, pipeline_name=None):
+        self._pipeline_name = pipeline_name or self.__class__.__name__
         self._pipeline_register_map = {}
         self._current_stage_num = 0
         stage_list = [method for method in dir(self) if method.startswith("stage")]
@@ -29,7 +30,10 @@ class SimplePipeline(object):
         else:
             next_stage = self._current_stage_num + 1
             pipereg_id = str(self._current_stage_num) + "to" + str(next_stage)
-            rname = "pipereg_" + pipereg_id + "_" + name
+
+            # Use the pipeline name in the register name
+            rname = f"{self._pipeline_name}_pipereg_{pipereg_id}_{name}"
+
             new_pipereg = pyrtl.Register(bitwidth=len(value), name=rname)
             if next_stage not in self._pipeline_register_map:
                 self._pipeline_register_map[next_stage] = {}
