@@ -61,9 +61,35 @@ def float_adder(
     return float_result
 
 
+def float_adder_fast_unstable(
+    float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]
+) -> WireVector:
+    return float_adder(float_a, float_b, dtype, fast=True)
+
+
 ### ===================================================================
 ### Simple Pipeline Design
 ### ===================================================================
+
+
+def float_adder_pipelined(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+) -> WireVector:
+    w_en = pyrtl.Input(1)
+    adder = FloatAdderPipelined(float_a, float_b, w_en, dtype, fast=False)
+    return adder._result_out
+
+
+def float_adder_pipelined_fast_unstable(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+) -> WireVector:
+    w_en = pyrtl.Input(1)
+    adder = FloatAdderPipelined(float_a, float_b, w_en, dtype, fast=True)
+    return adder._result_out
 
 
 class FloatAdderPipelined(SimplePipeline):
@@ -146,7 +172,7 @@ class FloatAdderPipelined(SimplePipeline):
         self._write_enable = w_en
         # self._result = pyrtl.Register(self.e_bits + self.m_bits + 1, "result")
         self._result_out = pyrtl.WireVector(dtype.bitwidth())  # , "_result")
-        super().__init__()
+        super().__init__("float_adder")
 
     @property
     def result(self):

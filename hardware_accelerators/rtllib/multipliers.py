@@ -13,7 +13,7 @@ def float_multiplier(
     float_a: WireVector,
     float_b: WireVector,
     dtype: Type[BaseFloat],
-    fast: bool = True,
+    fast: bool = False,
 ) -> WireVector:
     e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
 
@@ -49,12 +49,30 @@ def float_multiplier(
     return result
 
 
-def float_multiplier_simple(
+def float_multiplier_fast_unstable(
     float_a: WireVector,
     float_b: WireVector,
     dtype: Type[BaseFloat],
 ) -> WireVector:
-    return float_multiplier(float_a, float_b, dtype, fast=False)
+    return float_multiplier(float_a, float_b, dtype, fast=True)
+
+
+def float_multiplier_pipelined(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+) -> WireVector:
+    mult = FloatMultiplierPipelined(float_a, float_b, dtype, fast=False)
+    return mult._result
+
+
+def float_multiplier_pipelined_fast_unstable(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+) -> WireVector:
+    mult = FloatMultiplierPipelined(float_a, float_b, dtype, fast=True)
+    return mult._result
 
 
 class FloatMultiplierPipelined(SimplePipeline):
@@ -63,7 +81,7 @@ class FloatMultiplierPipelined(SimplePipeline):
         float_a: WireVector,
         float_b: WireVector,
         dtype: Type[BaseFloat],
-        fast: bool,
+        fast: bool = False,
     ):
         self._fast = fast
         self.e_bits = dtype.exponent_bits()
@@ -71,7 +89,7 @@ class FloatMultiplierPipelined(SimplePipeline):
         self._float_a = float_a
         self._float_b = float_b
         self._result = pyrtl.WireVector(dtype.bitwidth())  # , "result")
-        super().__init__()
+        super().__init__("float_multiplier")
 
     def stage_1(self):
         (
