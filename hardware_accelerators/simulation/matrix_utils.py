@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import List, Tuple, Generator, Callable, Type
+from typing import List, Optional, Tuple, Generator, Callable, Type, overload
 import matplotlib.pyplot as plt
 from torch import Tensor
 
@@ -185,28 +185,71 @@ def chunk_weight_matrix(matrix: np.ndarray, chunk_size: int) -> np.ndarray:
     return chunks
 
 
-def bias_trick(weights: np.ndarray, bias: np.ndarray, x: np.ndarray) -> tuple:
+from typing import overload, Union, Tuple, Optional
+import numpy as np
+
+
+@overload
+def bias_trick(
+    *, weights: np.ndarray, bias: np.ndarray, x: None = None
+) -> np.ndarray: ...
+
+
+@overload
+def bias_trick(
+    *, weights: None = None, bias: None = None, x: np.ndarray
+) -> np.ndarray: ...
+
+
+@overload
+def bias_trick(
+    *, weights: np.ndarray, bias: np.ndarray, x: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]: ...
+
+
+def bias_trick(
+    *,
+    weights: Optional[np.ndarray] = None,
+    bias: Optional[np.ndarray] = None,
+    x: Optional[np.ndarray] = None,
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """Applies bias trick to combine weights and bias into augmented matrices.
 
     Args:
-        weights: Weight matrix (output_dim, input_dim)
-        bias: Bias vector (output_dim,)
-        x: Input matrix (n_samples, input_dim) or vector (input_dim,)
+        weights: Weight matrix (output_dim, input_dim), optional
+        bias: Bias vector (output_dim,), optional
+        x: Input matrix (n_samples, input_dim) or vector (input_dim,), optional
 
     Returns:
-        tuple: (augmented_weights, augmented_input) where:
-            - augmented_weights: (output_dim, input_dim + 1)
-            - augmented_input: (n_samples, input_dim + 1) or (input_dim + 1,)
+        Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+            - If only weights and bias are provided: augmented_weights (output_dim, input_dim + 1)
+            - If only x is provided: augmented_input (n_samples, input_dim + 1) or (input_dim + 1,)
+            - If all are provided: (augmented_weights, augmented_input)
+
+    Raises:
+        ValueError: If weights are provided without bias, or if no parameters are provided
     """
-    aug_weights = np.c_[weights, bias]
+    if weights is not None and bias is None:
+        raise ValueError("If weights are provided, bias must also be provided")
 
-    # Handle both vector and matrix inputs
-    if x.ndim == 1:
-        aug_input = np.append(x, 1)
+    if weights is None and bias is None and x is None:
+        raise ValueError("At least one parameter must be provided")
+
+    if weights is not None and bias is not None:
+        aug_weights = np.c_[weights, bias]
+
+    if x is not None:
+        if x.ndim == 1:
+            aug_input = np.append(x, 1)
+        else:
+            aug_input = np.c_[x, np.ones(x.shape[0])]
+
+    if weights is not None and x is None:
+        return aug_weights
+    elif weights is None and x is not None:
+        return aug_input
     else:
-        aug_input = np.c_[x, np.ones(x.shape[0])]
-
-    return aug_weights, aug_input
+        return aug_weights, aug_input
 
 
 def count_total_gemv_tiles(layer_dims: list[tuple[int, int]], chunk_size: int) -> int:

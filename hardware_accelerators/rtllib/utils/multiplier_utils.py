@@ -18,21 +18,26 @@ def multiplier_stage_2(
     mantissa_a: WireVector,
     mantissa_b: WireVector,
     m_bits: int,
+    fast: bool,
 ):
     # calculate sign using xor
     sign_out = WireVector(1)  # , name="sign_out")
     sign_out <<= sign_a ^ sign_b
-    # use adders.cla_adder
+
     exp_sum = WireVector(len(exp_a) + 1)  # , name="exp_sum")
-    exp_sum <<= adders.cla_adder(exp_a, exp_b)
-    # csa tree multiplier
     mantissa_product = WireVector(2 * m_bits + 2)  # , name="mantissa_product")
-    mantissa_product <<= multipliers.tree_multiplier(mantissa_a, mantissa_b)
+
+    if fast:
+        exp_sum <<= adders.kogge_stone(exp_a, exp_b)
+        mantissa_product <<= multipliers.tree_multiplier(mantissa_a, mantissa_b)
+    else:
+        exp_sum <<= exp_a + exp_b
+        mantissa_product <<= mantissa_a * mantissa_b
     # return xor for signs and sum of exponents and product of mantissas
     return sign_out, exp_sum, mantissa_product
 
 
-def multiplier_stage_3(exp_sum, mantissa_product, e_bits, m_bits: int):
+def multiplier_stage_3(exp_sum, mantissa_product, e_bits, m_bits: int, fast: bool):
     # find leading zeros in mantissa product
     leading_zeros = WireVector(e_bits)  # , name="leading_zeros")
     leading_zeros <<= multiplier_leading_zero_counter(mantissa_product, m_bits)
@@ -42,14 +47,19 @@ def multiplier_stage_3(exp_sum, mantissa_product, e_bits, m_bits: int):
     #     leading_zeros <<= leading_zero_counter(mantissa_product, m_bits)
 
     # adjust exponent
+    bias = 2 ** (e_bits - 1) - 1
+    signed_bias = pyrtl.Const(-bias, e_bits + 1, signed=True)
     unbiased_exp = WireVector(e_bits)  # , name="unbiased_exp")
-    unbiased_exp <<= exp_sum - pyrtl.Const(2 ** (e_bits - 1) - 1, e_bits + 1)
+    if fast:
+        unbiased_exp <<= adders.kogge_stone(exp_sum, signed_bias)
+    else:
+        unbiased_exp <<= exp_sum + signed_bias
 
     return leading_zeros, unbiased_exp
 
 
 def multiplier_stage_4(
-    unbiased_exp, leading_zeros, mantissa_product, m_bits: int, e_bits
+    unbiased_exp, leading_zeros, mantissa_product, m_bits: int, e_bits, fast: bool
 ):
     # normalize mantissa product
     norm_mantissa_msb, norm_mantissa_lsb = normalize_mantissa_product(
@@ -66,7 +76,7 @@ def multiplier_stage_4(
 
     # adjust final exponent
     final_exponent = adjust_final_exponent(
-        unbiased_exp, leading_zeros, extra_increment, e_bits
+        unbiased_exp, leading_zeros, extra_increment, e_bits, fast
     )
 
     return final_exponent, final_mantissa
@@ -132,7 +142,11 @@ def rounding_mantissa(norm_mantissa_msb, sticky_bit, guard_bit, round_bit, m_bit
 
 
 def adjust_final_exponent(
-    unbiased_exp: WireVector, lzc: WireVector, round_increment: WireVector, e_bits: int
+    unbiased_exp: WireVector,
+    lzc: WireVector,
+    round_increment: WireVector,
+    e_bits: int,
+    fast: bool,
 ) -> WireVector:
     """
     Compute final exponent by subtracting LZC and handling round increment
@@ -150,13 +164,18 @@ def adjust_final_exponent(
     # assert len(lzc) == 8
     assert len(round_increment) == 1
 
-    # First subtract LZC from larger exponent
-    exp_lzc_adjusted = WireVector(e_bits)  # , "exp_lzc_adjusted")
-    exp_lzc_adjusted <<= unbiased_exp - lzc.zero_extended(e_bits) + 1
+    final_exp = WireVector(e_bits)
+    exp_lzc_adjusted = WireVector(e_bits)
 
-    # Then add 1 if rounding caused overflow
-    final_exp = WireVector(e_bits)  # , "final_exp")
-    final_exp <<= exp_lzc_adjusted + round_increment
+    if fast:
+        negative_lzc = adders.kogge_stone(~lzc, Const(1))
+        exp_lzc_adjusted <<= adders.cla_adder(unbiased_exp, negative_lzc, 1, 2)
+        final_exp <<= adders.kogge_stone(exp_lzc_adjusted, round_increment)
+    else:
+        # First subtract LZC from larger exponent
+        exp_lzc_adjusted <<= unbiased_exp - lzc.zero_extended(e_bits) + 1
+        # Then add 1 if rounding caused overflow
+        final_exp <<= exp_lzc_adjusted + round_increment
 
     return final_exp
 

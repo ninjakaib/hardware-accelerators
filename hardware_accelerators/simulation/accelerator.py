@@ -1,34 +1,36 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Self, Type
-from matplotlib.pyplot import isinteractive
+import os
+from pathlib import Path
+import hashlib
+import json
+from platformdirs import user_cache_dir
+import pickle
+from typing import Any, Dict, List, Literal, Self, Type
 import numpy as np
-import pyrtl
 from pyrtl import (
     Input,
     Output,
     Simulation,
     FastSimulation,
-    CompiledSimulation,
-    Register,
-    MemBlock,
-    WireVector,
     reset_working_block,
+    PyrtlError,
 )
+
+from .compile import ReusableCompiledSimulation
 
 from ..rtllib.activations import ReluState
 
-from ..rtllib.accelerator import CompiledAccelerator
+from ..rtllib.accelerator import CompiledAccelerator, CompiledAcceleratorConfig
 
 from ..nn.util import softmax
 
 from ..nn.mlp import MLP
 
-from ..rtllib.multipliers import float_multiplier
+# from ..rtllib.multipliers import float_multiplier
+from ..rtllib import float_multiplier
 from ..dtypes import BaseFloat, BF16
-from ..rtllib.accumulators import TiledAccumulatorMemoryBank
 from ..rtllib.adders import float_adder
-from ..rtllib.systolic import SystolicArrayDiP, SystolicArraySimState
-from ..rtllib.buffer import BufferMemory
+from ..rtllib.systolic import SystolicArraySimState
 from ..rtllib import (
     TiledAcceleratorConfig,
     TiledMatrixEngine,
@@ -85,7 +87,6 @@ class AcceleratorSimState:
         )
 
 
-# New TypedDict for step parameters
 class StepInputs(TypedDict):
     """Type hints for simulator step inputs with documentation for each control signal.
 
@@ -349,7 +350,7 @@ class AcceleratorSimulator:
     ) -> np.ndarray:
 
         # Add bias to first layer weights and 1 to activations
-        W_aug, x_aug = bias_trick(weights, bias, inputs)
+        W_aug, x_aug = bias_trick(weights=weights, bias=bias, x=inputs)
 
         tile_generator = generate_gemv_tiles(x_aug, W_aug, self.config.array_size)
 
@@ -446,8 +447,8 @@ class AcceleratorSimulator:
         print("\nAccumulator State:")
         print(np.array2string(state.accum_state, precision=4, suppress_small=True))
 
-        print("\nOutputs:")
-        print(np.array2string(state.outputs, precision=4, suppress_small=True))
+        print("\nActivations:")
+        print(state.activations)
 
 
 class CompiledStepInputs(TypedDict):
@@ -481,19 +482,136 @@ class CompiledStepInputs(TypedDict):
     """Input data vector of length array_size. Will set data_enable=1 if provided"""
 
 
-class CompiledSimulator:
-    def __init__(self, config: AcceleratorConfig):
-        self.config = config
-        self.accelerator = CompiledAccelerator(config)
-        self.output_trace = []
-        self._setup()
+class CompiledAcceleratorSimulator:
+    """Simulator for the accelerator that uses compiled simulation for speed."""
 
-    def _setup(self):
+    def __init__(
+        self,
+        config: CompiledAcceleratorConfig,  # Now only accepts config
+        model: MLP | None = None,
+        recompile: bool = False,
+        cache_dir: str | Path | None = None,
+    ):
+        """Initialize the simulator either with a config or from a saved binary.
+
+        Args:
+            config_or_path (Union[CompiledAcceleratorConfig, str]): Either an AcceleratorConfig object or a path to a saved binary
+            model (Optional[MLP]): Neural network model to load into the accelerator. Defaults to None.
+            recompile (bool): Whether to force recompilation of the binary even if path is provided. Defaults to False.
+            cache_dir (Optional[Union[str, Path]]): Directory to save/load compiled binaries.
+
+        Notes:
+            If cache_dir is provided and recompile=False, loads the simulator state from the saved binary.
+            If a config is provided or recompile=True, builds new simulator with the given configuration.
+            If a model is provided, automatically loads it into the accelerator.
+        """
+        self.cache_dir = self._resolve_cache_dir(cache_dir)
+        self.config = config
+        self.model_loaded = False
+        self.output_trace = []
+
+        # Look for existing compiled binaries
+        config_id = self.config.id
+        found_binary = self._find_existing_binary(config_id) if not recompile else None
+
+        if found_binary:
+            self._load_from_binary(found_binary)
+        else:
+            self._compile_and_cache(config_id)
+
+        if model is not None:
+            self.load_model(model)
+
+    def _resolve_cache_dir(self, user_dir: str | Path | None) -> Path:
+        """Resolve cache directory with priority: argument > env var > default"""
+        if user_dir:
+            return Path(user_dir).expanduser().resolve()
+
+        # Check both system env and .env file
+        if env_value := os.getenv("HWA_SIM_CACHE"):
+            return Path(env_value).expanduser().resolve()
+
+        return Path(user_cache_dir("hardware_accelerators", ensure_exists=True))
+
+    def _find_existing_binary(self, config_id: str) -> Path | None:
+        """Search for existing binary in all potential cache locations."""
+        search_dirs = [
+            self.cache_dir,
+            Path(os.environ.get("HWA_SIM_CACHE", "")).expanduser().resolve(),
+            Path(user_cache_dir("hardware_accelerators")),
+        ]
+
+        for directory in search_dirs:
+            candidate = directory / config_id / "pyrtlsim.so"
+            if candidate.exists():
+                return candidate.parent
+        return None
+
+    def _compile_and_cache(self, config_id: str):
+        """Compile new binary and save to appropriate cache directory."""
+        self.construct_hardware()
+        self.sim = ReusableCompiledSimulation()
+
+        save_dir = self.cache_dir / config_id
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        self.sim.save_compiled_lib(save_dir)
+
+        # Save the config
+        with open(save_dir / "config.pkl", "wb") as f:
+            pickle.dump(self.config, f)
+        # Save a readable version
+        with open(save_dir / f"{self.config.name}.txt", "w") as f:
+            f.write(str(self.config))
+
+        print(f"Saved compiled binary for config {self.config.name} to {save_dir}")
+
+    def _load_from_binary(self, path: Path):
+        """Load from validated cache path."""
+        print(f"Loading existing binary for config {self.config.name} from {path}")
+
+        lib_path = path / "pyrtlsim.so"
+        config_path = path / "config.pkl"
+
+        if not lib_path.exists():
+            raise PyrtlError(f"Library not found: {lib_path}")
+        if not config_path.exists():
+            raise PyrtlError(f"Config not found: {config_path}")
+
+        self.config = pickle.loads(config_path.read_bytes())
+        self.sim = ReusableCompiledSimulation(lib_path=str(lib_path))
+        self._output_wires = []
+        for wire in self.sim.block.wirevector_subset(Output):
+            if wire.name.startswith("out_"):
+                self._output_wires.append(wire)
+
+    def load_model(self, model: MLP):
+        # Extract weights and biases
+        weights_1 = model.fc1.weight.numpy(force=True)
+        bias_1 = model.fc1.bias.numpy(force=True)
+        weights_2 = model.fc2.weight.numpy(force=True)
+        bias_2 = model.fc2.bias.numpy(force=True)
+
+        # Apply the bias trick
+        W1_aug = bias_trick(weights=weights_1, bias=bias_1)
+        W2_aug = bias_trick(weights=weights_2, bias=bias_2)
+
+        self.W1_aug = convert_array_dtype(W1_aug, self.config.weight_type)
+        self.W2_aug = convert_array_dtype(W2_aug, self.config.weight_type)
+        self.input_dim = weights_1.shape[1]
+        self.hidden_dim = weights_1.shape[0]
+        self.output_dim = weights_2.shape[0]
+        self.model_loaded = True
+
+    def construct_hardware(self):
+        """Construct the hardware for the accelerator."""
+        print(f"Constructing hardware for config {self.config.name}...")
+        self.accelerator = CompiledAccelerator(self.config)
         # Create input and output wires
         inputs = {
             "data_enable": Input(1, "data_enable"),
             "data_inputs": [
-                Input(self.config.data_type.bitwidth(), f"data_in_{i}")
+                Input(self.config.activation_type.bitwidth(), f"data_in_{i}")
                 for i in range(self.config.array_size)
             ],
             "weight_enable": Input(1, "weight_enable"),
@@ -507,20 +625,25 @@ class CompiledSimulator:
             "act_func": Input(1, "act_func"),
         }
         self.accelerator.connect_inputs(**inputs)
-        self.output_wires = [
-            Output(self.config.accum_type.bitwidth(), f"out_{i}")
+        self._output_wires = [
+            Output(self.config.activation_type.bitwidth(), f"out_{i}")
             for i in range(self.config.array_size)
         ]
-        self.accelerator.connect_outputs(self.output_wires, Output(1, "output_valid"))
-
-        # Create the simulation
-        self.sim = CompiledSimulation()
+        self.accelerator.connect_outputs(self._output_wires, Output(1, "output_valid"))
 
     def reset_sim(self):
         """Reset the simulation"""
         self.reset_output_trace()
-        del self.sim
-        self.sim = CompiledSimulation()
+
+        # Recreate the simulation
+        sim_dir = self._get_binary_path(self.config)
+        lib_path = os.path.join(sim_dir, "pyrtlsim.so")
+        if os.path.exists(lib_path):
+            # Use the precompiled library
+            self.sim = ReusableCompiledSimulation(lib_path=lib_path)
+        else:
+            # Create a new simulation
+            self.sim = ReusableCompiledSimulation()
 
     def get_sim_inputs(self, **kwargs) -> Dict[str, int]:
         """Get default input values"""
@@ -541,7 +664,7 @@ class CompiledSimulator:
                 Warning(f"Invalid input key: {key}")
         return defaults
 
-    def step(
+    def _step(
         self,
         **kwargs,
     ) -> None:
@@ -563,13 +686,13 @@ class CompiledSimulator:
                 )
             inputs["weight_enable"] = 1
             for i, value in enumerate(weight_vec):
-                inputs[f"weight_in_{i}"] = self.config.weight_type(value).binint
+                inputs[f"weight_in_{i}"] = int(value)
         if data_vec is not None:
             if len(data_vec) != self.config.array_size:
                 raise ValueError(f"Data vector length must be {self.config.array_size}")
             inputs["data_enable"] = 1
             for i, value in enumerate(data_vec):
-                inputs[f"data_in_{i}"] = self.config.data_type(value).binint
+                inputs[f"data_in_{i}"] = int(value)
 
         self.sim.step(inputs)
         if self.sim.inspect("output_valid") == 1:
@@ -606,7 +729,7 @@ class CompiledSimulator:
         weights = permutate_weight_matrix(weights)
 
         for i in range(self.config.array_size - 1):
-            self.step(weight_vec=weights[-1 - i])
+            self._step(weight_vec=weights[-1 - i])
 
         if data is not None:
             assert (
@@ -620,7 +743,7 @@ class CompiledSimulator:
             ), f"Not enough accumulator address bits to store all {data.shape[0]} data vectors"
 
             # Start streaming data into systolic array at the same time as last weights
-            self.step(
+            self._step(
                 data_vec=data[0],
                 weight_vec=weights[0],
                 accum_addr=accum_addr,
@@ -630,7 +753,7 @@ class CompiledSimulator:
             )
 
             for i in range(1, data.shape[0]):
-                self.step(
+                self._step(
                     data_vec=data[i],
                     accum_addr=accum_addr + i,
                     accum_mode=accum_mode,
@@ -639,34 +762,30 @@ class CompiledSimulator:
                 )
         # Flush pipeline
         if flush_pipeline:
-            for _ in range(self.config.array_size + self.config.pipeline):
-                self.step()
+            for _ in range(self.config.array_size + self.config.pipeline_pe):
+                self._step()
 
-    def gemm(self, data: np.ndarray, weights: np.ndarray): ...
-
-    def run_mlp(self, model: MLP, inputs: np.ndarray):
+    def predict(self, input: np.ndarray):
         """
         Run a MLP model on the accelerator. Predicts a single input (batch size of 1).
 
         Args:
-            model: The MLP model to run.
             inputs: The input to the model (1d numpy array).
 
         Returns:
             np.ndarray: Predicted class probabilities
         """
+        if not self.model_loaded:
+            raise RuntimeError(
+                "Model not loaded. Call load_model() first or pass a model to the constructor."
+            )
+
         self.reset_output_trace()
 
-        # Extract layer weights and biases
-        weights_1 = model.fc1.weight.numpy(force=True)
-        bias_1 = model.fc1.bias.numpy(force=True)
-        weights_2 = model.fc2.weight.numpy(force=True)
-        bias_2 = model.fc2.bias.numpy(force=True)
+        # First layer
+        x_aug = convert_array_dtype(bias_trick(x=input), self.config.activation_type)
 
-        # Add bias to first layer weights and 1 to activations
-        W_aug, x_aug = bias_trick(weights_1, bias_1, inputs.flatten())
-
-        for tile in generate_gemv_tiles(x_aug, W_aug, self.config.array_size):
+        for tile in generate_gemv_tiles(x_aug, self.W1_aug, self.config.array_size):
             self.execute_instruction(
                 weights=tile.matrix.T,
                 data=tile.vector.reshape(1, -1),
@@ -677,29 +796,32 @@ class CompiledSimulator:
                 flush_pipeline=True,
             )
 
-        self.step()
-        self.step()
+        self._step()
+        self._step()
+        self._step()
 
-        x1 = np.array(self.output_trace).flatten()
+        hidden_out = np.array(self.output_trace).flatten()[: self.hidden_dim]
         self.reset_output_trace()
 
-        W2_aug, x1_aug = bias_trick(weights_2, bias_2, x1)
+        h_aug = convert_array_dtype(
+            bias_trick(x=hidden_out), self.config.activation_type
+        )
 
-        for tile in generate_gemv_tiles(x1_aug, W2_aug, self.config.array_size):
+        for tile in generate_gemv_tiles(h_aug, self.W2_aug, self.config.array_size):
             self.execute_instruction(
                 weights=tile.matrix.T,
                 data=tile.vector.reshape(1, -1),
                 accum_addr=tile.index,
                 accum_mode=not tile.first,
-                activation_func="relu",
                 activation_enable=tile.last,
                 flush_pipeline=True,
             )
 
-        self.step()
-        self.step()
+        self._step()
+        self._step()
+        self._step()
 
-        logits = np.array(self.output_trace).flatten()
+        logits = np.array(self.output_trace).flatten()[: self.output_dim]
         logprobs = softmax(logits)
         return logprobs
 
@@ -707,48 +829,43 @@ class CompiledSimulator:
         """Get current output values converted to floating point"""
         return np.array(
             [
-                self.config.accum_type(binint=self.sim.inspect(out.name)).decimal_approx
-                for out in self.output_wires
+                self.config.activation_type(
+                    binint=self.sim.inspect(f"out_{i}")
+                ).decimal_approx
+                for i in range(self.config.array_size)
             ]
         )
 
     def reset_output_trace(self):
         self.output_trace = []
 
-    def run_mlp_batch(self, model: MLP, batch: np.ndarray) -> np.ndarray:
+    def predict_batch(self, batch: np.ndarray) -> np.ndarray:
         """Run MLP inference on a batch of inputs."""
-        self.reset_output_trace()
 
-        # Extract weights and biases
-        weights_1 = model.fc1.weight.numpy(force=True)
-        bias_1 = model.fc1.bias.numpy(force=True)
-        weights_2 = model.fc2.weight.numpy(force=True)
-        bias_2 = model.fc2.bias.numpy(force=True)
-        batch_size = batch.shape[0]
+        if not self.model_loaded:
+            raise RuntimeError(
+                "Model not loaded. Call load_model() first or pass a model to the constructor."
+            )
+
+        self.reset_output_trace()
 
         tiles_done = 0
         tile_estimate = count_batch_gemm_tiles(
-            128, 785, self.config.array_size
-        ) + count_batch_gemm_tiles(10, 129, self.config.array_size)
-
-        # print("\nInput shapes:")
-        # print(f"batch: {batch.shape}")
-        # print(f"weights_1: {weights_1.shape}")
-        # print(f"bias_1: {bias_1.shape}")
-        # print(f"weights_2: {weights_2.shape}")
-        # print(f"bias_2: {bias_2.shape}")
+            self.hidden_dim, self.input_dim + 1, self.config.array_size
+        ) + count_batch_gemm_tiles(
+            self.output_dim, self.hidden_dim + 1, self.config.array_size
+        )
 
         # First layer
-        W1_aug, x_aug = bias_trick(weights_1, bias_1, batch)
-        # print("\nAfter first bias trick:")
-        # print(f"W1_aug shape: {W1_aug.shape}")
-        # print(f"x_aug shape: {x_aug.shape}")
+        x_aug = convert_array_dtype(bias_trick(x=batch), self.config.activation_type)
 
         # List to collect output chunks for first layer
         hidden_chunks = []
 
         # Process first layer tiles
-        for tile in generate_batch_gemm_tiles(W1_aug, x_aug.T, self.config.array_size):
+        for tile in generate_batch_gemm_tiles(
+            self.W1_aug, x_aug.T, self.config.array_size
+        ):
             self.execute_instruction(
                 weights=tile.weight_tile.T,
                 data=tile.batch_tile.T,
@@ -760,10 +877,10 @@ class CompiledSimulator:
             )
 
             if tile.last:
-                self.step()
-                self.step()
+                self._step()
+                self._step()
+                self._step()
                 results = np.array(self.output_trace)
-                # print(f"\nFirst layer chunk shape: {results.shape}")
                 hidden_chunks.append(results)
                 self.reset_output_trace()
 
@@ -771,20 +888,20 @@ class CompiledSimulator:
             print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
 
         # Concatenate chunks and slice
-        hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : weights_1.shape[0]]
-        # print(f"\nHidden layer output shape: {hidden_out.shape}")
+        hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : self.hidden_dim]
 
         # Second layer
-        W2_aug, h_aug = bias_trick(weights_2, bias_2, hidden_out)
-        # print("\nAfter second bias trick:")
-        # print(f"W2_aug shape: {W2_aug.shape}")
-        # print(f"h_aug shape: {h_aug.shape}")
+        h_aug = convert_array_dtype(
+            bias_trick(x=hidden_out), self.config.activation_type
+        )
 
         # List to collect output chunks for second layer
         output_chunks = []
 
         # Process second layer tiles
-        for tile in generate_batch_gemm_tiles(W2_aug, h_aug.T, self.config.array_size):
+        for tile in generate_batch_gemm_tiles(
+            self.W2_aug, h_aug.T, self.config.array_size
+        ):
             self.execute_instruction(
                 weights=tile.weight_tile.T,
                 data=tile.batch_tile.T,
@@ -795,23 +912,16 @@ class CompiledSimulator:
             )
 
             if tile.last:
-                self.step()
-                self.step()
+                self._step()
+                self._step()
+                self._step()
                 results = np.array(self.output_trace)
-                # print(f"\nSecond layer chunk shape: {results.shape}")
-                # print(f"Second layer chunk content:\n{results}")
                 output_chunks.append(results)
                 self.reset_output_trace()
             print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
 
-        # print("\nNumber of output chunks:", len(output_chunks))
-        # for i, chunk in enumerate(output_chunks):
-        #     print(f"Chunk {i} shape: {chunk.shape}")
-
         # Concatenate chunks and slice
-        final_out = np.concatenate(output_chunks, axis=1)[:, : weights_2.shape[0]]
-        print(f"\nFinal output shape: {final_out.shape}")
-
+        final_out = np.concatenate(output_chunks, axis=1)[:, : self.output_dim]
         return np.apply_along_axis(softmax, 1, final_out)
 
     def inspect_accumulator_mem(self):

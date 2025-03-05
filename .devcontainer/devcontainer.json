@@ -10,6 +10,7 @@
                 "jupyter.notebookFileRoot": "${workspaceFolder}",
                 "jupyter.runStartupCommands": [
                     "%load_ext autoreload",
+                    "%load_ext pyinstrument",
                     "%autoreload 2"
                 ],
                 "notebook.defaultFormatter": "ms-python.black-formatter",

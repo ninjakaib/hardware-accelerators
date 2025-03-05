@@ -1,15 +1,10 @@
 from dataclasses import dataclass
 from typing import Callable, Self, Type
-
 import pyrtl
 from pyrtl import Register, WireVector, conditional_assignment
 
-from .utils.common import convert_float_format
-
 from ..dtypes.base import BaseFloat
-
-# TODO: Add float type conversion logic to pass different bitwidths to the accumulator
-# TODO: specify different dtypes for weights and activations
+from .utils.common import convert_float_format
 
 
 @dataclass
@@ -40,6 +35,9 @@ class ProcessingElement:
             adder_type: Floating point adder implementation
             pipeline_mult: If True, register multiplication output before passing to accumulator
         """
+        self.data_type = data_type
+        self.weight_type = weight_type
+        self.accum_type = accum_type
         self.pipeline = pipeline_mult
 
         # Get bit widths from format specs
@@ -154,9 +152,10 @@ class ProcessingElement:
         if self.pipeline:
             self.mul_en <<= enable
         else:
-            raise Warning(
-                "Pipelining is disabled. There is no product register to enable. Skipping."
+            print(
+                "Pipelining disabled, no product register to enable. Deleting wire.",
             )
+            pyrtl.working_block().remove_wirevector(enable)
 
     def connect_adder_enable(self, enable: WireVector):
         """Connect adder enable signal. Controls writing to the accumulator register"""
