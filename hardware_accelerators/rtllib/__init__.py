@@ -11,6 +11,8 @@ from .accelerator import (
     Accelerator,
     CompiledAcceleratorConfig,
     CompiledAccelerator,
+    AcceleratorAnalysisConfig,
+    AcceleratorTopLevel,
 )
 
 __all__ = [
@@ -31,4 +33,6 @@ __all__ = [
     "Accelerator",
     "CompiledAcceleratorConfig",
     "CompiledAccelerator",
+    "AcceleratorAnalysisConfig",
+    "AcceleratorTopLevel",
 ]

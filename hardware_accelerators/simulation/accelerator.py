@@ -762,7 +762,7 @@ class CompiledAcceleratorSimulator:
                 )
         # Flush pipeline
         if flush_pipeline:
-            for _ in range(self.config.array_size + self.config.pipeline):
+            for _ in range(self.config.array_size + self.config.pipeline_pe):
                 self._step()
 
     def predict(self, input: np.ndarray):
