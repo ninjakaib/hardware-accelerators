@@ -169,4 +169,4 @@ cython_debug/
 #.idea/
 CLAUDE.md
 
-*.v
+# *.v
