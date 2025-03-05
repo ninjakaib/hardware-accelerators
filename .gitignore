@@ -1,3 +1,4 @@
+*.lib
 model_data/
 hardware_accelerators/bin/
 data/
