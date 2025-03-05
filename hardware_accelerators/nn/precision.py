@@ -48,25 +48,25 @@ def train_epoch(model, device, train_loader, optimizer, criterion, precision):
         data = convert_input(data, precision)
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
-        
+
         # Forward pass
         outputs = model(data)
         loss = criterion(outputs, target)
-        
+
         # Check for NaN and skip problematic batches
         if torch.isnan(loss):
             print("NaN loss detected in batch, skipping...")
             continue
-            
+
         # Backward and optimize with gradient clipping
         loss.backward()
-        
+
         # Apply gradient clipping to prevent exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        
+
         optimizer.step()
         running_loss += loss.item()
-    
+
     if len(train_loader) > 0:
         return running_loss / len(train_loader)
     return 0.0
@@ -103,7 +103,7 @@ def train_model(
     optimizer_name="adam",
     weight_decay=0,
     eps=1e-4,
-    model_save_path=None
+    model_save_path=None,
 ):
     print(f"\nTraining in {precision.upper()} mode:")
     device = get_pytorch_device()
@@ -125,7 +125,7 @@ def train_model(
     # Hyperparameters
     input_size = 28 * 28  # MNIST images are 28x28
     num_classes = 10
-    
+
     # Create the model and send to device
     model = MLP(input_size, hidden_size, num_classes).to(device)
 
@@ -141,35 +141,48 @@ def train_model(
         # Ensure your PyTorch build/hardware supports float8_e4m3; otherwise, this will error.
         model = model.to(torch.float8_e4m3fn)
     # else, fp32 is already the default
-    
+
     # Select optimizer based on user input
     if optimizer_name.lower() == "adam":
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate, eps=eps, weight_decay=weight_decay)
+        optimizer = optim.Adam(
+            model.parameters(), lr=learning_rate, eps=eps, weight_decay=weight_decay
+        )
     elif optimizer_name.lower() == "sgd":
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
+        optimizer = optim.SGD(
+            model.parameters(),
+            lr=learning_rate,
+            momentum=0.9,
+            weight_decay=weight_decay,
+        )
     elif optimizer_name.lower() == "adamw":
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, eps=eps, weight_decay=weight_decay)
+        optimizer = optim.AdamW(
+            model.parameters(), lr=learning_rate, eps=eps, weight_decay=weight_decay
+        )
     else:
         print(f"Unknown optimizer: {optimizer_name}, defaulting to Adam")
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate, eps=eps, weight_decay=weight_decay)
-    
+        optimizer = optim.Adam(
+            model.parameters(), lr=learning_rate, eps=eps, weight_decay=weight_decay
+        )
+
     criterion = nn.CrossEntropyLoss()
-    
-    print(f"Training with: batch_size={batch_size}, hidden_size={hidden_size}, " 
-          f"epochs={num_epochs}, lr={learning_rate}, optimizer={optimizer_name}")
+
+    print(
+        f"Training with: batch_size={batch_size}, hidden_size={hidden_size}, "
+        f"epochs={num_epochs}, lr={learning_rate}, optimizer={optimizer_name}"
+    )
 
     # Training loop
     for epoch in range(1, num_epochs + 1):
         train_loss = train_epoch(
             model, device, train_loader, optimizer, criterion, precision
         )
-        
+
         # Check for NaN loss
         if torch.isnan(torch.tensor([train_loss])):
             print(f"NaN detected in epoch {epoch}, reducing learning rate")
             for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.5
-        
+                param_group["lr"] *= 0.5
+
         print(f"Epoch {epoch} Train Loss: {train_loss:.4f}")
 
     # Evaluation on test set
@@ -187,7 +200,7 @@ def train_model(
         model_dir = "models"
         os.makedirs(model_dir, exist_ok=True)
         save_path = os.path.join(model_dir, f"mlp_mnist_{precision}.pth")
-    
+
     torch.save(model.state_dict(), save_path)
     print(f"Model saved to {save_path}\n")
 
@@ -195,67 +208,46 @@ def train_model(
 # Main script to train a model in a specific precision
 if __name__ == "__main__":
     import argparse
-    
-    parser = argparse.ArgumentParser(description="Train MNIST model in a specific precision")
+
+    parser = argparse.ArgumentParser(
+        description="Train MNIST model in a specific precision"
+    )
     parser.add_argument(
-        "--dtype", 
+        "--dtype",
         type=str,
         default="fp32",
         choices=["fp32", "fp16", "bf16", "fp8"],
-        help="Precision type to train in (fp32, fp16, bf16, fp8)"
+        help="Precision type to train in (fp32, fp16, bf16, fp8)",
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=32,
-        help="Batch size for training"
+        "--batch-size", type=int, default=32, help="Batch size for training"
     )
     parser.add_argument(
-        "--hidden-size",
-        type=int,
-        default=128,
-        help="Hidden layer size for MLP"
+        "--hidden-size", type=int, default=128, help="Hidden layer size for MLP"
     )
     parser.add_argument(
-        "--epochs",
-        type=int,
-        default=5,
-        help="Number of training epochs"
+        "--epochs", type=int, default=5, help="Number of training epochs"
     )
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default=0.001,
-        help="Learning rate"
-    )
+    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument(
         "--optimizer",
         type=str,
         default="adam",
         choices=["adam", "sgd", "adamw"],
-        help="Optimizer to use for training"
+        help="Optimizer to use for training",
     )
     parser.add_argument(
-        "--weight-decay",
-        type=float,
-        default=0,
-        help="Weight decay (L2 penalty)"
+        "--weight-decay", type=float, default=0, help="Weight decay (L2 penalty)"
     )
     parser.add_argument(
-        "--eps",
-        type=float,
-        default=1e-4,
-        help="Epsilon for Adam optimizer"
+        "--eps", type=float, default=1e-4, help="Epsilon for Adam optimizer"
     )
     parser.add_argument(
-        "--save-path",
-        type=str,
-        default=None,
-        help="Path to save the trained model"
+        "--save-path", type=str, default=None, help="Path to save the trained model"
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
         train_model(
             precision=args.dtype,
@@ -266,7 +258,7 @@ if __name__ == "__main__":
             optimizer_name=args.optimizer,
             weight_decay=args.weight_decay,
             eps=args.eps,
-            model_save_path=args.save_path
+            model_save_path=args.save_path,
         )
     except Exception as e:
         print(f"Error training {args.dtype.upper()} model: {e}")
