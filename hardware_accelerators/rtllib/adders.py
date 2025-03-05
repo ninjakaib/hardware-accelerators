@@ -73,12 +73,10 @@ def float_adder_fast_unstable(
 
 
 def float_adder_pipelined(
-    float_a: WireVector,
-    float_b: WireVector,
-    dtype: Type[BaseFloat],
+    float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat], fast: bool = False
 ) -> WireVector:
     w_en = pyrtl.Input(1)
-    adder = FloatAdderPipelined(float_a, float_b, w_en, dtype, fast=False)
+    adder = FloatAdderPipelined(float_a, float_b, w_en, dtype, fast=fast)
     return adder._result_out
 
 

@@ -165,10 +165,6 @@ class LmulPipelined:
                 self.OFFSET_MINUS_BIAS,
                 final_adder=kogge_stone,
             )
-            # final_sum = fast_group_adder(
-            #     [exp_mantissa_a, exp_mantissa_b, self.OFFSET_MINUS_BIAS]
-            # )
-
         else:
             final_sum = exp_mantissa_a + exp_mantissa_b + self.OFFSET_MINUS_BIAS
 
