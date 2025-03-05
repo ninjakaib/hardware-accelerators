@@ -2,7 +2,7 @@ from typing import Type
 
 import pyrtl
 from pyrtl import WireVector
-from pyrtl.rtllib.adders import carrysave_adder, kogge_stone
+from pyrtl.rtllib.adders import carrysave_adder, kogge_stone, fast_group_adder
 
 from ..dtypes import BaseFloat, Float8
 from .utils.lmul_utils import get_combined_offset
@@ -76,6 +76,24 @@ def lmul_fast(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]):
     return fp_out
 
 
+def lmul_pipelined(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+) -> WireVector:
+    mult = LmulPipelined(float_a, float_b, dtype)
+    return mult.output_reg
+
+
+def lmul_pipelined_fast(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+) -> WireVector:
+    mult = LmulPipelined(float_a, float_b, dtype, fast=True)
+    return mult.output_reg
+
+
 # Float8 fast pipelined lmul
 class LmulPipelined:
     def __init__(
@@ -83,10 +101,12 @@ class LmulPipelined:
         float_a: WireVector,
         float_b: WireVector,
         dtype: Type[BaseFloat],
+        fast: bool = False,
     ):
         self.e_bits = dtype.exponent_bits()
         self.m_bits = dtype.mantissa_bits()
         self.em_bits = dtype.bitwidth() - 1
+        self._fast = fast
 
         # Inputs and Outputs
         assert (
@@ -137,13 +157,16 @@ class LmulPipelined:
         # Calculate and register sign
         self.reg_sign.next <<= sign_a ^ sign_b
 
-        # First addition and register result
-        final_sum = carrysave_adder(
-            exp_mantissa_a,
-            exp_mantissa_b,
-            self.OFFSET_MINUS_BIAS,
-            final_adder=kogge_stone,
-        )
+        # Add the floating point numbers with special lmul offset
+        if self._fast:
+            final_sum = carrysave_adder(
+                exp_mantissa_a,
+                exp_mantissa_b,
+                self.OFFSET_MINUS_BIAS,
+                final_adder=kogge_stone,
+            )
+        else:
+            final_sum = exp_mantissa_a + exp_mantissa_b + self.OFFSET_MINUS_BIAS
 
         self.reg_final_sum.next <<= final_sum
 
