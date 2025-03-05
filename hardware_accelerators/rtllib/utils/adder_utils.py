@@ -3,7 +3,7 @@ from typing import Tuple
 import pyrtl
 import pyrtl.rtllib
 from pyrtl.rtllib.adders import kogge_stone, carrysave_adder, cla_adder
-from pyrtl import Const, WireVector
+from pyrtl import Const, WireVector, Register
 import pyrtl.rtllib.adders
 
 from .common import generate_sgr, clzi, enc2
@@ -96,9 +96,17 @@ def adder_stage_4(
         lzc: leading zero count (4 bits wide to count up to 9 zeros)
     """
 
-    mantissa_sum, is_neg = add_sub_mantissas(
+    _mantissa_sum, _is_neg = add_sub_mantissas(
         mant_aligned, mant_unchanged, sign_xor, m_bits, fast
     )
+
+    if fast:
+        mantissa_sum, is_neg = Register(len(_mantissa_sum)), Register(len(_is_neg))
+        mantissa_sum.next <<= _mantissa_sum
+        is_neg.next <<= _is_neg
+    else:
+        mantissa_sum, is_neg = _mantissa_sum, _is_neg
+
     lzc = leading_zero_detector_module(mantissa_sum, m_bits)
     return mantissa_sum, is_neg, lzc
 
