@@ -23,6 +23,10 @@ class Float32(BaseFloat):
             min_subnormal=2**-149,  # from 0.00000000.00000000000000000000001
         )
 
+    @classmethod
+    def binary_max(cls) -> int:
+        return 0b01111111011111111111111111111111
+
     def _decimal_to_binary(self, num: float) -> str:
         """Convert decimal number to binary string in IEEE 754 format"""
         if num == 0:

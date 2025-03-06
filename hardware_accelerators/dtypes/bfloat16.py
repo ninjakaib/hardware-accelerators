@@ -29,6 +29,10 @@ class BF16(BaseFloat):
             min_subnormal=2**-126 * (1 / 128),
         )
 
+    @classmethod
+    def binary_max(cls) -> int:
+        return 0b0111111101111111
+
     def _float32_to_bf16_parts(self, f32: float) -> Tuple[int, int, int]:
         """Convert float32 to BF16 parts (sign, exponent, mantissa)"""
         # Get binary representation of float32

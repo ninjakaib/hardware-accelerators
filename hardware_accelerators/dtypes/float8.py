@@ -23,6 +23,10 @@ class Float8(BaseFloat):
             min_subnormal=2**-6 * (1 / 8),  # from 0.0000.001
         )
 
+    @classmethod
+    def binary_max(cls) -> int:
+        return 0b01111110
+
     def _decimal_to_binary(self, num: float) -> str:
         """Convert decimal number to binary string in E4M3 format"""
         if num == 0:

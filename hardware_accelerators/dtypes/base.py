@@ -58,6 +58,11 @@ class BaseFloat(ABC):
 
     @classmethod
     @abstractmethod
+    def binary_max(cls) -> int:
+        pass
+
+    @classmethod
+    @abstractmethod
     def format_spec(cls) -> FormatSpec:
         """Return format specification for the specific float type"""
         pass
