@@ -171,4 +171,4 @@ CLAUDE.md
 
 #*.v
 verilog/all/
-verilog/reports/
+#verilog/reports/
