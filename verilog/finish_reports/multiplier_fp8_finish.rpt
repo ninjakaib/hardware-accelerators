@@ -1,0 +1,442 @@
+
+==========================================================================
+finish report_tns
+--------------------------------------------------------------------------
+tns 0.00
+
+==========================================================================
+finish report_wns
+--------------------------------------------------------------------------
+wns 0.00
+
+==========================================================================
+finish report_worst_slack
+--------------------------------------------------------------------------
+worst slack 0.11
+
+==========================================================================
+finish report_clock_skew
+--------------------------------------------------------------------------
+Clock clk
+   0.07 source latency float_multiplier_pipereg_1to2_mant_product_82[6]$_SDFF_PP0_/CK ^
+  -0.07 target latency float_multiplier_pipereg_2to3_leading_zeros_85[1]$_SDFF_PP0_/CK ^
+   0.00 CRPR
+--------------
+   0.00 setup skew
+
+
+==========================================================================
+finish report_checks -path_delay min
+--------------------------------------------------------------------------
+Startpoint: float_multiplier_pipereg_1to2_exp_sum_81[0]$_SDFF_PP0_
+            (rising edge-triggered flip-flop clocked by clk)
+Endpoint: float_multiplier_pipereg_2to3_unbiased_exp_86[0]$_SDFF_PP0_
+          (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: min
+
+Fanout     Cap    Slew   Delay    Time   Description
+-----------------------------------------------------------------------------
+                          0.00    0.00   clock clk (rise edge)
+                          0.00    0.00   clock source latency
+     1    4.17    0.00    0.00    0.00 ^ clk (in)
+                                         clk (net)
+                  0.00    0.00    0.00 ^ clkbuf_0_clk/A (CLKBUF_X3)
+     4    9.25    0.01    0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+                                         clknet_0_clk (net)
+                  0.01    0.00    0.03 ^ clkbuf_2_3__f_clk/A (CLKBUF_X3)
+    11   15.01    0.01    0.04    0.07 ^ clkbuf_2_3__f_clk/Z (CLKBUF_X3)
+                                         clknet_2_3__leaf_clk (net)
+                  0.01    0.00    0.07 ^ float_multiplier_pipereg_1to2_exp_sum_81[0]$_SDFF_PP0_/CK (DFF_X1)
+     1    1.16    0.01    0.07    0.14 ^ float_multiplier_pipereg_1to2_exp_sum_81[0]$_SDFF_PP0_/QN (DFF_X1)
+                                         tmp2128[0] (net)
+                  0.01    0.00    0.14 ^ _357_/A2 (AND2_X1)
+     1    1.37    0.01    0.03    0.17 ^ _357_/ZN (AND2_X1)
+                                         _036_ (net)
+                  0.01    0.00    0.17 ^ float_multiplier_pipereg_2to3_unbiased_exp_86[0]$_SDFF_PP0_/D (DFF_X1)
+                                  0.17   data arrival time
+
+                          0.00    0.00   clock clk (rise edge)
+                          0.00    0.00   clock source latency
+     1    4.17    0.00    0.00    0.00 ^ clk (in)
+                                         clk (net)
+                  0.00    0.00    0.00 ^ clkbuf_0_clk/A (CLKBUF_X3)
+     4    9.25    0.01    0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+                                         clknet_0_clk (net)
+                  0.01    0.00    0.03 ^ clkbuf_2_3__f_clk/A (CLKBUF_X3)
+    11   15.01    0.01    0.04    0.07 ^ clkbuf_2_3__f_clk/Z (CLKBUF_X3)
+                                         clknet_2_3__leaf_clk (net)
+                  0.01    0.00    0.07 ^ float_multiplier_pipereg_2to3_unbiased_exp_86[0]$_SDFF_PP0_/CK (DFF_X1)
+                          0.00    0.07   clock reconvergence pessimism
+                          0.01    0.08   library hold time
+                                  0.08   data required time
+-----------------------------------------------------------------------------
+                                  0.08   data required time
+                                 -0.17   data arrival time
+-----------------------------------------------------------------------------
+                                  0.09   slack (MET)
+
+
+
+==========================================================================
+finish report_checks -path_delay max
+--------------------------------------------------------------------------
+Startpoint: float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_
+            (rising edge-triggered flip-flop clocked by clk)
+Endpoint: float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_
+          (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: max
+
+Fanout     Cap    Slew   Delay    Time   Description
+-----------------------------------------------------------------------------
+                          0.00    0.00   clock clk (rise edge)
+                          0.00    0.00   clock source latency
+     1    4.17    0.00    0.00    0.00 ^ clk (in)
+                                         clk (net)
+                  0.00    0.00    0.00 ^ clkbuf_0_clk/A (CLKBUF_X3)
+     4    9.25    0.01    0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+                                         clknet_0_clk (net)
+                  0.01    0.00    0.03 ^ clkbuf_2_0__f_clk/A (CLKBUF_X3)
+    10   15.27    0.02    0.04    0.07 ^ clkbuf_2_0__f_clk/Z (CLKBUF_X3)
+                                         clknet_2_0__leaf_clk (net)
+                  0.02    0.00    0.07 ^ float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_/CK (DFF_X1)
+     2    4.73    0.01    0.10    0.17 ^ float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_/Q (DFF_X1)
+                                         float_multiplier_pipereg_0to1_mantissa_a_78[3] (net)
+                  0.01    0.00    0.17 ^ _271_/A (BUF_X1)
+     6    7.99    0.02    0.04    0.21 ^ _271_/Z (BUF_X1)
+                                         _082_ (net)
+                  0.02    0.00    0.21 ^ _274_/A2 (NAND2_X1)
+     1    3.76    0.01    0.02    0.23 v _274_/ZN (NAND2_X1)
+                                         _166_ (net)
+                  0.01    0.00    0.23 v _374_/A (FA_X1)
+     1    1.98    0.01    0.11    0.34 ^ _374_/S (FA_X1)
+                                         _170_ (net)
+                  0.01    0.00    0.34 ^ _296_/A (INV_X1)
+     1    3.63    0.01    0.01    0.36 v _296_/ZN (INV_X1)
+                                         _171_ (net)
+                  0.01    0.00    0.36 v _375_/B (FA_X1)
+     1    3.34    0.01    0.12    0.48 ^ _375_/S (FA_X1)
+                                         _174_ (net)
+                  0.01    0.00    0.48 ^ _392_/A (HA_X1)
+     2    3.80    0.01    0.04    0.51 ^ _392_/CO (HA_X1)
+                                         _219_ (net)
+                  0.01    0.00    0.51 ^ _281_/A (INV_X1)
+     1    2.74    0.01    0.01    0.52 v _281_/ZN (INV_X1)
+                                         _190_ (net)
+                  0.01    0.00    0.52 v _379_/CI (FA_X1)
+     2    4.22    0.02    0.07    0.60 v _379_/CO (FA_X1)
+                                         _191_ (net)
+                  0.02    0.00    0.60 v _318_/A (XOR2_X1)
+     1    1.66    0.01    0.05    0.65 v _318_/Z (XOR2_X1)
+                                         _092_ (net)
+                  0.01    0.00    0.65 v _319_/A2 (NOR2_X1)
+     1    1.71    0.02    0.03    0.68 ^ _319_/ZN (NOR2_X1)
+                                         _019_ (net)
+                  0.02    0.00    0.68 ^ float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_/D (DFF_X1)
+                                  0.68   data arrival time
+
+                          0.75    0.75   clock clk (rise edge)
+                          0.00    0.75   clock source latency
+     1    4.17    0.00    0.00    0.75 ^ clk (in)
+                                         clk (net)
+                  0.00    0.00    0.75 ^ clkbuf_0_clk/A (CLKBUF_X3)
+     4    9.25    0.01    0.03    0.78 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+                                         clknet_0_clk (net)
+                  0.01    0.00    0.78 ^ clkbuf_2_2__f_clk/A (CLKBUF_X3)
+    13   15.96    0.02    0.04    0.82 ^ clkbuf_2_2__f_clk/Z (CLKBUF_X3)
+                                         clknet_2_2__leaf_clk (net)
+                  0.02    0.00    0.82 ^ float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_/CK (DFF_X1)
+                          0.00    0.82   clock reconvergence pessimism
+                         -0.03    0.79   library setup time
+                                  0.79   data required time
+-----------------------------------------------------------------------------
+                                  0.79   data required time
+                                 -0.68   data arrival time
+-----------------------------------------------------------------------------
+                                  0.11   slack (MET)
+
+
+
+==========================================================================
+finish report_checks -unconstrained
+--------------------------------------------------------------------------
+Startpoint: float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_
+            (rising edge-triggered flip-flop clocked by clk)
+Endpoint: float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_
+          (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: max
+
+Fanout     Cap    Slew   Delay    Time   Description
+-----------------------------------------------------------------------------
+                          0.00    0.00   clock clk (rise edge)
+                          0.00    0.00   clock source latency
+     1    4.17    0.00    0.00    0.00 ^ clk (in)
+                                         clk (net)
+                  0.00    0.00    0.00 ^ clkbuf_0_clk/A (CLKBUF_X3)
+     4    9.25    0.01    0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+                                         clknet_0_clk (net)
+                  0.01    0.00    0.03 ^ clkbuf_2_0__f_clk/A (CLKBUF_X3)
+    10   15.27    0.02    0.04    0.07 ^ clkbuf_2_0__f_clk/Z (CLKBUF_X3)
+                                         clknet_2_0__leaf_clk (net)
+                  0.02    0.00    0.07 ^ float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_/CK (DFF_X1)
+     2    4.73    0.01    0.10    0.17 ^ float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_/Q (DFF_X1)
+                                         float_multiplier_pipereg_0to1_mantissa_a_78[3] (net)
+                  0.01    0.00    0.17 ^ _271_/A (BUF_X1)
+     6    7.99    0.02    0.04    0.21 ^ _271_/Z (BUF_X1)
+                                         _082_ (net)
+                  0.02    0.00    0.21 ^ _274_/A2 (NAND2_X1)
+     1    3.76    0.01    0.02    0.23 v _274_/ZN (NAND2_X1)
+                                         _166_ (net)
+                  0.01    0.00    0.23 v _374_/A (FA_X1)
+     1    1.98    0.01    0.11    0.34 ^ _374_/S (FA_X1)
+                                         _170_ (net)
+                  0.01    0.00    0.34 ^ _296_/A (INV_X1)
+     1    3.63    0.01    0.01    0.36 v _296_/ZN (INV_X1)
+                                         _171_ (net)
+                  0.01    0.00    0.36 v _375_/B (FA_X1)
+     1    3.34    0.01    0.12    0.48 ^ _375_/S (FA_X1)
+                                         _174_ (net)
+                  0.01    0.00    0.48 ^ _392_/A (HA_X1)
+     2    3.80    0.01    0.04    0.51 ^ _392_/CO (HA_X1)
+                                         _219_ (net)
+                  0.01    0.00    0.51 ^ _281_/A (INV_X1)
+     1    2.74    0.01    0.01    0.52 v _281_/ZN (INV_X1)
+                                         _190_ (net)
+                  0.01    0.00    0.52 v _379_/CI (FA_X1)
+     2    4.22    0.02    0.07    0.60 v _379_/CO (FA_X1)
+                                         _191_ (net)
+                  0.02    0.00    0.60 v _318_/A (XOR2_X1)
+     1    1.66    0.01    0.05    0.65 v _318_/Z (XOR2_X1)
+                                         _092_ (net)
+                  0.01    0.00    0.65 v _319_/A2 (NOR2_X1)
+     1    1.71    0.02    0.03    0.68 ^ _319_/ZN (NOR2_X1)
+                                         _019_ (net)
+                  0.02    0.00    0.68 ^ float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_/D (DFF_X1)
+                                  0.68   data arrival time
+
+                          0.75    0.75   clock clk (rise edge)
+                          0.00    0.75   clock source latency
+     1    4.17    0.00    0.00    0.75 ^ clk (in)
+                                         clk (net)
+                  0.00    0.00    0.75 ^ clkbuf_0_clk/A (CLKBUF_X3)
+     4    9.25    0.01    0.03    0.78 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+                                         clknet_0_clk (net)
+                  0.01    0.00    0.78 ^ clkbuf_2_2__f_clk/A (CLKBUF_X3)
+    13   15.96    0.02    0.04    0.82 ^ clkbuf_2_2__f_clk/Z (CLKBUF_X3)
+                                         clknet_2_2__leaf_clk (net)
+                  0.02    0.00    0.82 ^ float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_/CK (DFF_X1)
+                          0.00    0.82   clock reconvergence pessimism
+                         -0.03    0.79   library setup time
+                                  0.79   data required time
+-----------------------------------------------------------------------------
+                                  0.79   data required time
+                                 -0.68   data arrival time
+-----------------------------------------------------------------------------
+                                  0.11   slack (MET)
+
+
+
+==========================================================================
+finish report_check_types -max_slew -max_cap -max_fanout -violators
+--------------------------------------------------------------------------
+
+==========================================================================
+finish max_slew_check_slack
+--------------------------------------------------------------------------
+0.15758468210697174
+
+==========================================================================
+finish max_slew_check_limit
+--------------------------------------------------------------------------
+0.1985349953174591
+
+==========================================================================
+finish max_slew_check_slack_limit
+--------------------------------------------------------------------------
+0.7937
+
+==========================================================================
+finish max_fanout_check_slack
+--------------------------------------------------------------------------
+1.0000000150474662e+30
+
+==========================================================================
+finish max_fanout_check_limit
+--------------------------------------------------------------------------
+1.0000000150474662e+30
+
+==========================================================================
+finish max_capacitance_check_slack
+--------------------------------------------------------------------------
+12.177842140197754
+
+==========================================================================
+finish max_capacitance_check_limit
+--------------------------------------------------------------------------
+16.021699905395508
+
+==========================================================================
+finish max_capacitance_check_slack_limit
+--------------------------------------------------------------------------
+0.7601
+
+==========================================================================
+finish max_slew_violation_count
+--------------------------------------------------------------------------
+max slew violation count 0
+
+==========================================================================
+finish max_fanout_violation_count
+--------------------------------------------------------------------------
+max fanout violation count 0
+
+==========================================================================
+finish max_cap_violation_count
+--------------------------------------------------------------------------
+max cap violation count 0
+
+==========================================================================
+finish setup_violation_count
+--------------------------------------------------------------------------
+setup violation count 0
+
+==========================================================================
+finish hold_violation_count
+--------------------------------------------------------------------------
+hold violation count 0
+
+==========================================================================
+finish report_checks -path_delay max reg to reg
+--------------------------------------------------------------------------
+Startpoint: float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_
+            (rising edge-triggered flip-flop clocked by clk)
+Endpoint: float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_
+          (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: max
+
+  Delay    Time   Description
+---------------------------------------------------------
+   0.00    0.00   clock clk (rise edge)
+   0.00    0.00   clock source latency
+   0.00    0.00 ^ clk (in)
+   0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+   0.04    0.07 ^ clkbuf_2_0__f_clk/Z (CLKBUF_X3)
+   0.00    0.07 ^ float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_/CK (DFF_X1)
+   0.10    0.17 ^ float_multiplier_pipereg_0to1_mantissa_b_79[3]$_DFF_P_/Q (DFF_X1)
+   0.04    0.21 ^ _271_/Z (BUF_X1)
+   0.02    0.23 v _274_/ZN (NAND2_X1)
+   0.11    0.34 ^ _374_/S (FA_X1)
+   0.01    0.36 v _296_/ZN (INV_X1)
+   0.12    0.48 ^ _375_/S (FA_X1)
+   0.04    0.51 ^ _392_/CO (HA_X1)
+   0.01    0.52 v _281_/ZN (INV_X1)
+   0.07    0.60 v _379_/CO (FA_X1)
+   0.05    0.65 v _318_/Z (XOR2_X1)
+   0.03    0.68 ^ _319_/ZN (NOR2_X1)
+   0.00    0.68 ^ float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_/D (DFF_X1)
+           0.68   data arrival time
+
+   0.75    0.75   clock clk (rise edge)
+   0.00    0.75   clock source latency
+   0.00    0.75 ^ clk (in)
+   0.03    0.78 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+   0.04    0.82 ^ clkbuf_2_2__f_clk/Z (CLKBUF_X3)
+   0.00    0.82 ^ float_multiplier_pipereg_1to2_mant_product_82[5]$_SDFF_PP0_/CK (DFF_X1)
+   0.00    0.82   clock reconvergence pessimism
+  -0.03    0.79   library setup time
+           0.79   data required time
+---------------------------------------------------------
+           0.79   data required time
+          -0.68   data arrival time
+---------------------------------------------------------
+           0.11   slack (MET)
+
+
+
+==========================================================================
+finish report_checks -path_delay min reg to reg
+--------------------------------------------------------------------------
+Startpoint: float_multiplier_pipereg_1to2_exp_sum_81[0]$_SDFF_PP0_
+            (rising edge-triggered flip-flop clocked by clk)
+Endpoint: float_multiplier_pipereg_2to3_unbiased_exp_86[0]$_SDFF_PP0_
+          (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: min
+
+  Delay    Time   Description
+---------------------------------------------------------
+   0.00    0.00   clock clk (rise edge)
+   0.00    0.00   clock source latency
+   0.00    0.00 ^ clk (in)
+   0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+   0.04    0.07 ^ clkbuf_2_3__f_clk/Z (CLKBUF_X3)
+   0.00    0.07 ^ float_multiplier_pipereg_1to2_exp_sum_81[0]$_SDFF_PP0_/CK (DFF_X1)
+   0.07    0.14 ^ float_multiplier_pipereg_1to2_exp_sum_81[0]$_SDFF_PP0_/QN (DFF_X1)
+   0.03    0.17 ^ _357_/ZN (AND2_X1)
+   0.00    0.17 ^ float_multiplier_pipereg_2to3_unbiased_exp_86[0]$_SDFF_PP0_/D (DFF_X1)
+           0.17   data arrival time
+
+   0.00    0.00   clock clk (rise edge)
+   0.00    0.00   clock source latency
+   0.00    0.00 ^ clk (in)
+   0.03    0.03 ^ clkbuf_0_clk/Z (CLKBUF_X3)
+   0.04    0.07 ^ clkbuf_2_3__f_clk/Z (CLKBUF_X3)
+   0.00    0.07 ^ float_multiplier_pipereg_2to3_unbiased_exp_86[0]$_SDFF_PP0_/CK (DFF_X1)
+   0.00    0.07   clock reconvergence pessimism
+   0.01    0.08   library hold time
+           0.08   data required time
+---------------------------------------------------------
+           0.08   data required time
+          -0.17   data arrival time
+---------------------------------------------------------
+           0.09   slack (MET)
+
+
+
+==========================================================================
+finish critical path target clock latency max path
+--------------------------------------------------------------------------
+0
+
+==========================================================================
+finish critical path target clock latency min path
+--------------------------------------------------------------------------
+0
+
+==========================================================================
+finish critical path source clock latency min path
+--------------------------------------------------------------------------
+0
+
+==========================================================================
+finish critical path delay
+--------------------------------------------------------------------------
+0.6783
+
+==========================================================================
+finish critical path slack
+--------------------------------------------------------------------------
+0.1134
+
+==========================================================================
+finish slack div critical path delay
+--------------------------------------------------------------------------
+16.718266
+
+==========================================================================
+finish report_power
+--------------------------------------------------------------------------
+Group                  Internal  Switching    Leakage      Total
+                          Power      Power      Power      Power (Watts)
+----------------------------------------------------------------
+Sequential             3.26e-04   1.44e-05   3.07e-06   3.43e-04  47.9%
+Combinational          9.57e-05   7.00e-05   5.59e-06   1.71e-04  23.9%
+Clock                  8.80e-05   1.14e-04   2.68e-07   2.02e-04  28.2%
+Macro                  0.00e+00   0.00e+00   0.00e+00   0.00e+00   0.0%
+Pad                    0.00e+00   0.00e+00   0.00e+00   0.00e+00   0.0%
+----------------------------------------------------------------
+Total                  5.09e-04   1.98e-04   8.93e-06   7.17e-04 100.0%
+                          71.1%      27.7%       1.2%
