@@ -1,11 +1,50 @@
 from typing import Type
 
 import pyrtl
-from pyrtl import WireVector
+from pyrtl import WireVector, conditional_assignment
 from pyrtl.rtllib.adders import carrysave_adder, kogge_stone, fast_group_adder
 
 from ..dtypes import BaseFloat, Float8
 from .utils.lmul_utils import get_combined_offset
+
+
+def lmul_fix(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]):
+    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
+    em_bits = e_bits + m_bits
+    sign_a = float_a[em_bits]
+    sign_b = float_b[em_bits]
+    exp_a = float_a[m_bits:-1]
+    exp_b = float_b[m_bits:-1]
+    exp_mantissa_a = float_a[:em_bits]
+    exp_mantissa_b = float_b[:em_bits]
+
+    fp_out = WireVector(dtype.bitwidth())
+
+    OFFSET_MINUS_BIAS = pyrtl.Const(
+        get_combined_offset(e_bits, m_bits, True), bitwidth=em_bits
+    )
+
+    final_sum = carrysave_adder(
+        exp_mantissa_a, exp_mantissa_b, OFFSET_MINUS_BIAS, final_adder=kogge_stone
+    )
+
+    MAX_VALUE = pyrtl.Const(dtype.binary_max(), bitwidth=em_bits)
+
+    mantissa_result = pyrtl.mux(
+        final_sum[em_bits:],
+        pyrtl.Const(0, bitwidth=em_bits),
+        final_sum[:em_bits],
+        default=MAX_VALUE,
+    )
+    zero_or_subnormal = pyrtl.and_all_bits(exp_a) | pyrtl.and_all_bits(exp_b)
+
+    with conditional_assignment:
+        with zero_or_subnormal:
+            fp_out |= 0
+        with pyrtl.otherwise:
+            fp_out |= pyrtl.concat(sign_a ^ sign_b, mantissa_result)
+
+    return fp_out
 
 
 def lmul_simple(

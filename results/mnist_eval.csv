@@ -1,0 +1,5 @@
+config,weight_type,activation_type,multiplier,avg_loss,accuracy,total_time,batch_size,total_batches,total_samples,samples_per_second,error
+w8a8-8x8,Float8,Float8,float_multiplier,nan,9.59,3696.4578790664673,16,625,10000,2.705292560380934,
+wb16ab16-8x8,BF16,BF16,float_multiplier,1.5101718571265486,97.46,6990.5663521289825,16,625,10000,1.430499260901013,
+w8ab16-8x8,Float8,BF16,float_multiplier,1.5169549792829369,97.43,7083.499045133591,16,625,10000,1.4117316789743994,
+wb16ab16-8x8-lmul,BF16,BF16,lmul_fast,,97.37,4620,10,1000,10000,2.155,
