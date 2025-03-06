@@ -1,6 +1,6 @@
-export DESIGN_NAME = lmul_pipelined_fast
+export DESIGN_NAME = [name]
 export PLATFORM    = nangate45
-export VERILOG_FILES = $(DESIGN_DIR)/src/lmul_pipelined_fast.v
+export VERILOG_FILES = $(DESIGN_DIR)/src/[name].v
 export SDC_FILE      = $(DESIGN_DIR)/constraint.sdc
 
 # These values must be multiples of placement site
