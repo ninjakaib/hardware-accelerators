@@ -1,45 +1,19 @@
-import os
 from pathlib import Path
 import pickle
 import ctypes
-import _ctypes
-import platform
 import shutil
-from typing import Literal, Optional, Dict, List, Union, Any
+from typing import Optional
 
-import numpy as np
 from pyrtl import (
     CompiledSimulation,
-    SimulationTrace,
     PyrtlError,
-    working_block,
-    Block,
-    Input,
-    Output,
-)
-
-from ..nn.util import softmax
-
-from ..nn.mlp import MLP
-
-from .matrix_utils import (
-    bias_trick,
-    count_batch_gemm_tiles,
-    generate_batch_gemm_tiles,
-    generate_gemv_tiles,
-    permutate_weight_matrix,
-)
-
-from ..rtllib.accelerator import (
-    CompiledAccelerator,
-    CompiledAcceleratorConfig,
 )
 
 
-class ReusableCompiledSimulation(CompiledSimulation):
+class CachedSimulation(CompiledSimulation):
     """Extension of CompiledSimulation that supports loading from precompiled libraries."""
 
-    def __init__(self, lib_path: Optional[str] = None):
+    def __init__(self, lib_path: Optional[str | Path] = None):
         """Initialize either from scratch or from a precompiled library.
 
         Args:

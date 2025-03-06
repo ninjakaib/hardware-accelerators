@@ -16,7 +16,7 @@ from pyrtl import (
     PyrtlError,
 )
 
-from .compile import ReusableCompiledSimulation
+from .cachedsim import CachedSimulation
 
 from ..rtllib.activations import ReluState
 
@@ -550,7 +550,7 @@ class CompiledAcceleratorSimulator:
     def _compile_and_cache(self, config_id: str):
         """Compile new binary and save to appropriate cache directory."""
         self.construct_hardware()
-        self.sim = ReusableCompiledSimulation()
+        self.sim = CachedSimulation()
 
         save_dir = self.cache_dir / config_id
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -564,11 +564,11 @@ class CompiledAcceleratorSimulator:
         with open(save_dir / f"{self.config.name}.txt", "w") as f:
             f.write(str(self.config))
 
-        print(f"Saved compiled binary for config {self.config.name} to {save_dir}")
+        # print(f"Saved compiled binary for config {self.config.name} to {save_dir}")
 
     def _load_from_binary(self, path: Path):
         """Load from validated cache path."""
-        print(f"Loading existing binary for config {self.config.name} from {path}")
+        # print(f"Loading existing binary for config {self.config.name} from {path}")
 
         lib_path = path / "pyrtlsim.so"
         config_path = path / "config.pkl"
@@ -579,7 +579,7 @@ class CompiledAcceleratorSimulator:
             raise PyrtlError(f"Config not found: {config_path}")
 
         self.config = pickle.loads(config_path.read_bytes())
-        self.sim = ReusableCompiledSimulation(lib_path=str(lib_path))
+        self.sim = CachedSimulation(lib_path=str(lib_path))
         self._output_wires = []
         for wire in self.sim.block.wirevector_subset(Output):
             if wire.name.startswith("out_"):
@@ -605,7 +605,7 @@ class CompiledAcceleratorSimulator:
 
     def construct_hardware(self):
         """Construct the hardware for the accelerator."""
-        print(f"Constructing hardware for config {self.config.name}...")
+        # print(f"Constructing hardware for config {self.config.name}...")
         self.accelerator = CompiledAccelerator(self.config)
         # Create input and output wires
         inputs = {
@@ -640,10 +640,10 @@ class CompiledAcceleratorSimulator:
         lib_path = os.path.join(sim_dir, "pyrtlsim.so")
         if os.path.exists(lib_path):
             # Use the precompiled library
-            self.sim = ReusableCompiledSimulation(lib_path=lib_path)
+            self.sim = CachedSimulation(lib_path=lib_path)
         else:
             # Create a new simulation
-            self.sim = ReusableCompiledSimulation()
+            self.sim = CachedSimulation()
 
     def get_sim_inputs(self, **kwargs) -> Dict[str, int]:
         """Get default input values"""
@@ -839,7 +839,12 @@ class CompiledAcceleratorSimulator:
     def reset_output_trace(self):
         self.output_trace = []
 
-    def predict_batch(self, batch: np.ndarray) -> np.ndarray:
+    def predict_batch(
+        self,
+        batch: np.ndarray,
+        apply_softmax: bool = True,
+        print_progress: bool = False,
+    ) -> np.ndarray:
         """Run MLP inference on a batch of inputs."""
 
         if not self.model_loaded:
@@ -885,7 +890,12 @@ class CompiledAcceleratorSimulator:
                 self.reset_output_trace()
 
             tiles_done += 1
-            print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
+            if print_progress:
+                print(
+                    f"Completed {tiles_done}/{tile_estimate} tiles",
+                    end="\r",
+                    flush=True,
+                )
 
         # Concatenate chunks and slice
         hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : self.hidden_dim]
@@ -918,11 +928,21 @@ class CompiledAcceleratorSimulator:
                 results = np.array(self.output_trace)
                 output_chunks.append(results)
                 self.reset_output_trace()
-            print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
+
+            tiles_done += 1
+            if print_progress:
+                print(
+                    f"Completed {tiles_done}/{tile_estimate} tiles",
+                    end="\r",
+                    flush=True,
+                )
 
         # Concatenate chunks and slice
         final_out = np.concatenate(output_chunks, axis=1)[:, : self.output_dim]
-        return np.apply_along_axis(softmax, 1, final_out)
+        if apply_softmax:
+            return np.apply_along_axis(softmax, 1, final_out)
+        else:
+            return {"hidden_out": hidden_out, "final_out": final_out}
 
     def inspect_accumulator_mem(self):
         return self.accelerator.inspect_accumulator_state(self.sim)
