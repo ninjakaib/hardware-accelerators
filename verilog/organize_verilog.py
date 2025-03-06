@@ -23,16 +23,32 @@ def rename_toplevel_module(file_content, new_module_name):
 
 # Function to create a config.mk file
 def create_config_mk(target_dir, design_name, verilog_file):
+    # Set clock period based on data type
+    clock_period = 8.0  # default value
+    # Default die and core area values
+    die_area = "0 0 100 100"
+    core_area = "10 10 90 90"
+    
+    if "_fp8" in design_name:
+        clock_period = 0.75
+    elif "_bf16" in design_name:
+        clock_period = 1.0
+    elif "_fp32" in design_name:
+        clock_period = 1.5
+        # Special die and core area for fp32
+        die_area = "0 0 150 150"
+        core_area = "5 5 145 145"
+        
     config_content = f"""export DESIGN_NAME = {design_name}
 export PLATFORM    = nangate45
 export VERILOG_FILES = $(DESIGN_DIR)/src/{verilog_file}
 export SDC_FILE      = $(DESIGN_DIR)/constraint.sdc
 
 # These values must be multiples of placement site
-export DIE_AREA    = 0 0 100 100
-export CORE_AREA   = 10 10 90 90
+export DIE_AREA    = {die_area}
+export CORE_AREA   = {core_area}
 
-export CLOCK_PERIOD = 8.0
+export CLOCK_PERIOD = {clock_period}
 """
     with open(os.path.join(target_dir, "config.mk"), "w") as f:
         f.write(config_content)
@@ -89,12 +105,31 @@ for hw_type in hw_types:
                 # Copy constraint.sdc
                 constraint_src = os.path.join(base_dir, "constraint.sdc")
                 constraint_dst = os.path.join(design_dir, "constraint.sdc")
+                
+                # Set clock period based on data type
+                clock_period = 1.0  # default value
+                if dtype == "fp8":
+                    clock_period = 0.75
+                elif dtype == "bf16":
+                    clock_period = 1.0
+                elif dtype == "fp32":
+                    clock_period = 1.5
+                
                 if os.path.exists(constraint_src):
-                    shutil.copy(constraint_src, constraint_dst)
-                else:
-                    print(f"Warning: {constraint_src} does not exist, creating empty constraint file")
+                    # Read the original constraint file
+                    with open(constraint_src, "r") as f:
+                        constraint_content = f.read()
+                    
+                    # Replace the clock period
+                    constraint_content = re.sub(r'-period\s+\d+\.?\d*', f'-period {clock_period}', constraint_content)
+                    
+                    # Write the modified constraint file
                     with open(constraint_dst, "w") as f:
-                        f.write('create_clock -name clk -period 1.0 [get_ports {clk}]\n')
+                        f.write(constraint_content)
+                else:
+                    print(f"Warning: {constraint_src} does not exist, creating constraint file with appropriate clock period")
+                    with open(constraint_dst, "w") as f:
+                        f.write(f'create_clock -name clk -period {clock_period} [get_ports {{clk}}]\n')
                 
                 print(f"Processed: {filename} -> {new_file_path}")
 
