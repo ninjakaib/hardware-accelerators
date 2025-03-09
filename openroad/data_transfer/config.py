@@ -26,12 +26,13 @@ GDS_DIR = os.path.join(current_dir, "gds_files")
 WEBP_DIR = os.path.join(current_dir, "webp_images")
 
 # WSL paths
-#set this to the path of the OpenROAD-flow-scripts directory
+# set this to the path of the OpenROAD-flow-scripts directory
 WSL_OPENROAD_BASE = r"\\wsl$\Ubuntu\home\user\OpenROAD-flow-scripts"
 WSL_DESIGNS_PATH = os.path.join(WSL_OPENROAD_BASE, "flow", "designs")
 WSL_LOGS_PATH = os.path.join(WSL_OPENROAD_BASE, "flow", "logs", "nangate45")
 WSL_REPORTS_PATH = os.path.join(WSL_OPENROAD_BASE, "flow", "reports", "nangate45")
 WSL_RESULTS_PATH = os.path.join(WSL_OPENROAD_BASE, "flow", "results", "nangate45")
+
 
 # Function to ensure directories exist
 def ensure_directory(directory_path):
@@ -39,4 +40,4 @@ def ensure_directory(directory_path):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
         print(f"Created directory: {directory_path}")
-    return directory_path 
+    return directory_path
