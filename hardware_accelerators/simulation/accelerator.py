@@ -40,6 +40,7 @@ from ..rtllib import (
 from .matrix_utils import (
     bias_trick,
     count_batch_gemm_tiles,
+    count_total_gemv_tiles,
     generate_batch_gemm_tiles,
     generate_gemv_tiles,
     pack_binary_vector,
@@ -47,6 +48,25 @@ from .matrix_utils import (
     convert_array_dtype,
 )
 from typing import TypedDict, Optional, Literal, NotRequired, Unpack
+from IPython import get_ipython  # type: ignore
+
+
+def is_running_in_notebook():
+    try:
+        shell = get_ipython()
+        if shell is not None:
+            return True
+        else:
+            return False
+    except NameError:
+        return False
+
+
+# Create progress bar
+if is_running_in_notebook():
+    from tqdm.notebook import tqdm
+else:
+    from tqdm import tqdm
 
 
 @dataclass
@@ -631,20 +651,6 @@ class CompiledAcceleratorSimulator:
         ]
         self.accelerator.connect_outputs(self._output_wires, Output(1, "output_valid"))
 
-    def reset_sim(self):
-        """Reset the simulation"""
-        self.reset_output_trace()
-
-        # Recreate the simulation
-        sim_dir = self._get_binary_path(self.config)
-        lib_path = os.path.join(sim_dir, "pyrtlsim.so")
-        if os.path.exists(lib_path):
-            # Use the precompiled library
-            self.sim = CachedSimulation(lib_path=lib_path)
-        else:
-            # Create a new simulation
-            self.sim = CachedSimulation()
-
     def get_sim_inputs(self, **kwargs) -> Dict[str, int]:
         """Get default input values"""
         defaults = {
@@ -782,6 +788,12 @@ class CompiledAcceleratorSimulator:
 
         self.reset_output_trace()
 
+        # Calculate total number of tiles
+        total_tiles = count_total_gemv_tiles(
+            [(784, 128), (128, 10)], self.config.array_size
+        )
+        pbar = tqdm(total=total_tiles, desc="Processing tiles")
+
         # First layer
         x_aug = convert_array_dtype(bias_trick(x=input), self.config.activation_type)
 
@@ -795,6 +807,7 @@ class CompiledAcceleratorSimulator:
                 activation_enable=tile.last,
                 flush_pipeline=True,
             )
+            pbar.update(1)
 
         self._step()
         self._step()
@@ -816,6 +829,7 @@ class CompiledAcceleratorSimulator:
                 activation_enable=tile.last,
                 flush_pipeline=True,
             )
+            pbar.update(1)
 
         self._step()
         self._step()
@@ -842,8 +856,7 @@ class CompiledAcceleratorSimulator:
     def predict_batch(
         self,
         batch: np.ndarray,
-        apply_softmax: bool = True,
-        print_progress: bool = False,
+        progress: bool = True,
     ) -> np.ndarray:
         """Run MLP inference on a batch of inputs."""
 
@@ -854,12 +867,14 @@ class CompiledAcceleratorSimulator:
 
         self.reset_output_trace()
 
-        tiles_done = 0
-        tile_estimate = count_batch_gemm_tiles(
-            self.hidden_dim, self.input_dim + 1, self.config.array_size
-        ) + count_batch_gemm_tiles(
-            self.output_dim, self.hidden_dim + 1, self.config.array_size
-        )
+        if progress:
+            # Calculate total number of tiles
+            total_tiles = count_batch_gemm_tiles(
+                self.hidden_dim, self.input_dim + 1, self.config.array_size
+            ) + count_batch_gemm_tiles(
+                self.output_dim, self.hidden_dim + 1, self.config.array_size
+            )
+            pbar = tqdm(total=total_tiles, desc="Processing tiles")
 
         # First layer
         x_aug = convert_array_dtype(bias_trick(x=batch), self.config.activation_type)
@@ -889,13 +904,8 @@ class CompiledAcceleratorSimulator:
                 hidden_chunks.append(results)
                 self.reset_output_trace()
 
-            tiles_done += 1
-            if print_progress:
-                print(
-                    f"Completed {tiles_done}/{tile_estimate} tiles",
-                    end="\r",
-                    flush=True,
-                )
+            if progress:
+                pbar.update(1)
 
         # Concatenate chunks and slice
         hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : self.hidden_dim]
@@ -929,20 +939,12 @@ class CompiledAcceleratorSimulator:
                 output_chunks.append(results)
                 self.reset_output_trace()
 
-            tiles_done += 1
-            if print_progress:
-                print(
-                    f"Completed {tiles_done}/{tile_estimate} tiles",
-                    end="\r",
-                    flush=True,
-                )
+            if progress:
+                pbar.update(1)
 
         # Concatenate chunks and slice
         final_out = np.concatenate(output_chunks, axis=1)[:, : self.output_dim]
-        if apply_softmax:
-            return np.apply_along_axis(softmax, 1, final_out)
-        else:
-            return {"hidden_out": hidden_out, "final_out": final_out}
+        return final_out
 
     def inspect_accumulator_mem(self):
         return self.accelerator.inspect_accumulator_state(self.sim)

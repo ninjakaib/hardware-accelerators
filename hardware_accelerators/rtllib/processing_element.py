@@ -84,15 +84,15 @@ class ProcessingElement:
         if self.pipeline:
             self.mul_en = WireVector(1)
             product_reg = Register(multiplier_dtype.bitwidth())
-            product_out = product_reg
+            self.product_out = product_reg
             with conditional_assignment:
                 with self.mul_en:  # Enable writing to product register
                     product_reg.next |= product
         else:
-            product_out = product
+            self.product_out = product
 
         self.adder_input = convert_float_format(
-            product_out, multiplier_dtype, accum_type
+            self.product_out, multiplier_dtype, accum_type
         )
 
         # Add the product and previous accumulation value to get partial sum

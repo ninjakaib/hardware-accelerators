@@ -2,10 +2,9 @@
 from itertools import product
 import os
 import pandas as pd
-import pyrtl
-from pyrtl import WireVector, Input, Output, CompiledSimulation, reset_working_block
+from pyrtl import WireVector
 import torch
-from typing import Callable, Literal, Dict, Any, List
+from typing import Callable
 import numpy as np
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
@@ -16,8 +15,6 @@ import time
 import csv
 from pathlib import Path
 import traceback
-import queue
-import threading
 
 from .config import (
     NN_TEST_MUL_FNS,
@@ -27,13 +24,10 @@ from .config import (
     NN_TEST_BATCH_SIZE,
 )
 from hardware_accelerators.dtypes import *
-from ..rtllib.lmul import lmul_fast
-from hardware_accelerators.simulation.cachedsim import CachedSimulation
-from hardware_accelerators.simulation import get_sim_cache_dir
 from hardware_accelerators.simulation.accelerator import CompiledAcceleratorSimulator
 from hardware_accelerators.rtllib.accelerator import CompiledAcceleratorConfig
 from hardware_accelerators.rtllib.multipliers import *
-from hardware_accelerators.nn import load_model, MLP
+from hardware_accelerators.nn import load_model
 from ..simulation.accelerator import CompiledAcceleratorSimulator
 
 
@@ -115,9 +109,7 @@ def evaluate_with_progress(
                 batch = batch.reshape(batch_size_actual, -1).numpy()
 
                 # Time the prediction
-                batch_start = time.time()
                 outputs = sim.predict_batch(batch)
-                batch_end = time.time()
 
                 loss = criterion(torch.tensor(outputs), labels)
                 running_loss += loss.item()

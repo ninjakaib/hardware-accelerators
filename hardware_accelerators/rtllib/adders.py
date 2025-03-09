@@ -57,7 +57,19 @@ def float_adder(
     )
 
     float_result = WireVector(dtype.bitwidth())  # , "float_result")
-    float_result <<= pyrtl.concat(final_sign, final_exp, norm_mantissa)
+
+    # Zero detection logic
+    a_is_zero = ~pyrtl.or_all_bits(float_a[:-1])
+    b_is_zero = ~pyrtl.or_all_bits(float_b[:-1])
+
+    with pyrtl.conditional_assignment:
+        with a_is_zero:
+            float_result |= float_b
+        with b_is_zero:
+            float_result |= float_a
+        with pyrtl.otherwise:
+            float_result |= pyrtl.concat(final_sign, final_exp, norm_mantissa)
+
     return float_result
 
 
@@ -70,6 +82,7 @@ def float_adder_fast_unstable(
 ### ===================================================================
 ### Simple Pipeline Design
 ### ===================================================================
+# TODO: add zero detection logic
 
 
 def float_adder_pipelined(
