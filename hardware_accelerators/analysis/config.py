@@ -10,7 +10,7 @@ NN_TEST_SYSTOLIC_ARRAY_SIZE = 8
 NN_TEST_ACCUM_ADDR_WIDTH = 12
 
 NN_TEST_MUL_FNS = [
-    # float_multiplier,
+    float_multiplier,
     lmul_simple,
     # lmul_fast,
 ]
