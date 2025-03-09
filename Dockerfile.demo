@@ -10,13 +10,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages
-COPY demo/requirements.txt requirements.txt
+COPY ./requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the model and application files
 COPY models/ /code/models/
 COPY hardware_accelerators/ /code/hardware_accelerators/
-COPY demo/app.py /code/app.py
 COPY results/component_data.csv /code/data/
 
 
