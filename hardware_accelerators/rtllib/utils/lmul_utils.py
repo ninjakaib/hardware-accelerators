@@ -1,4 +1,8 @@
+from typing import Type
+from pyrtl import Const
 from pyrtl.rtllib.libutils import twos_comp_repr
+
+from ...dtypes.base import BaseFloat
 
 
 def get_shifted_bias(e_bits, m_bits):
@@ -58,6 +62,12 @@ def get_combined_offset(e_bits, m_bits, twos_comp=False, fmt: str | None = None)
             )
         return format(offset, f"0{fmt[0]}")
     return offset
+
+
+def lmul_offset_rtl(dtype: Type[BaseFloat], signed: bool = True):
+    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
+    offset = get_combined_offset(e_bits, m_bits, signed)
+    return Const(offset, bitwidth=dtype.bitwidth() - 1)
 
 
 OFFSETS = {

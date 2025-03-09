@@ -128,6 +128,7 @@ class SystolicArraySimulator:
         activations: np.ndarray,
         weights: np.ndarray,
         dtype: Optional[Type[BaseFloat]] = None,
+        multiplier=float_multiplier,
     ) -> np.ndarray:
         """Perform matrix multiplication using systolic array
 
@@ -149,7 +150,7 @@ class SystolicArraySimulator:
         # Create simulator instance
         size = weights.shape[0]
         dtype = dtype or BF16
-        sim = cls(size=size, data_type=dtype)
+        sim = cls(size=size, data_type=dtype, multiplier=multiplier)
 
         return sim.simulate(activations=activations, weights=weights)
 

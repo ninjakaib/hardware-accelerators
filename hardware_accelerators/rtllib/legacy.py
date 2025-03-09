@@ -1,11 +1,82 @@
+from typing import Type
 import pyrtl
+from pyrtl import WireVector
 from pyrtl.rtllib.adders import carrysave_adder, kogge_stone
 
+from ..dtypes.base import BaseFloat
+
 from .utils.lmul_utils import get_combined_offset
+
 
 ###########################
 # Old code below
 ###########################
+def lmul_simple(
+    float_a: WireVector,
+    float_b: WireVector,
+    dtype: Type[BaseFloat],
+):
+    """Linear time complexity float multiply unit in the simplest configuration."""
+    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
+    em_bits = e_bits + m_bits
+    sign_out = float_a[em_bits] ^ float_b[em_bits]
+
+    unsigned_offset = pyrtl.Const(get_combined_offset(e_bits, m_bits), em_bits)
+    result_sum = float_a[:em_bits] + float_b[:em_bits] - unsigned_offset
+
+    fp_out = WireVector(bitwidth=em_bits + 1)
+    fp_out <<= pyrtl.concat(sign_out, pyrtl.truncate(result_sum, em_bits))
+    return fp_out
+
+
+def lmul_fast(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]):
+    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
+    em_bits = e_bits + m_bits
+    sign_a = float_a[em_bits]
+    sign_b = float_b[em_bits]
+    exp_mantissa_a = float_a[:em_bits]
+    exp_mantissa_b = float_b[:em_bits]
+    fp_out = WireVector(em_bits + 1)
+
+    # Calculate result sign
+    result_sign = sign_a ^ sign_b
+
+    # Add exp_mantissa parts using kogge_stone adder (faster than ripple)
+    # exp_mantissa_sum = kogge_stone(exp_mantissa_a, exp_mantissa_b)
+
+    # Get the combined offset-bias constant
+    OFFSET_MINUS_BIAS = pyrtl.Const(
+        get_combined_offset(e_bits, m_bits, True), bitwidth=em_bits
+    )
+
+    # Add offset-bias value - this will be 8 bits including carry
+    # final_sum = kogge_stone(exp_mantissa_sum, OFFSET_MINUS_BIAS)
+
+    final_sum = carrysave_adder(
+        exp_mantissa_a, exp_mantissa_b, OFFSET_MINUS_BIAS, final_adder=kogge_stone
+    )
+
+    # Select result based on carry and MSB:
+    # carry=1: overflow -> 0x7F
+    # carry=0, msb=0: underflow -> 0x00
+    # carry=0, msb=1: normal -> result_bits
+
+    MAX_VALUE = pyrtl.Const(2**em_bits - 1, bitwidth=em_bits)  # , name="max_value")
+
+    if e_bits == 4 and m_bits == 3:
+        MAX_VALUE = pyrtl.Const(0x7F, 7)
+
+    mantissa_result = pyrtl.mux(
+        final_sum[em_bits:],
+        pyrtl.Const(0, bitwidth=em_bits),
+        final_sum[:em_bits],
+        default=MAX_VALUE,
+    )
+
+    # Combine sign and result
+    fp_out <<= pyrtl.concat(result_sign, mantissa_result)
+
+    return fp_out
 
 
 # BF16 Naive Combinatorial

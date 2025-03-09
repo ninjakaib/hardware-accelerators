@@ -57,6 +57,9 @@ def float_multiplier_fast_unstable(
     return float_multiplier(float_a, float_b, dtype, fast=True)
 
 
+# TODO: add zero detection logic
+
+
 def float_multiplier_pipelined(
     float_a: WireVector,
     float_b: WireVector,

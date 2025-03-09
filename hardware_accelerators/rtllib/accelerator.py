@@ -322,7 +322,7 @@ class CompiledAccelerator:
             valid <<= self.activation.outputs_valid
 
     def inspect_accumulator_state(self, sim: CompiledSimulation) -> np.ndarray:
-        """Return all accumulator tiles as 3D array.
+        """Return accumulator memory as an array.
 
         Args:
             sim: PyRTL simulation instance

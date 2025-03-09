@@ -17,12 +17,12 @@ from .accelerator import (
 
 def get_sim_cache_dir():
     # Check both system env and .env file
-    if env_value := os.getenv("HWA_SIM_CACHE"):
+    if env_value := os.getenv("HWA_CACHE_DIR"):
         return Path(env_value).expanduser().resolve()
 
     return Path(user_cache_dir("hardware_accelerators", ensure_exists=True))
 
 
 def set_sim_cache_dir(path: Path):
-    os.environ["HWA_SIM_CACHE"] = str(path)
+    os.environ["HWA_CACHE_DIR"] = str(path)
     return get_sim_cache_dir()

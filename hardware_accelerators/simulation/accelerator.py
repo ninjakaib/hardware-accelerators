@@ -16,7 +16,7 @@ from pyrtl import (
     PyrtlError,
 )
 
-from .compile import ReusableCompiledSimulation
+from .cachedsim import CachedSimulation
 
 from ..rtllib.activations import ReluState
 
@@ -40,6 +40,7 @@ from ..rtllib import (
 from .matrix_utils import (
     bias_trick,
     count_batch_gemm_tiles,
+    count_total_gemv_tiles,
     generate_batch_gemm_tiles,
     generate_gemv_tiles,
     pack_binary_vector,
@@ -47,6 +48,25 @@ from .matrix_utils import (
     convert_array_dtype,
 )
 from typing import TypedDict, Optional, Literal, NotRequired, Unpack
+from IPython import get_ipython  # type: ignore
+
+
+def is_running_in_notebook():
+    try:
+        shell = get_ipython()
+        if shell is not None:
+            return True
+        else:
+            return False
+    except NameError:
+        return False
+
+
+# Create progress bar
+if is_running_in_notebook():
+    from tqdm.notebook import tqdm
+else:
+    from tqdm import tqdm
 
 
 @dataclass
@@ -528,7 +548,7 @@ class CompiledAcceleratorSimulator:
             return Path(user_dir).expanduser().resolve()
 
         # Check both system env and .env file
-        if env_value := os.getenv("HWA_SIM_CACHE"):
+        if env_value := os.getenv("HWA_CACHE_DIR"):
             return Path(env_value).expanduser().resolve()
 
         return Path(user_cache_dir("hardware_accelerators", ensure_exists=True))
@@ -537,7 +557,7 @@ class CompiledAcceleratorSimulator:
         """Search for existing binary in all potential cache locations."""
         search_dirs = [
             self.cache_dir,
-            Path(os.environ.get("HWA_SIM_CACHE", "")).expanduser().resolve(),
+            Path(os.environ.get("HWA_CACHE_DIR", "")).expanduser().resolve(),
             Path(user_cache_dir("hardware_accelerators")),
         ]
 
@@ -550,7 +570,7 @@ class CompiledAcceleratorSimulator:
     def _compile_and_cache(self, config_id: str):
         """Compile new binary and save to appropriate cache directory."""
         self.construct_hardware()
-        self.sim = ReusableCompiledSimulation()
+        self.sim = CachedSimulation()
 
         save_dir = self.cache_dir / config_id
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -564,22 +584,24 @@ class CompiledAcceleratorSimulator:
         with open(save_dir / f"{self.config.name}.txt", "w") as f:
             f.write(str(self.config))
 
-        print(f"Saved compiled binary for config {self.config.name} to {save_dir}")
+        # print(f"Saved compiled binary for config {self.config.name} to {save_dir}")
 
     def _load_from_binary(self, path: Path):
         """Load from validated cache path."""
-        print(f"Loading existing binary for config {self.config.name} from {path}")
+        # print(f"Loading existing binary for config {self.config.name} from {path}")
 
         lib_path = path / "pyrtlsim.so"
         config_path = path / "config.pkl"
 
         if not lib_path.exists():
-            raise PyrtlError(f"Library not found: {lib_path}")
+            print(PyrtlError(f"Library not found: {lib_path}"))
+            self._compile_and_cache(self.config.id)
         if not config_path.exists():
-            raise PyrtlError(f"Config not found: {config_path}")
+            print(PyrtlError(f"Config not found: {config_path}"))
+            self._compile_and_cache(self.config.id)
 
         self.config = pickle.loads(config_path.read_bytes())
-        self.sim = ReusableCompiledSimulation(lib_path=str(lib_path))
+        self.sim = CachedSimulation(lib_path=str(lib_path))
         self._output_wires = []
         for wire in self.sim.block.wirevector_subset(Output):
             if wire.name.startswith("out_"):
@@ -605,7 +627,7 @@ class CompiledAcceleratorSimulator:
 
     def construct_hardware(self):
         """Construct the hardware for the accelerator."""
-        print(f"Constructing hardware for config {self.config.name}...")
+        # print(f"Constructing hardware for config {self.config.name}...")
         self.accelerator = CompiledAccelerator(self.config)
         # Create input and output wires
         inputs = {
@@ -630,20 +652,6 @@ class CompiledAcceleratorSimulator:
             for i in range(self.config.array_size)
         ]
         self.accelerator.connect_outputs(self._output_wires, Output(1, "output_valid"))
-
-    def reset_sim(self):
-        """Reset the simulation"""
-        self.reset_output_trace()
-
-        # Recreate the simulation
-        sim_dir = self._get_binary_path(self.config)
-        lib_path = os.path.join(sim_dir, "pyrtlsim.so")
-        if os.path.exists(lib_path):
-            # Use the precompiled library
-            self.sim = ReusableCompiledSimulation(lib_path=lib_path)
-        else:
-            # Create a new simulation
-            self.sim = ReusableCompiledSimulation()
 
     def get_sim_inputs(self, **kwargs) -> Dict[str, int]:
         """Get default input values"""
@@ -782,6 +790,12 @@ class CompiledAcceleratorSimulator:
 
         self.reset_output_trace()
 
+        # Calculate total number of tiles
+        total_tiles = count_total_gemv_tiles(
+            [(784, 128), (128, 10)], self.config.array_size
+        )
+        pbar = tqdm(total=total_tiles, desc="Processing tiles")
+
         # First layer
         x_aug = convert_array_dtype(bias_trick(x=input), self.config.activation_type)
 
@@ -795,6 +809,7 @@ class CompiledAcceleratorSimulator:
                 activation_enable=tile.last,
                 flush_pipeline=True,
             )
+            pbar.update(1)
 
         self._step()
         self._step()
@@ -816,6 +831,7 @@ class CompiledAcceleratorSimulator:
                 activation_enable=tile.last,
                 flush_pipeline=True,
             )
+            pbar.update(1)
 
         self._step()
         self._step()
@@ -839,7 +855,11 @@ class CompiledAcceleratorSimulator:
     def reset_output_trace(self):
         self.output_trace = []
 
-    def predict_batch(self, batch: np.ndarray) -> np.ndarray:
+    def predict_batch(
+        self,
+        batch: np.ndarray,
+        progress: bool | object = True,
+    ) -> np.ndarray:
         """Run MLP inference on a batch of inputs."""
 
         if not self.model_loaded:
@@ -849,12 +869,24 @@ class CompiledAcceleratorSimulator:
 
         self.reset_output_trace()
 
-        tiles_done = 0
-        tile_estimate = count_batch_gemm_tiles(
-            self.hidden_dim, self.input_dim + 1, self.config.array_size
-        ) + count_batch_gemm_tiles(
-            self.output_dim, self.hidden_dim + 1, self.config.array_size
-        )
+        # Handle progress tracking
+        update_pbar = False
+        pbar = None
+
+        if progress is True:
+            # Calculate total number of tiles
+            total_tiles = count_batch_gemm_tiles(
+                self.hidden_dim, self.input_dim + 1, self.config.array_size
+            ) + count_batch_gemm_tiles(
+                self.output_dim, self.hidden_dim + 1, self.config.array_size
+            )
+            pbar = tqdm(total=total_tiles, desc="Processing tiles")
+
+            update_pbar = True
+        elif progress is not False:
+            # An existing progress bar was passed
+            pbar = progress
+            update_pbar = True
 
         # First layer
         x_aug = convert_array_dtype(bias_trick(x=batch), self.config.activation_type)
@@ -884,8 +916,14 @@ class CompiledAcceleratorSimulator:
                 hidden_chunks.append(results)
                 self.reset_output_trace()
 
-            tiles_done += 1
-            print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
+            if update_pbar:
+                # Update progress bar safely
+                try:
+                    pbar.update(1)  # type: ignore
+                except Exception as e:
+                    # If update fails, disable further updates
+                    print(f"Warning: Progress bar update failed: {e}")
+                    update_pbar = False
 
         # Concatenate chunks and slice
         hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : self.hidden_dim]
@@ -918,11 +956,19 @@ class CompiledAcceleratorSimulator:
                 results = np.array(self.output_trace)
                 output_chunks.append(results)
                 self.reset_output_trace()
-            print(f"Completed {tiles_done}/{tile_estimate} tiles", end="\r", flush=True)
+
+            if update_pbar:
+                # Update progress bar safely
+                try:
+                    pbar.update(1)  # type: ignore
+                except Exception as e:
+                    # If update fails, disable further updates
+                    print(f"Warning: Progress bar update failed: {e}")
+                    update_pbar = False
 
         # Concatenate chunks and slice
         final_out = np.concatenate(output_chunks, axis=1)[:, : self.output_dim]
-        return np.apply_along_axis(softmax, 1, final_out)
+        return final_out
 
     def inspect_accumulator_mem(self):
         return self.accelerator.inspect_accumulator_state(self.sim)

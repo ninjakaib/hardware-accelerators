@@ -24,7 +24,8 @@ class SystolicArraySimState:
     outputs: np.ndarray
     accumulators: np.ndarray
     control_regs: dict
-    step: int | None = None
+    step: int | str | None = None
+    products: np.ndarray | None = None
 
     def __repr__(self) -> str:
         """Pretty print the simulation state at this step"""
@@ -35,6 +36,20 @@ class SystolicArraySimState:
             if self.step is not None
             else ""
         )
+        if self.products is not None:
+            if isinstance(self.products[0][0], dict):
+                format_kwargs = {
+                    "formatter": {
+                        "object": lambda x: f"({x['product']:.3f}+{x['accum_in']:.3f})"
+                    },
+                    "separator": ",\t",
+                }
+
+                products_str = f"\nAdder Inputs (product+accum_in):\n{np.array2string(self.products, suppress_small=True, **format_kwargs)}\n"
+            else:
+                products_str = f"\nProducts:\n{np.array2string(self.products, precision=4, suppress_small=True)}\n"
+        else:
+            products_str = ""
 
         return (
             f"{step_str}"
@@ -45,6 +60,7 @@ class SystolicArraySimState:
             f"  data: {np.array2string(self.inputs['data'], precision=4, suppress_small=True)}\n"
             f"\nWeights Matrix:\n{np.array2string(self.weights, precision=4, suppress_small=True)}\n"
             f"\nData Matrix:\n{np.array2string(self.data, precision=4, suppress_small=True)}\n"
+            f"{products_str}"
             f"\nAccumulators:\n{np.array2string(self.accumulators, precision=4, suppress_small=True)}\n"
             f"\nControl Registers:\n{'\n'.join([f'{k}: {v}' for k, v in self.control_regs.items()])}\n"
             f"\nOutputs:\n{np.array2string(self.outputs, precision=4, suppress_small=True)}\n"
@@ -178,6 +194,27 @@ class BaseSystolicArray(ABC):
             print("Data:")
             print(np.array_str(acc_regs, precision=4, suppress_small=True), "\n")
         return acc_regs
+
+    def inspect_products(self, sim: Simulation):
+        products = np.zeros((self.size, self.size))
+        for row in range(self.size):
+            for col in range(self.size):
+                d = sim.inspect(self.pe_array[row][col].product_out.name)
+                products[row][col] = self.data_type(binint=d).decimal_approx
+        return products
+
+    def inspect_adder_inputs(self, sim: Simulation):
+        adder_inputs = []
+        for row in range(self.size):
+            row_inputs = []
+            for col in range(self.size):
+                product_binary = sim.inspect(self.pe_array[row][col].product_out.name)
+                add_in_binary = sim.inspect(self.pe_array[row][col].accum_in.name)
+                p = self.accum_type(binint=product_binary).decimal_approx
+                a = self.accum_type(binint=add_in_binary).decimal_approx
+                row_inputs.append({"product": p, "accum_in": a})
+            adder_inputs.append(row_inputs)
+        return np.array(adder_inputs)
 
     def inspect_outputs(self, sim: Simulation, verbose: bool = True):
         current_results = np.zeros(self.size)
@@ -442,7 +479,7 @@ class SystolicArrayDiP(BaseSystolicArray):
 
         return values
 
-    def get_state(self, sim: Simulation, step: int | None = None):
+    def get_state(self, sim: Simulation, step: int | str | None = None):
         inputs = {
             "w_en": sim.inspect(self.weight_enable.name),
             "enable": sim.inspect(self.enable_in.name),
@@ -468,7 +505,34 @@ class SystolicArrayDiP(BaseSystolicArray):
             accumulators=self.inspect_accumulators(sim, False),
             control_regs=self.inspect_control_regs(sim),
             outputs=self.inspect_outputs(sim, False),
+            products=self.inspect_adder_inputs(sim),
         )
+
+    def get_wires_to_track(self) -> list[WireVector]:
+        wires = [
+            self.enable_in,
+            self.weight_enable,
+            self.control_out,
+            *self.weights_in,
+            *self.data_in,
+            *self.data_enable_regs,
+            *self.accum_enable_regs,
+            *self.results_out,
+        ]
+        if self.pipeline:
+            wires.extend(self.mul_enable_regs)
+        for row in self.pe_array:
+            for pe in row:
+                wires.extend(
+                    [
+                        pe.data_reg,
+                        pe.weight_reg,
+                        pe.product_out,
+                        pe.accum_in,
+                        pe.accum_reg,
+                    ]
+                )
+        return wires
 
 
 # TODO: Add control logic

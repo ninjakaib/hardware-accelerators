@@ -1,79 +1,60 @@
 from typing import Type
 
 import pyrtl
-from pyrtl import WireVector
+from pyrtl import WireVector, conditional_assignment
 from pyrtl.rtllib.adders import carrysave_adder, kogge_stone, fast_group_adder
 
 from ..dtypes import BaseFloat, Float8
-from .utils.lmul_utils import get_combined_offset
+from .utils.lmul_utils import get_combined_offset, lmul_offset_rtl
 
 
-def lmul_simple(
-    float_a: WireVector,
-    float_b: WireVector,
-    dtype: Type[BaseFloat],
-):
-    """Linear time complexity float multiply unit in the simplest configuration."""
-    e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
-    em_bits = e_bits + m_bits
-    sign_out = float_a[em_bits] ^ float_b[em_bits]
-
-    unsigned_offset = pyrtl.Const(get_combined_offset(e_bits, m_bits), em_bits)
-    result_sum = float_a[:em_bits] + float_b[:em_bits] - unsigned_offset
-
-    fp_out = WireVector(bitwidth=em_bits + 1)
-    fp_out <<= pyrtl.concat(sign_out, pyrtl.truncate(result_sum, em_bits))
-    return fp_out
-
-
-def lmul_fast(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]):
+def lmul(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat], fast=False):
     e_bits, m_bits = dtype.exponent_bits(), dtype.mantissa_bits()
     em_bits = e_bits + m_bits
     sign_a = float_a[em_bits]
     sign_b = float_b[em_bits]
+    exp_a = float_a[m_bits:-1]
+    exp_b = float_b[m_bits:-1]
     exp_mantissa_a = float_a[:em_bits]
     exp_mantissa_b = float_b[:em_bits]
-    fp_out = WireVector(em_bits + 1)
 
-    # Calculate result sign
-    result_sign = sign_a ^ sign_b
+    zero_or_subnormal = WireVector(1)
+    final_sum = WireVector(em_bits + 2)
+    carry_msb = WireVector(2)
+    fp_out = WireVector(dtype.bitwidth())
 
-    # Add exp_mantissa parts using kogge_stone adder (faster than ripple)
-    # exp_mantissa_sum = kogge_stone(exp_mantissa_a, exp_mantissa_b)
+    OFFSET_MINUS_BIAS = lmul_offset_rtl(dtype)
+    MAX_VALUE = pyrtl.Const(dtype.binary_max(), bitwidth=em_bits)
 
-    # Get the combined offset-bias constant
-    OFFSET_MINUS_BIAS = pyrtl.Const(
-        get_combined_offset(e_bits, m_bits, True), bitwidth=em_bits
-    )
+    if fast:
+        final_sum <<= carrysave_adder(
+            exp_mantissa_a, exp_mantissa_b, OFFSET_MINUS_BIAS, final_adder=kogge_stone
+        )
+    else:
+        final_sum <<= exp_mantissa_a + exp_mantissa_b + OFFSET_MINUS_BIAS
 
-    # Add offset-bias value - this will be 8 bits including carry
-    # final_sum = kogge_stone(exp_mantissa_sum, OFFSET_MINUS_BIAS)
+    carry_msb <<= final_sum[em_bits:]
+    zero_or_subnormal <<= ~pyrtl.or_all_bits(exp_a) | ~pyrtl.or_all_bits(exp_b)
 
-    final_sum = carrysave_adder(
-        exp_mantissa_a, exp_mantissa_b, OFFSET_MINUS_BIAS, final_adder=kogge_stone
-    )
-
-    # Select result based on carry and MSB:
-    # carry=1: overflow -> 0x7F
-    # carry=0, msb=0: underflow -> 0x00
-    # carry=0, msb=1: normal -> result_bits
-
-    MAX_VALUE = pyrtl.Const(2**em_bits - 1, bitwidth=em_bits)  # , name="max_value")
-
-    if e_bits == 4 and m_bits == 3:
-        MAX_VALUE = pyrtl.Const(0x7F, 7)
-
-    mantissa_result = pyrtl.mux(
-        final_sum[em_bits:],
-        pyrtl.Const(0, bitwidth=em_bits),
-        final_sum[:em_bits],
-        default=MAX_VALUE,
-    )
-
-    # Combine sign and result
-    fp_out <<= pyrtl.concat(result_sign, mantissa_result)
+    with conditional_assignment:
+        with zero_or_subnormal:
+            fp_out |= 0
+        with carry_msb == 0:
+            fp_out |= 0
+        with carry_msb == 1:
+            fp_out |= pyrtl.concat(sign_a ^ sign_b, final_sum[:em_bits])
+        with pyrtl.otherwise:
+            fp_out |= pyrtl.concat(sign_a ^ sign_b, MAX_VALUE)
 
     return fp_out
+
+
+def lmul_simple(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]):
+    return lmul(float_a, float_b, dtype, fast=False)
+
+
+def lmul_fast(float_a: WireVector, float_b: WireVector, dtype: Type[BaseFloat]):
+    return lmul(float_a, float_b, dtype, fast=True)
 
 
 def lmul_pipelined(
@@ -94,7 +75,6 @@ def lmul_pipelined_fast(
     return mult.output_reg
 
 
-# Float8 fast pipelined lmul
 class LmulPipelined:
     def __init__(
         self,
