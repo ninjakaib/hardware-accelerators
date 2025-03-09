@@ -16,6 +16,8 @@ import csv
 from pathlib import Path
 import traceback
 
+from ..simulation.matrix_utils import count_batch_gemm_tiles
+
 from .config import (
     NN_TEST_MUL_FNS,
     NN_TEST_SYSTOLIC_ARRAY_SIZE,
@@ -97,19 +99,27 @@ def evaluate_with_progress(
 
         data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         total_batches = len(data_loader)
+        tiles_per_batch = count_batch_gemm_tiles(
+            sim.hidden_dim, sim.input_dim + 1, sim.config.array_size
+        ) + count_batch_gemm_tiles(
+            sim.output_dim, sim.hidden_dim + 1, sim.config.array_size
+        )
         result["total_batches"] = total_batches
 
         # Create a progress bar for this specific simulation
         desc = f"Config {config.name} ({config.weight_type.__name__}/{config.activation_type.__name__})"
         with tqdm(
-            total=total_batches, desc=desc, position=process_id + 1, leave=False
+            total=total_batches * tiles_per_batch,
+            desc=desc,
+            position=process_id + 1,
+            leave=False,
         ) as pbar:
             for batch, labels in data_loader:
                 batch_size_actual = batch.shape[0]
                 batch = batch.reshape(batch_size_actual, -1).numpy()
 
                 # Time the prediction
-                outputs = sim.predict_batch(batch)
+                outputs = sim.predict_batch(batch, pbar)
 
                 loss = criterion(torch.tensor(outputs), labels)
                 running_loss += loss.item()
@@ -118,9 +128,6 @@ def evaluate_with_progress(
                 predicted = np.argmax(outputs, axis=1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
-
-                # Update progress bar
-                pbar.update(1)
 
         end_time = time.time()
         total_time = end_time - start_time

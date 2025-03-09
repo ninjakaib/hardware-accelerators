@@ -17,10 +17,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY models/ /code/models/
 COPY hardware_accelerators/ /code/hardware_accelerators/
 COPY demo/app.py /code/app.py
+COPY results/component_data.csv /code/data/
 
-# Set environment variables for Gradio
+
+# Set environment variables
+ENV HWA_CACHE_DIR=/code/hardware_accelerators/cache
+ENV COMPONENT_DATA_PATH=/code/data/component_data.csv
 ENV GRADIO_SERVER_NAME=0.0.0.0
 ENV GRADIO_SERVER_PORT=7860
+
+# Copy the component data
+COPY results/component_data.csv /code/data/component_data.csv
+
+# Compile the simulations
+RUN python3 -m hardware_accelerators.compile
 
 # Expose the port Gradio runs on
 EXPOSE 7860

@@ -548,7 +548,7 @@ class CompiledAcceleratorSimulator:
             return Path(user_dir).expanduser().resolve()
 
         # Check both system env and .env file
-        if env_value := os.getenv("HWA_SIM_CACHE"):
+        if env_value := os.getenv("HWA_CACHE_DIR"):
             return Path(env_value).expanduser().resolve()
 
         return Path(user_cache_dir("hardware_accelerators", ensure_exists=True))
@@ -557,7 +557,7 @@ class CompiledAcceleratorSimulator:
         """Search for existing binary in all potential cache locations."""
         search_dirs = [
             self.cache_dir,
-            Path(os.environ.get("HWA_SIM_CACHE", "")).expanduser().resolve(),
+            Path(os.environ.get("HWA_CACHE_DIR", "")).expanduser().resolve(),
             Path(user_cache_dir("hardware_accelerators")),
         ]
 
@@ -594,9 +594,11 @@ class CompiledAcceleratorSimulator:
         config_path = path / "config.pkl"
 
         if not lib_path.exists():
-            raise PyrtlError(f"Library not found: {lib_path}")
+            print(PyrtlError(f"Library not found: {lib_path}"))
+            self._compile_and_cache(self.config.id)
         if not config_path.exists():
-            raise PyrtlError(f"Config not found: {config_path}")
+            print(PyrtlError(f"Config not found: {config_path}"))
+            self._compile_and_cache(self.config.id)
 
         self.config = pickle.loads(config_path.read_bytes())
         self.sim = CachedSimulation(lib_path=str(lib_path))
@@ -856,7 +858,7 @@ class CompiledAcceleratorSimulator:
     def predict_batch(
         self,
         batch: np.ndarray,
-        progress: bool = True,
+        progress: bool | object = True,
     ) -> np.ndarray:
         """Run MLP inference on a batch of inputs."""
 
@@ -867,7 +869,11 @@ class CompiledAcceleratorSimulator:
 
         self.reset_output_trace()
 
-        if progress:
+        # Handle progress tracking
+        update_pbar = False
+        pbar = None
+
+        if progress is True:
             # Calculate total number of tiles
             total_tiles = count_batch_gemm_tiles(
                 self.hidden_dim, self.input_dim + 1, self.config.array_size
@@ -875,6 +881,12 @@ class CompiledAcceleratorSimulator:
                 self.output_dim, self.hidden_dim + 1, self.config.array_size
             )
             pbar = tqdm(total=total_tiles, desc="Processing tiles")
+
+            update_pbar = True
+        elif progress is not False:
+            # An existing progress bar was passed
+            pbar = progress
+            update_pbar = True
 
         # First layer
         x_aug = convert_array_dtype(bias_trick(x=batch), self.config.activation_type)
@@ -904,8 +916,14 @@ class CompiledAcceleratorSimulator:
                 hidden_chunks.append(results)
                 self.reset_output_trace()
 
-            if progress:
-                pbar.update(1)
+            if update_pbar:
+                # Update progress bar safely
+                try:
+                    pbar.update(1)  # type: ignore
+                except Exception as e:
+                    # If update fails, disable further updates
+                    print(f"Warning: Progress bar update failed: {e}")
+                    update_pbar = False
 
         # Concatenate chunks and slice
         hidden_out = np.concatenate(hidden_chunks, axis=1)[:, : self.hidden_dim]
@@ -939,8 +957,14 @@ class CompiledAcceleratorSimulator:
                 output_chunks.append(results)
                 self.reset_output_trace()
 
-            if progress:
-                pbar.update(1)
+            if update_pbar:
+                # Update progress bar safely
+                try:
+                    pbar.update(1)  # type: ignore
+                except Exception as e:
+                    # If update fails, disable further updates
+                    print(f"Warning: Progress bar update failed: {e}")
+                    update_pbar = False
 
         # Concatenate chunks and slice
         final_out = np.concatenate(output_chunks, axis=1)[:, : self.output_dim]

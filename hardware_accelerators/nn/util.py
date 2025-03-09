@@ -27,10 +27,10 @@ def load_model(model_path: str, device: torch.device | None = None):
     if device is None:
         device = get_pytorch_device()
     model = model_factory()
-    model.to(device)
     model.load_state_dict(
         torch.load(model_path, map_location=device, weights_only=True)
     )
+    model.to(device)
     return model
 
 

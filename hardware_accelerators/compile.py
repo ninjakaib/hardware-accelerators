@@ -7,11 +7,8 @@ from functools import partial
 
 from .simulation import CompiledAcceleratorSimulator
 
-from .rtllib import float_multiplier, lmul_fast, float_adder
-from .rtllib.accelerator import (
-    CompiledAccelerator,
-    CompiledAcceleratorConfig,
-)
+from .rtllib import float_multiplier, lmul_simple
+from .rtllib.accelerator import CompiledAcceleratorConfig
 from .dtypes import BaseFloat, Float32, Float16, BF16, Float8
 from typing import Iterator, Type, List, Callable
 from itertools import product
@@ -40,10 +37,10 @@ def generate_accelerator_configs(
            They should only pair with themselves or with FP32.
     """
     if dtypes is None:
-        dtypes = [Float8, BF16, Float16, Float32]
+        dtypes = [Float8, BF16, Float32]
 
     if multipliers is None:
-        multipliers = [float_multiplier, lmul_fast]
+        multipliers = [float_multiplier, lmul_simple]
 
     # Sort dtypes by bitwidth for easier comparison
     dtype_bitwidths = {dtype: dtype.bitwidth() for dtype in dtypes}

@@ -112,7 +112,7 @@ The simulator uses just-in-time compilation with intelligent caching to accelera
   Control cache location via:
 
   ```bash
-  export HWA_SIM_CACHE=/path/to/custom/cache
+  export HWA_CACHE_DIR=/path/to/custom/cache
   ```
 
   or using a `.env` file in your project root.
