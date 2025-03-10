@@ -43,7 +43,7 @@ For our Q2 project, we built hardware simulations for both the IEEE and L-mul al
 To reproduce our demo, you'll need Docker installed on your PC and have the daemon open. Then follow these steps:
 
 1. Pull the docker image using: `docker pull nakschou/lmul-demo:latest`
-2. Run the docker image using `docker pull nakschou/lmul-demo:latest`
+2. Run the docker image using `docker run nakschou/lmul-demo:latest`
 3. Navigate to `localhost:8000` to view our demo
 The output should be the result of our test cases.
 
