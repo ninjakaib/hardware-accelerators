@@ -6,7 +6,7 @@
 ## UCSD DSC180B Capstone Project | Winter 2025
 
 [![Website](https://img.shields.io/badge/View_Project_Website-blue?style=for-the-badge&logo=github)](https://nakschou.github.io/hardware-accelerators-site/)
-[![Download Report](https://img.shields.io/badge/📄_Download_Report-red?style=for-the-badge&logo=adobe-acrobat-reader)](https://github.com/nakschou/artifact-directory-template/blob/main/report.pdf)
+[![Download Report](https://img.shields.io/badge/📄_Download_Report-red?style=for-the-badge&logo=adobe-acrobat-reader)](https://github.com/ninjakaib/hardware-accelerators/blob/main/Multiplication%20is%20Not%20What%20You%20Need%20(1).pdf)
 
 [![GitHub deployments](https://img.shields.io/github/deployments/ninjakaib/hardware-accelerators/github-pages?label=pages)](https://github.com/ninjakaib/hardware-accelerators/deployments/github-pages)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ninjakaib/hardware-accelerators/format-check.yml?label=formatting)](https://github.com/ninjakaib/hardware-accelerators/actions/workflows/format-check.yml)
