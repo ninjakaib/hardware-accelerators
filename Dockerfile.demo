@@ -17,7 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY models/ /code/models/
 COPY hardware_accelerators/ /code/hardware_accelerators/
 COPY results/component_data.csv /code/data/
-
+# Copy the MNIST dataset
+COPY mnist/ /code/mnist/
 
 # Set environment variables
 ENV HWA_CACHE_DIR=/code/hardware_accelerators/cache

@@ -5,6 +5,8 @@ from gradio.components.image_editor import EditorValue
 import numpy as np
 import pandas as pd
 from PIL import Image
+import struct
+import random
 from torchvision import transforms
 from .nn.util import load_model
 from .rtllib.lmul import lmul_simple
@@ -58,6 +60,56 @@ mult_map = {
 }
 
 
+# ------------ MNIST Dataset Loading ------------ #
+
+def load_mnist_images(images_path, labels_path, num_images=100):
+    """
+    Load MNIST images and labels from the IDX format files.
+    
+    Args:
+        images_path: Path to the images file
+        labels_path: Path to the labels file
+        num_images: Number of images to load
+        
+    Returns:
+        List of (image, label) tuples
+    """
+    # Read labels
+    with open(labels_path, 'rb') as f:
+        magic, n = struct.unpack('>II', f.read(8))
+        labels = np.fromfile(f, dtype=np.uint8)
+    
+    # Read images
+    with open(images_path, 'rb') as f:
+        magic, num, rows, cols = struct.unpack('>IIII', f.read(16))
+        images = np.fromfile(f, dtype=np.uint8).reshape(len(labels), rows, cols)
+    
+    # Select a subset of images
+    indices = list(range(len(labels)))
+    random.seed(42)  # For reproducibility
+    selected_indices = random.sample(indices, min(num_images, len(indices)))
+    
+    # Create a list of (image, label) tuples
+    mnist_data = []
+    for idx in selected_indices:
+        img = Image.fromarray(images[idx])
+        label = int(labels[idx])
+        mnist_data.append((img, label))
+    
+    return mnist_data
+
+# Load MNIST test images
+mnist_test_images = load_mnist_images(
+    "mnist/t10k-images.idx3-ubyte",
+    "mnist/t10k-labels.idx1-ubyte",
+    num_images=100
+)
+
+# Create global variables for gallery images and selected index
+gallery_images = [img for img, _ in mnist_test_images]
+gallery_labels = [f"Digit: {label}" for _, label in mnist_test_images]
+selected_image_index = 0  # Default to first image
+
 # ------------ Event Listener Functions ------------ #
 
 
@@ -82,11 +134,29 @@ def warn_w8a8(weight_type: str, activation_type: str):
         )
 
 
-def image_to_tensor(sketchpad: EditorValue):
-    image = sketchpad["composite"]
-    image = image.resize((28, 28), Image.Resampling.LANCZOS)  # type: ignore
-    img_array = np.transpose(np.array(image), (2, 0, 1))[-1]
-
+def image_to_tensor(image):
+    """
+    Convert a PIL image to a tensor for model input.
+    
+    Args:
+        image: PIL Image
+        
+    Returns:
+        Tensor representation of the image
+    """
+    if image is None:
+        return None
+        
+    # Resize to 28x28 if needed
+    if image.size != (28, 28):
+        image = image.resize((28, 28), Image.Resampling.LANCZOS)
+    
+    # Convert to grayscale if it's not already
+    if image.mode != 'L':
+        image = image.convert('L')
+    
+    img_array = np.array(image)
+    
     # Preprocessing: convert image to tensor and normalize
     transform = transforms.Compose(
         [
@@ -149,8 +219,6 @@ def calculate_stats(
         process_node_size,
     )
 
-    # comparison_metrics = calculate_comparison_metrics(lmul_metrics, ieee_metrics)
-
     # Format the metrics for display in the Gradio UI
     lmul_html = "<div style='text-align: left;'>"
     for key, value in lmul_metrics.items():
@@ -162,25 +230,31 @@ def calculate_stats(
         ieee_html += f"<p><b>{key}:</b> {value}</p>"
     ieee_html += "</div>"
 
-    # comparison_html = "<div style='text-align: left;'>"
-    # comparison_html += "<h3>Comparison (lmul vs IEEE)</h3>"
-    # for key, value in comparison_metrics.items():
-    #     comparison_html += f"<p><b>{key}:</b> {value}</p>"
-    # comparison_html += "</div>"
-
     return (
         lmul_html,
         ieee_html,
-        # comparison_html,
     )
 
 
+def update_selected_index(evt: gr.SelectData):
+    """Update the selected image index when a gallery image is clicked"""
+    global selected_image_index
+    selected_image_index = evt.index
+    return f"Selected Digit: {mnist_test_images[evt.index][1]}"
+
+
 def predict_lmul(
-    sketchpad: EditorValue,
     weight: str,
     activation: str,
     gr_progress=gr.Progress(track_tqdm=True),
 ):
+    """Run the l-mul hardware simulation on the selected image"""
+    global selected_image_index
+    selected_image = gallery_images[selected_image_index]
+    
+    if selected_image is None:
+        return labels_value
+        
     if weight == "float8" and activation == "float8":
         activation = "bfloat16"
     config = CompiledAcceleratorConfig(
@@ -191,17 +265,23 @@ def predict_lmul(
     )
     sim = CompiledAcceleratorSimulator(config, MODEL)
 
-    x = image_to_tensor(sketchpad).detach().numpy().flatten()
+    x = image_to_tensor(selected_image).detach().numpy().flatten()
     probabilities = sim.predict(x)
     return {cls: float(prob) for cls, prob in zip(classes, probabilities)}
 
 
 def predict_ieee(
-    sketchpad: EditorValue,
     weight: str,
     activation: str,
     gr_progress=gr.Progress(track_tqdm=True),
 ):
+    """Run the IEEE hardware simulation on the selected image"""
+    global selected_image_index
+    selected_image = gallery_images[selected_image_index]
+    
+    if selected_image is None:
+        return labels_value
+        
     if weight == "float8" and activation == "float8":
         activation = "bfloat16"
     config = CompiledAcceleratorConfig(
@@ -212,7 +292,7 @@ def predict_ieee(
     )
     simulator = CompiledAcceleratorSimulator(config, MODEL)
 
-    x = image_to_tensor(sketchpad).detach().numpy().flatten()
+    x = image_to_tensor(selected_image).detach().numpy().flatten()
     probabilities = simulator.predict(x)
     return {cls: float(prob) for cls, prob in zip(classes, probabilities)}
 
@@ -223,19 +303,27 @@ def predict_ieee(
 def create_app():
     with gr.Blocks(fill_height=False, fill_width=False, title=__file__) as demo:
 
-        gr.Markdown("## Draw a digit to see the model's prediction")
+        gr.Markdown("## MNIST Hardware Accelerator Simulation")
+        
         with gr.Row(equal_height=False):
             with gr.Column(scale=3):
-                canvas_size = (400, 400)
-                sketchpad = gr.Sketchpad(
-                    # label="Draw a digit",
-                    type="pil",  # Changed to PIL
-                    transforms=(),
-                    layers=False,
-                    canvas_size=canvas_size,
-                    # scale=2,
-                    container=False,
+                # Create a gallery of MNIST images with square layout and preview enabled by default
+                gallery = gr.Gallery(
+                    value=[(img, caption) for img, caption in zip(gallery_images, gallery_labels)],
+                    label="MNIST Test Images (Click to select an image)",
+                    columns=[5, 5, 5, 5, 5, 5],  # Make it square across all breakpoints
+                    rows=5,  # Match with columns for square layout
+                    height=400,  # Fixed height to ensure square appearance
+                    object_fit="contain",
+                    allow_preview=True,
+                    preview=True,  # Start in preview mode by default
+                    elem_id="mnist_gallery"
                 )
+                
+                # Display the selected digit
+                selected_digit_text = gr.Markdown("Selected Digit: 0")
+                
+                # Add a button to run the hardware simulation
                 predict_btn = gr.Button(
                     "Run Hardware Simulation",
                     variant="primary",
@@ -340,17 +428,23 @@ def create_app():
                 )
 
         # ------------ Event Listeners ------------ #
+        
+        # When an image is selected from the gallery, update the selected index
+        gallery.select(
+            fn=update_selected_index,
+            outputs=selected_digit_text,
+        )
 
+        # Run hardware simulation when the button is clicked
         predict_btn.click(
             fn=predict_ieee,
-            inputs=[sketchpad, weight_type_component, activation_type_component],
+            inputs=[weight_type_component, activation_type_component],
             outputs=ieee_predictions,
         )
 
-        # TODO: implement simulator_predict
         predict_btn.click(
             fn=predict_lmul,
-            inputs=[sketchpad, weight_type_component, activation_type_component],
+            inputs=[weight_type_component, activation_type_component],
             outputs=lmul_predictions,
         )
 
