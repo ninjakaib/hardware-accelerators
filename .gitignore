@@ -172,3 +172,4 @@ CLAUDE.md
 #*.v
 verilog/all/
 #verilog/reports/
+mnist/
