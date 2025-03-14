@@ -62,47 +62,47 @@ mult_map = {
 
 # ------------ MNIST Dataset Loading ------------ #
 
+
 def load_mnist_images(images_path, labels_path, num_images=100):
     """
     Load MNIST images and labels from the IDX format files.
-    
+
     Args:
         images_path: Path to the images file
         labels_path: Path to the labels file
         num_images: Number of images to load
-        
+
     Returns:
         List of (image, label) tuples
     """
     # Read labels
-    with open(labels_path, 'rb') as f:
-        magic, n = struct.unpack('>II', f.read(8))
+    with open(labels_path, "rb") as f:
+        magic, n = struct.unpack(">II", f.read(8))
         labels = np.fromfile(f, dtype=np.uint8)
-    
+
     # Read images
-    with open(images_path, 'rb') as f:
-        magic, num, rows, cols = struct.unpack('>IIII', f.read(16))
+    with open(images_path, "rb") as f:
+        magic, num, rows, cols = struct.unpack(">IIII", f.read(16))
         images = np.fromfile(f, dtype=np.uint8).reshape(len(labels), rows, cols)
-    
+
     # Select a subset of images
     indices = list(range(len(labels)))
     random.seed(42)  # For reproducibility
     selected_indices = random.sample(indices, min(num_images, len(indices)))
-    
+
     # Create a list of (image, label) tuples
     mnist_data = []
     for idx in selected_indices:
         img = Image.fromarray(images[idx])
         label = int(labels[idx])
         mnist_data.append((img, label))
-    
+
     return mnist_data
+
 
 # Load MNIST test images
 mnist_test_images = load_mnist_images(
-    "mnist/t10k-images.idx3-ubyte",
-    "mnist/t10k-labels.idx1-ubyte",
-    num_images=100
+    "mnist/t10k-images.idx3-ubyte", "mnist/t10k-labels.idx1-ubyte", num_images=100
 )
 
 # Create global variables for gallery images and selected index
@@ -137,26 +137,26 @@ def warn_w8a8(weight_type: str, activation_type: str):
 def image_to_tensor(image):
     """
     Convert a PIL image to a tensor for model input.
-    
+
     Args:
         image: PIL Image
-        
+
     Returns:
         Tensor representation of the image
     """
     if image is None:
         return None
-        
+
     # Resize to 28x28 if needed
     if image.size != (28, 28):
         image = image.resize((28, 28), Image.Resampling.LANCZOS)
-    
+
     # Convert to grayscale if it's not already
-    if image.mode != 'L':
-        image = image.convert('L')
-    
+    if image.mode != "L":
+        image = image.convert("L")
+
     img_array = np.array(image)
-    
+
     # Preprocessing: convert image to tensor and normalize
     transform = transforms.Compose(
         [
@@ -251,10 +251,10 @@ def predict_lmul(
     """Run the l-mul hardware simulation on the selected image"""
     global selected_image_index
     selected_image = gallery_images[selected_image_index]
-    
+
     if selected_image is None:
         return labels_value
-        
+
     if weight == "float8" and activation == "float8":
         activation = "bfloat16"
     config = CompiledAcceleratorConfig(
@@ -278,10 +278,10 @@ def predict_ieee(
     """Run the IEEE hardware simulation on the selected image"""
     global selected_image_index
     selected_image = gallery_images[selected_image_index]
-    
+
     if selected_image is None:
         return labels_value
-        
+
     if weight == "float8" and activation == "float8":
         activation = "bfloat16"
     config = CompiledAcceleratorConfig(
@@ -304,12 +304,15 @@ def create_app():
     with gr.Blocks(fill_height=False, fill_width=False, title=__file__) as demo:
 
         gr.Markdown("## MNIST Hardware Accelerator Simulation")
-        
+
         with gr.Row(equal_height=False):
             with gr.Column(scale=3):
                 # Create a gallery of MNIST images with square layout and preview enabled by default
                 gallery = gr.Gallery(
-                    value=[(img, caption) for img, caption in zip(gallery_images, gallery_labels)],
+                    value=[
+                        (img, caption)
+                        for img, caption in zip(gallery_images, gallery_labels)
+                    ],
                     label="MNIST Test Images (Click to select an image)",
                     columns=[5, 5, 5, 5, 5, 5],  # Make it square across all breakpoints
                     rows=5,  # Match with columns for square layout
@@ -317,12 +320,12 @@ def create_app():
                     object_fit="contain",
                     allow_preview=True,
                     preview=True,  # Start in preview mode by default
-                    elem_id="mnist_gallery"
+                    elem_id="mnist_gallery",
                 )
-                
+
                 # Display the selected digit
                 selected_digit_text = gr.Markdown("Selected Digit: 0")
-                
+
                 # Add a button to run the hardware simulation
                 predict_btn = gr.Button(
                     "Run Hardware Simulation",
@@ -428,7 +431,7 @@ def create_app():
                 )
 
         # ------------ Event Listeners ------------ #
-        
+
         # When an image is selected from the gallery, update the selected index
         gallery.select(
             fn=update_selected_index,
